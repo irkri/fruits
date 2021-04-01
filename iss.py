@@ -103,13 +103,13 @@ def generate_concatinations(number:int, dim:int=1,
 
 	return concs
 
-def get_increments(X:np.array) -> np.array:
-	''' returns array of increments x_i - x_{i-1} for one dimensional data 
-	only '''
-	if len(X.shape)==1:
-		return (np.roll(X, -1) - X)[:-1]
-	else:
-		return (np.roll(X, -1, axis=1) - X)[:-1]
+def get_increments(X:np.array, axis=0) -> np.array:
+	''' returns array of increments x_i - x_{i-1} '''
+	out = np.delete((np.roll(X, -1, axis=axis) - X), -1, axis=axis)
+	pad_widths = [(0,0) for dim in range(X.ndim)]
+	pad_widths[axis] = (1,0)
+	out = np.pad(out, pad_width=pad_widths, mode="constant")
+	return out
 
 def ppv(X:np.array) -> float:
 	if len(X)==0:
