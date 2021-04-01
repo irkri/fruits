@@ -91,7 +91,7 @@ def generate_concatinations(number:int, dim:int=1,
 							max_composition_length:int=5,
 							max_concatination_length:int=10):
 	concs = []
-	av_elements = [str(i) for i in range(dim)]
+	av_elements = [str(i+1) for i in range(dim)]
 	for i in range(number):
 		conc = Concatination()
 		length = np.random.randint(1,max_concatination_length+1)
@@ -103,12 +103,13 @@ def generate_concatinations(number:int, dim:int=1,
 
 	return concs
 
-def get_increments(X:np.array, padding:str="none") -> np.array:
-	if padding=="left":
-		X = np.insert(X,0,0)
-	elif padding=="right":
-		X = np.insert(X,len(X),0)
-	return np.convolve(X, np.array([1,-1]), mode="valid")
+def get_increments(X:np.array) -> np.array:
+	''' returns array of increments x_i - x_{i-1} for one dimensional data 
+	only '''
+	if len(X.shape)==1:
+		return (np.roll(X, -1) - X)[:-1]
+	else:
+		return (np.roll(X, -1, axis=1) - X)[:-1]
 
 def ppv(X:np.array) -> float:
 	if len(X)==0:
