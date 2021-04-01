@@ -12,7 +12,7 @@ X = np.random.rand(20)
 print(f"X = {X}\n")
 
 Z = iss.get_increments(X)
-print(f"Increments of X are:\nsZ = {Z}\n")
+print(f"Increments of X are:\nZ = {Z}\n")
 
 comp = iss.Composition("[11]")
 conc = iss.Concatination.from_str("[11][1]")
@@ -39,11 +39,12 @@ X_10000 = np.random.rand(num_input*length_time_series).reshape(num_input,
 print(f"Calculating increments for all {num_input} time series of length \
 {length_time_series}...")
 for i in range(num_input):
-	X_10000[i] = np.insert(iss.get_increments(X_10000[i]),0,0)#X_10000[i][0])
+	X_10000[i] = iss.get_increments(X_10000[i])
 print("Done.")
 print(f"Calculating corresponding features of Iterated Sums...")
 results = iss.features_from_iterated_sums(X_10000, concs)
 print("Done.")
-print(f"All {num_concs} features of the first 3 time series:\n")
-for i in range(3):
+sample_size = 3
+print(f"All {num_concs} features of the first {sample_size} time series:\n")
+for i in range(sample_size):
 	print(results[i])
