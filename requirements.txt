@@ -1,0 +1,7 @@
+# python version: 3.8
+# install all required libraries with
+# 		$ pip install -r requirements.txt
+
+numpy==1.19.2
+pandas==1.2.3
+scikit-learn==0.24.1
