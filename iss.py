@@ -1,4 +1,5 @@
 import numpy as np
+import re
 from timeit import default_timer as timer
 
 class CIterator:
@@ -15,7 +16,7 @@ class CIterator:
 
 class Composition:
 	def __init__(self, in_string:str):
-		in_string = in_string.replace("[","").replace("]","")
+		in_string = in_string.replace("[", "").replace("]", "")
 		self._content = [int(x) for x in in_string]
 
 	def __mul__(self, other):
@@ -24,30 +25,36 @@ class Composition:
 	def __iter__(self):
 		return CIterator(self)
 
-	def __str__(self):
+	def __str__(self) -> str:
 		return "["+"".join([str(x) for x in self._content])+"]"
 
+	def __repr__(self) -> str:
+		return str(self)
+
 class Concatination:
-	def __init__(self):
+	def __init__(self, string:str=""):
 		self._content = []
+		self._extract_from_str(string)
 
 	def __mul__(self, other):
 		self._content.append(other)
 		return self
 
-	def __str__(self):
+	def __str__(self) -> str:
 		return "".join([str(x) for x in self._content])
+
+	def __repr__(self) -> str:
+		return str(self)
 
 	def __iter__(self):
 		return CIterator(self)
 
-	@staticmethod
-	def from_str(string:str):
-		conc = Concatination()
+	def _extract_from_str(self, string:str):
+		if not re.findall(r"(\[\d+\])+", string):
+			return
 		elements = [x[1:] for x in string.split("]")][:-1]
 		for element in elements:
-			conc *= Composition(element)
-		return conc
+			self *= Composition(element)
 
 def iterated_sums(Z:np.array, 
 				  concatination:Concatination, 
@@ -66,7 +73,7 @@ def iterated_sums(Z:np.array,
 	for element in concatination:
 		C = np.ones(length, dtype=np.float64)
 		for letter in element:
-			C *= Z[:,int(letter)-1]
+			C *= Z[:, int(letter)-1]
 		P = np.cumsum(P*C)
 		if verbose:
 			print("{:-^40}".format("Start Iteration"))
