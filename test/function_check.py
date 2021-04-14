@@ -15,7 +15,7 @@ Z = iss.get_increments(X)
 print(f"Increments of X are:\nZ = {Z}\n")
 
 comp = iss.Composition("[11]")
-conc = iss.Concatination.from_str("[11][1]")
+conc = iss.Concatination("[11][1]")
 conc *= comp
 
 ISS = iss.iterated_sums(Z, conc)
