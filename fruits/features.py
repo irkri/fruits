@@ -44,3 +44,9 @@ def _ppv(X:np.ndarray) -> np.ndarray:
 
 PPV = Feature("proportion of positive values")
 PPV.set_function(_ppv)
+
+MAX = Feature("maximal value")
+MAX.set_function(lambda X: np.max(X, axis=1))
+
+MIN = Feature("minimal value")
+MIN.set_function(lambda X: np.min(X, axis=1))
