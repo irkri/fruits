@@ -1,4 +1,4 @@
-from context import iss
+from context import fruits
 import numpy as np
 
 '''
@@ -11,40 +11,38 @@ Noticed from the tests so far:
 X = np.random.rand(20)
 print(f"X = {X}\n")
 
-Z = iss.get_increments(X)
+Z = fruits.get_increments(X)
 print(f"Increments of X are:\nZ = {Z}\n")
 
-comp = iss.Composition("[11]")
-conc = iss.Concatination("[11][1]")
-conc *= comp
+conc = "[11][111]"
+iterator = fruits.SummationIterator.build_from_compositionstring(conc)
 
-ISS = iss.iterated_sums(Z, conc)
+ISS = fruits.iterated_sums(Z, iterator)
 print(f"<{conc},ISS(Z)> = {ISS}")
-print(f"Proportion of positive values: {iss.ppv(ISS)}")
+print(f"Proportion of positive values: {fruits.ppv(ISS)}")
 
 print("\n"+40*"-"+"\n")
 
 num_concs = 10
 print(f"Generating {num_concs} random concatinations...")
-concs = iss.generate_concatinations(num_concs, dim=1,
-									max_concatination_length=20,
+concs = fruits.generate_concatinations(num_concs, dim=1,
+									max_concatenation_length=20,
 									max_composition_length=3)
 print("Done.")
-print(f"First random concatination: {[str(c) for  c in concs]}")
 
 num_input = 100
 length_time_series = 100
-X_10000 = np.random.rand(num_input*length_time_series).reshape(num_input,
-															length_time_series)
+X_10000 = np.random.rand(num_input*length_time_series)
+X_10000 = X_10000.reshape(num_input,length_time_series)
 print(f"Calculating increments for all {num_input} time series of length \
 {length_time_series}...")
 for i in range(num_input):
-	X_10000[i] = iss.get_increments(X_10000[i])
+	X_10000[i] = fruits.get_increments(X_10000[i])
 print("Done.")
-print(f"Calculating corresponding features of Iterated Sums...")
-results = iss.features_from_iterated_sums(X_10000, concs)
-print("Done.")
-sample_size = 3
-print(f"All {num_concs} features of the first {sample_size} time series:\n")
-for i in range(sample_size):
-	print(results[i])
+# print(f"Calculating corresponding features of Iterated Sums...")
+# results = fruits.features_from_iterated_sums(X_10000, concs)
+# print("Done.")
+# sample_size = 3
+# print(f"All {num_concs} features of the first {sample_size} time series:\n")
+# for i in range(sample_size):
+# 	print(results[i])
