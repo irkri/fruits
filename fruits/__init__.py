@@ -1,3 +1,2 @@
-from fruits.methods import *
-from fruits.features import *
+from fruits.methods import FeatureExtractor, iterated_sums
 from fruits.iterators import *
