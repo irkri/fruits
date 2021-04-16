@@ -28,10 +28,25 @@ type Word")
 
 class SummationIterator:
 	''' abstract class that is given to the iterated_sums function '''
-	def __init__(self):
+	def __init__(self, name:str=""):
+		self._name = name
 		# array of words
 		self._words = []
 		self._word_index = 0
+
+	@property
+	def name(self) -> str:
+		return self._name
+
+	@name.setter
+	def name(self, name:str):
+		self._name = name
+
+	def __str__(self) -> str:
+		return self._name
+
+	def __repr__(self) -> str:
+		return "SummationIterator("+str(self)+")"
 
 	def append(self, word:Word):
 		if not isinstance(word, Word):
@@ -47,7 +62,7 @@ SummationIterator")
 		return [word(X) for word in self.words()]
 
 	@staticmethod
-	def build_from_compositionstring(string:str):
+	def build_from_concatenationstring(string:str):
 		''' takes a string like [112][1114][223] and returns the corresponding
 		SummationIterator '''
 		if not re.fullmatch(r"(\[\d+\])+", string):
@@ -63,19 +78,21 @@ SummationIterator")
 				exec(f"def f(X): return X[{i}, :]**{counts[i]}", d)
 				W.append(d['f'])
 			iterator.append(W)
-
+		iterator.name = string
 		return iterator
 
-def generate_concatinations(number:int, dim:int=1,
-							max_composition_length:int=5,
-							max_concatenation_length:int=10):
+def generate_random_concatenations(number:int, dim:int=1,
+								   max_letter_weight:int=3,
+								   max_concatenation_length:int=5):
+	''' max number of different concatinations:
+	max_letter_weight^max_concatenation_length '''
 	concs = []
 	av_elements = [str(i+1) for i in range(dim)]
 	for i in range(number):
 		length = np.random.randint(1,max_concatenation_length+1)
 		conc = ""
 		for j in range(length):
-			clength = np.random.randint(1,max_composition_length+1)
+			clength = np.random.randint(1,max_letter_weight+1)
 			conc += "["+"".join(np.random.choice(av_elements, size=clength))+"]"
-		concs.append(SummationIterator.build_from_compositionstring(conc))
+		concs.append(SummationIterator.build_from_concatenationstring(conc))
 	return concs
