@@ -22,7 +22,7 @@ class FeatureExtractor:
 	def __init__(self):
 		# used functions and class instances for data processing
 		self._data_preparateur = prep.ID
-		self._sum_iter = None
+		self._iterators = []
 		self._features = []
 
 		# bool variables so data has to be processed only once
@@ -43,7 +43,7 @@ class FeatureExtractor:
 		self._ts_length = 0
 
 	def nfeatures(self) -> int:
-		return len(self._features)
+		return len(self._features)*len(self._iterators)
 
 	def set_data_preparateur(self, preparateur:prep.DataPreparateur):
 		if not isinstance(preparateur, prep.DataPreparateur):
@@ -53,10 +53,10 @@ class FeatureExtractor:
 		self._iterated = False
 		self._featured = False
 
-	def set_summation_iterator(self, sum_iter:SummationIterator):
+	def add_summation_iterator(self, sum_iter:SummationIterator):
 		if not isinstance(sum_iter, SummationIterator):
 			raise TypeError
-		self._sum_iter = sum_iter
+		self._iterators.append(sum_iter)
 		self._iterated = False
 		self._featured = False
 		
@@ -83,7 +83,7 @@ class FeatureExtractor:
 
 	def prepare(self):
 		if self._input_data is None:
-			raise RuntimeError("No input data set")
+			raise RuntimeError("Missing input data")
 		if self._prepared:
 			return
 		self._prepared_data = self._data_preparateur(self._input_data)
@@ -96,11 +96,15 @@ class FeatureExtractor:
 	def iterate(self):
 		if self._iterated:
 			return
+		if not self._iterators:
+			raise RuntimeError("Missing SummationIterator")
 		self.prepare()
-		iss = np.zeros((self._ts, self._ts_length))
+		self._iterated_data = np.zeros((self._ts, len(self._iterators), 
+										self._ts_length))
 		for i in range(self._ts):
-			self._iterated_data[i, :] = iterated_sums(
-							self._prepared_data[i, :, :], self._sum_iter)
+			for j in range(len(self._iterators)):
+				self._iterated_data[i, j, :] = iterated_sums(
+							self._prepared_data[i, :, :], self._iterators[j])
 		self._iterated = True
 
 	def iterated_sums(self) -> np.ndarray:
@@ -113,8 +117,11 @@ class FeatureExtractor:
 		self.prepare()
 		self.iterate()
 		self._featured_data = np.zeros((self._ts, self.nfeatures()))
-		for i, feat in enumerate(self._features):
-			self._featured_data[:, i] = feat(self._iterated_data)
+		k = 0
+		for i in range(len(self._iterators)):
+			for j, feat in enumerate(self._features):
+				self._featured_data[:, k] = feat(self._iterated_data[:, i, :])
+				k += 1
 		self._featured = True
 
 	def features(self) -> np.ndarray:
