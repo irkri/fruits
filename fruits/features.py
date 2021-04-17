@@ -1,6 +1,6 @@
 import numpy as np
 
-class Feature:
+class FeatureFilter:
 	''' an instance of this class takes all time series data as input and 
 	returns for each time series the value of one feature '''
 	def __init__(self, name:str=""):
@@ -42,11 +42,11 @@ def _ppv(X:np.ndarray) -> np.ndarray:
 		result[i] = np.sum(X[i]>=med)/len(X[i])
 	return result
 
-PPV = Feature("proportion of positive values")
+PPV = FeatureFilter("proportion of positive values")
 PPV.set_function(_ppv)
 
-MAX = Feature("maximal value")
+MAX = FeatureFilter("maximal value")
 MAX.set_function(lambda X: np.max(X, axis=1))
 
-MIN = Feature("minimal value")
+MIN = FeatureFilter("minimal value")
 MIN.set_function(lambda X: np.min(X, axis=1))

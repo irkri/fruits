@@ -2,7 +2,7 @@ import numpy as np
 import re
 from fruits.iterators import SummationIterator, Word
 from fruits.preparateurs import DataPreparateur
-from fruits.features import Feature
+from fruits.features import FeatureFilter
 
 def iterated_sums(Z:np.ndarray, 
 				  sum_iter:SummationIterator) -> np.ndarray:
@@ -16,7 +16,7 @@ def iterated_sums(Z:np.ndarray,
 		P = np.cumsum(P*word(Z))
 	return P	
 
-class FeatureExtractor:
+class Fruit:
 	''' class that connects all different options the user can choose from,
 	e.g. SummationIterator, used functions to extract features, ... '''
 	def __init__(self):
@@ -24,19 +24,19 @@ class FeatureExtractor:
 		# preparateurs will be called in the order that they're added
 		self._preparateurs = []
 		self._iterators = []
-		self._features = []
+		self._filters = []
 
 		# bool variables so data has to be processed only once
 		self._prepared = False
 		self._iterated = False
-		self._featured = False
+		self._filtered = False
 
 		# data variables that hold the processed data
 		self._prepared_data = None
 		self._iterated_data = None
-		self._featured_data = None
+		self._filtered_data = None
 
-		# first step at every action with FeatureExtractor: set input data
+		# first step at every action with FeatureFilter: set input data
 		self._input_data = None
 		# shape of input data
 		self._ts = 0
@@ -44,7 +44,7 @@ class FeatureExtractor:
 		self._ts_length = 0
 
 	def nfeatures(self) -> int:
-		return len(self._features)*len(self._iterators)
+		return len(self._filters)*len(self._iterators)
 
 	def add_data_preparateur(self, preparateur:DataPreparateur):
 		if not isinstance(preparateur, DataPreparateur):
@@ -52,44 +52,47 @@ class FeatureExtractor:
 		self._preparateurs.append(preparateur)
 		self._prepared = False
 		self._iterated = False
-		self._featured = False
+		self._filtered = False
 
-	def clear_preparateurs(self):
+	def clear_data_preparateurs(self):
 		self._preparateurs = []
+		self._prepared = False
 
 	def add_summation_iterator(self, sum_iter:SummationIterator):
 		if not isinstance(sum_iter, SummationIterator):
 			raise TypeError
 		self._iterators.append(sum_iter)
 		self._iterated = False
-		self._featured = False
+		self._filtered = False
 
-	def clear_iterators(self):
+	def clear_summation_iterators(self):
 		self._iterators = []
+		self._iterated = False
 		
-	def add_feature(self, feat:Feature):
-		if not isinstance(feat, Feature):
+	def add_feature_filter(self, feat:FeatureFilter):
+		if not isinstance(feat, FeatureFilter):
 			raise TypeError
-		self._features.append(feat)
-		self._featured = False
+		self._filters.append(feat)
+		self._filtered = False
 
-	def clear_features(self):
-		self._features = []
+	def clear_feature_filter(self):
+		self._filters = []
+		self._filtered = False
 
 	def add(self, obj):
 		if isinstance(obj, DataPreparateur):
 			self.add_data_preparateur(obj)
 		elif isinstance(obj, SummationIterator):
 			self.add_summation_iterator(obj)
-		elif isinstance(obj, Feature):
-			self.add_feature(obj)
+		elif isinstance(obj, FeatureFilter):
+			self.add_feature_filter(obj)
 		else:
 			raise TypeError(f"Cannot add variable of type {type(obj)}")
 
 	def clear(self):
-		self.clear_preparateurs()
-		self.clear_iterators()
-		self.clear_features()
+		self.clear_data_preparateurs()
+		self.clear_summation_iterators()
+		self.clear_feature_filters()
 
 	def set_input_data(self, X:np.ndarray):
 		if len(X.shape)==1:
@@ -97,14 +100,14 @@ class FeatureExtractor:
 		if len(X.shape)==2:
 			X = np.expand_dims(X, axis=1)
 		if X.ndim!=3:
-			raise ValueError("Unsupported data dimensionality")
+			raise ValueError("Unsupported input shape")
 		self._ts = X.shape[0]
 		self._ts_dim = X.shape[1]
 		self._ts_length = X.shape[2]
 		self._input_data = X
 		self._prepared = False
 		self._iterated = False
-		self._featured = False
+		self._filtered = False
 
 	def prepare(self):
 		if self._input_data is None:
@@ -138,24 +141,24 @@ class FeatureExtractor:
 		self.iterate()
 		return self._iterated_data
 
-	def feature(self):
-		if self._featured:
+	def filter(self):
+		if self._filtered:
 			return
 		self.prepare()
 		self.iterate()
-		if not self._features:
-			raise RuntimeError("No Feature specified")
-		self._featured_data = np.zeros((self._ts, self.nfeatures()))
+		if not self._filters:
+			raise RuntimeError("No FeatureFilter specified")
+		self._filtered_data = np.zeros((self._ts, self.nfeatures()))
 		k = 0
 		for i in range(len(self._iterators)):
-			for j, feat in enumerate(self._features):
-				self._featured_data[:, k] = feat(self._iterated_data[:, i, :])
+			for j, feat in enumerate(self._filters):
+				self._filtered_data[:, k] = feat(self._iterated_data[:, i, :])
 				k += 1
-		self._featured = True
+		self._filtered = True
 
 	def features(self) -> np.ndarray:
-		self.feature()
-		return self._featured_data
+		self.filter()
+		return self._filtered_data
 
 	def __call__(self, Z:np.ndarray) -> np.ndarray:
 		self.set_input_data(Z)

@@ -1,2 +1,2 @@
-from fruits.extractors import FeatureExtractor, iterated_sums
+from fruits.main import Fruit, iterated_sums
 from fruits.iterators import SummationIterator, Word
