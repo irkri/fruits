@@ -16,7 +16,7 @@ print("prepared data; using identity function")
 print(featex.prepared_data()[0,0,:10])
 
 # try to use the increments of the time series as another DataPreparateur
-featex.set_data_preparateur(fruits.preparateurs.INC)
+featex.add_data_preparateur(fruits.preparateurs.INC)
 
 print("\nprepared data; using increments function")
 print(featex.prepared_data()[0,0,:10])
