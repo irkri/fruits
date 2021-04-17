@@ -1,7 +1,7 @@
 import numpy as np
 import re
 from fruits.iterators import SummationIterator, Word
-import fruits.preparateurs as prep
+from fruits.preparateurs import DataPreparateur
 from fruits.features import Feature
 
 def iterated_sums(Z:np.ndarray, 
@@ -21,7 +21,8 @@ class FeatureExtractor:
 	e.g. SummationIterator, used functions to extract features, ... '''
 	def __init__(self):
 		# used functions and class instances for data processing
-		self._data_preparateur = prep.ID
+		# preparateurs will be called in the order that they're added
+		self._preparateurs = []
 		self._iterators = []
 		self._features = []
 
@@ -45,13 +46,16 @@ class FeatureExtractor:
 	def nfeatures(self) -> int:
 		return len(self._features)*len(self._iterators)
 
-	def set_data_preparateur(self, preparateur:prep.DataPreparateur):
-		if not isinstance(preparateur, prep.DataPreparateur):
+	def add_data_preparateur(self, preparateur:DataPreparateur):
+		if not isinstance(preparateur, DataPreparateur):
 			raise TypeError
-		self._data_preparateur = preparateur
+		self._preparateurs.append(preparateur)
 		self._prepared = False
 		self._iterated = False
 		self._featured = False
+
+	def clear_preparateurs(self):
+		self._preparateurs = []
 
 	def add_summation_iterator(self, sum_iter:SummationIterator):
 		if not isinstance(sum_iter, SummationIterator):
@@ -59,12 +63,33 @@ class FeatureExtractor:
 		self._iterators.append(sum_iter)
 		self._iterated = False
 		self._featured = False
+
+	def clear_iterators(self):
+		self._iterators = []
 		
 	def add_feature(self, feat:Feature):
 		if not isinstance(feat, Feature):
 			raise TypeError
 		self._features.append(feat)
 		self._featured = False
+
+	def clear_features(self):
+		self._features = []
+
+	def add(self, obj):
+		if isinstance(obj, DataPreparateur):
+			self.add_data_preparateur(obj)
+		elif isinstance(obj, SummationIterator):
+			self.add_summation_iterator(obj)
+		elif isinstance(obj, Feature):
+			self.add_feature(obj)
+		else:
+			raise TypeError(f"Cannot add variable of type {type(obj)}")
+
+	def clear(self):
+		self.clear_preparateurs()
+		self.clear_iterators()
+		self.clear_features()
 
 	def set_input_data(self, X:np.ndarray):
 		if len(X.shape)==1:
@@ -83,10 +108,12 @@ class FeatureExtractor:
 
 	def prepare(self):
 		if self._input_data is None:
-			raise RuntimeError("Missing input data")
+			raise RuntimeError("No input data")
 		if self._prepared:
 			return
-		self._prepared_data = self._data_preparateur(self._input_data)
+		self._prepared_data = self._input_data
+		for prep in self._preparateurs:
+			self._prepared_data = prep(self._prepared_data)
 		self._prepared = True
 
 	def prepared_data(self) -> np.ndarray:
@@ -97,7 +124,7 @@ class FeatureExtractor:
 		if self._iterated:
 			return
 		if not self._iterators:
-			raise RuntimeError("Missing SummationIterator")
+			raise RuntimeError("No SummationIterator specified")
 		self.prepare()
 		self._iterated_data = np.zeros((self._ts, len(self._iterators), 
 										self._ts_length))
@@ -116,6 +143,8 @@ class FeatureExtractor:
 			return
 		self.prepare()
 		self.iterate()
+		if not self._features:
+			raise RuntimeError("No Feature specified")
 		self._featured_data = np.zeros((self._ts, self.nfeatures()))
 		k = 0
 		for i in range(len(self._iterators)):
