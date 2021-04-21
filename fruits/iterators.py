@@ -1,19 +1,14 @@
+import itertools
 import re
 import numpy as np
 
-# nomenclator:
-# in a concatination of compositions, [123] is a word
-# this word has three letters: 1, 2 and 3
-# they can be interpreted as functions
-
-class Word:
+class Monomial:
 	def __init__(self):
 		self._letters = []
 
 	def append(self, letter):
 		if not callable(letter):
-			raise TypeError("Can only append callable functions to variable of \
-type Word")
+			raise TypeError("Cannot append non-callable object")
 		self._letters.append(letter)
 
 	def letters(self):
@@ -27,12 +22,11 @@ type Word")
 		return X_mul
 
 class SummationIterator:
-	''' abstract class that is given to the iterated_sums function '''
 	def __init__(self, name:str=""):
 		self._name = name
-		# array of words
-		self._words = []
-		self._word_index = 0
+		# array of monomials
+		self._monomials = []
+		self._monomial_index = 0
 
 	@property
 	def name(self) -> str:
@@ -46,47 +40,46 @@ class SummationIterator:
 		return self._name
 
 	def __repr__(self) -> str:
-		return "SummationIterator("+str(self)+")"
+		return "SummationIterator('"+str(self)+"')"
 
-	def append(self, word:Word):
-		if not isinstance(word, Word):
-			raise TypeError("Can only append class type Word to \
-SummationIterator")
-		self._words.append(word)
+	def append(self, mon:Monomial):
+		if not isinstance(mon, Monomial):
+			raise TypeError("")
+		self._monomials.append(mon)
 
-	def words(self):
-		for word in self._words:
-			yield word
+	def monomials(self):
+		for mon in self._monomials:
+			yield mon
 
 	def __call__(self, X):
-		return [word(X) for word in self.words()]
+		return [mon(X) for mon in self.monomials()]
 
-	@staticmethod
-	def build_from_concatenationstring(string:str):
-		''' takes a string like [112][1114][223] and returns the corresponding
-		SummationIterator '''
+class SimpleWord(SummationIterator):
+	def __init__(self, string):
+		super().__init__()
 		if not re.fullmatch(r"(\[\d+\])+", string):
-			return
-		words = [x[1:] for x in string.split("]")][:-1]
-		iterator = SummationIterator()
-		for word in words:
-			W = Word()
-			counts = {int(letter)-1: word.count(letter) for letter in 
-					  set([x for x in word])}
+			raise ValueError("SimpleWord can only be initilized with a string "+
+							 "matching the regular expression "+
+							 r"'(\[\d+\])+'")
+		monomials = [x[1:] for x in string.split("]")][:-1]
+		for monomial in monomials:
+			mon = Monomial()
+			counts = {int(letter)-1: monomial.count(letter) for letter in 
+					  set([x for x in monomial])}
 			for i in counts:
-				d = {}
-				exec(f"def f(X): return X[{i}, :]**{counts[i]}", d)
-				W.append(d['f'])
-			iterator.append(W)
-		iterator.name = string
-		return iterator
+				mon.append(lambda X: X[i, :]**counts[i])
+			self.append(mon)
 
-def generate_random_concatenations(number:int, dim:int=1,
-								   max_letter_weight:int=3,
-								   max_concatenation_length:int=5):
-	''' max number of different concatinations:
-	max_letter_weight^max_concatenation_length '''
-	concs = []
+		self.name = string
+
+	def __repr__(self) -> str:
+		return "SimpleWord("+str(self)+")"
+
+def generate_random_words(number:int,
+						  dim:int=1,
+						  monomial_length:int=3,
+						  n_monomials:int=3) -> list:
+	words = []
 	av_elements = [str(i+1) for i in range(dim)]
 	for i in range(number):
 		length = np.random.randint(1,max_concatenation_length+1)
@@ -94,5 +87,26 @@ def generate_random_concatenations(number:int, dim:int=1,
 		for j in range(length):
 			clength = np.random.randint(1,max_letter_weight+1)
 			conc += "["+"".join(np.random.choice(av_elements, size=clength))+"]"
-		concs.append(SummationIterator.build_from_concatenationstring(conc))
-	return concs
+		words.append(SimpleWord(conc))
+	return words
+
+def generate_words(dim:int=1,
+				   monomial_length:int=1,
+				   n_monomials:int=1) -> list:
+	monomials = []
+	for l in range(1, monomial_length+1):
+		mons = list(itertools.combinations_with_replacement(
+							list(range(1, dim+1)), l))
+		for mon in mons:
+			monomials.append(list(mon))
+
+	words = []
+	for n in range(1, n_monomials+1):
+		words_n = list(itertools.product(monomials, repeat=n))
+		for word in words_n:
+			words.append("".join([str(x).replace(", ","") for x in word]))
+
+	for i in range(len(words)):
+		words[i] = SimpleWord(words[i])
+
+	return words
