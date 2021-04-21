@@ -82,10 +82,10 @@ def generate_random_words(number:int,
 	words = []
 	av_elements = [str(i+1) for i in range(dim)]
 	for i in range(number):
-		length = np.random.randint(1,max_concatenation_length+1)
+		length = np.random.randint(1,n_monomials+1)
 		conc = ""
 		for j in range(length):
-			clength = np.random.randint(1,max_letter_weight+1)
+			clength = np.random.randint(1,monomial_length+1)
 			conc += "["+"".join(np.random.choice(av_elements, size=clength))+"]"
 		words.append(SimpleWord(conc))
 	return words
