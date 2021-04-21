@@ -1,15 +1,15 @@
 import numpy as np
 
 class FeatureFilter:
-	''' an instance of this class takes all time series data as input and 
-	returns for each time series the value of one feature '''
 	def __init__(self, name:str=""):
 		self._name = name
+		self._args = ()
+		self._kwargs = {}
 		self._func = None
 
 	def set_function(self, f):
 		if not callable(f):
-			raise TypeError("Feature needs to have a callable function")
+			raise TypeError("Cannot set non-callable object as function")
 		self._func = f
 
 	@property
@@ -20,33 +20,48 @@ class FeatureFilter:
 	def name(self, name:str):
 		self._name = name
 
-	def __str__(self) -> str:
-		return "Feature: "+self._name
+	def __repr__(self) -> str:
+		return "FeatureFilter('"+self._name+"')"
 	
-	def __call__(self, X:np.ndarray, *args, **kwargs):
-		''' feature needs to be called on all input data '''
-		if X.ndim<2:
-			raise ValueError("Data has to be at least 2-dimesional")
+	def __call__(self, *args, **kwargs):
+		self._args = args
+		self._kwargs = kwargs
+		return self
+		
+	def filter(self, X:np.ndarray):
 		if self._func is None:
 			raise RuntimeError("No function specified")
-		return self._func(X, *args, **kwargs)
+		X = np.atleast_2d(X)
+		return self._func(X, *self._args, **self._kwargs)
 
-def _ppv(X:np.ndarray) -> np.ndarray:
-	# one feature for every time series in X
+def _ppv(X:np.ndarray,
+		 quantile:float=0.5,
+		 constant:bool=False) -> np.ndarray:
+	if constant:
+		ref_value = quantile
+	else:
+		if not 0<quantile<1:
+			raise ValueError("If 'constant' is set to False, quantile has "
+							 "to be a value between 0 and 1")
+		selection = np.random.choice(np.arange(len(X)), size=20)
+		ref_value = np.quantile(np.array([X[i] for i in selection]).flatten(),
+								quantile)
 	result = np.zeros(len(X))
-	# take a random sample of the dataset and compute the median as reference
-	# value
-	rand_ind = np.random.choice(np.arange(len(X)), size=20)
-	med = np.median(np.array([X[i] for i in rand_ind]).flatten())
 	for i in range(len(X)):
-		result[i] = np.sum(X[i]>=med)/len(X[i])
+		result[i] = np.sum(X[i]>=ref_value)/len(X[i])
 	return result
 
 PPV = FeatureFilter("proportion of positive values")
 PPV.set_function(_ppv)
 
+def _max(X:np.ndarray):
+	return np.max(X, axis=1)
+
 MAX = FeatureFilter("maximal value")
-MAX.set_function(lambda X: np.max(X, axis=1))
+MAX.set_function(_max)
+
+def _min(X:np.ndarray):
+	return np.min(X, axis=1)
 
 MIN = FeatureFilter("minimal value")
-MIN.set_function(lambda X: np.min(X, axis=1))
+MIN.set_function(_min)
