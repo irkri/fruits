@@ -1,24 +1,19 @@
 import numpy as np
 import re
-from fruits.iterators import SummationIterator, Word
+from fruits.iterators import SummationIterator
 from fruits.preparateurs import DataPreparateur
 from fruits.features import FeatureFilter
 
 def iterated_sums(Z:np.ndarray, 
 				  sum_iter:SummationIterator) -> np.ndarray:
-	''' calculates the iterated sums signature for a given input series Z,
-	e.g. <[1][12][22],ISS(Z)> = CS(CS(CS(Z[0])*Z[0]*Z[1])*Z[1]^2)
-	(CS is np.cumsum) '''
 	if len(Z.shape)==1:
 		Z = np.expand_dims(Z, axis=0)
 	P = np.ones(Z.shape[1], dtype=np.float64)
-	for word in sum_iter.words():
+	for word in sum_iter.monomials():
 		P = np.cumsum(P*word(Z))
 	return P	
 
 class Fruit:
-	''' class that connects all different options the user can choose from,
-	e.g. SummationIterator, used functions to extract features, ... '''
 	def __init__(self):
 		# used functions and class instances for data processing
 		# preparateurs will be called in the order that they're added
@@ -79,15 +74,17 @@ class Fruit:
 		self._filters = []
 		self._filtered = False
 
-	def add(self, obj):
-		if isinstance(obj, DataPreparateur):
-			self.add_data_preparateur(obj)
-		elif isinstance(obj, SummationIterator):
-			self.add_summation_iterator(obj)
-		elif isinstance(obj, FeatureFilter):
-			self.add_feature_filter(obj)
-		else:
-			raise TypeError(f"Cannot add variable of type {type(obj)}")
+	def add(self, *objects):
+		objects = np.array(objects).flatten()
+		for obj in objects:
+			if isinstance(obj, DataPreparateur):
+				self.add_data_preparateur(obj)
+			elif isinstance(obj, SummationIterator):
+				self.add_summation_iterator(obj)
+			elif isinstance(obj, FeatureFilter):
+				self.add_feature_filter(obj)
+			else:
+				raise TypeError(f"Cannot add variable of type {type(obj)}")
 
 	def clear(self):
 		self.clear_data_preparateurs()
@@ -152,7 +149,8 @@ class Fruit:
 		k = 0
 		for i in range(len(self._iterators)):
 			for j, feat in enumerate(self._filters):
-				self._filtered_data[:, k] = feat(self._iterated_data[:, i, :])
+				self._filtered_data[:, k] = feat.filter(
+					self._iterated_data[:, i, :])
 				k += 1
 		self._filtered = True
 
