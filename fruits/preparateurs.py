@@ -7,7 +7,7 @@ class DataPreparateur:
 
 	def set_function(self, func):
 		if not callable(func):
-			raise TypeError("DataPreparateur needs to have a callable function")
+			raise TypeError("Cannot set non-callable object as function")
 		self._func = func
 
 	@property
@@ -18,16 +18,14 @@ class DataPreparateur:
 	def name(self, name:str):
 		self._name = name
 
-	def __str__(self) -> str:
-		return "DataPreparateur: "+self._name
+	def __repr__(self) -> str:
+		return "DataPreparateur('"+self._name+"')"
 
 	def __call__(self, X:np.ndarray):
 		if self._func is None:
 			raise RuntimeError("No function specified")
+		X = np.atleast_3d(X)
 		return self._func(X)
-
-ID = DataPreparateur("identity function")
-ID.set_function(lambda x: x)
 
 def _inc(X:np.ndarray) -> np.ndarray:
 	out = np.delete((np.roll(X, -1, axis=2) - X), -1, axis=2)
@@ -38,3 +36,13 @@ def _inc(X:np.ndarray) -> np.ndarray:
 
 INC = DataPreparateur("increments")
 INC.set_function(_inc)
+
+def _std(X:np.ndarray) -> np.ndarray:
+	out = np.zeros(X.shape)
+	for i in range(X.shape[0]):
+		for j in range(X.shape[1]):
+			out[i, j, :] = (X[i, j, :]-np.mean(X[i, j, :]))/np.std(X[i, j, :])
+	return out
+
+STD = DataPreparateur("standardization")
+STD.set_function(_std)
