@@ -3,6 +3,13 @@ import re
 import numpy as np
 
 class Monomial:
+	"""Class Monomial
+	
+	An instance of this class is a collection of functions, so called 
+	letters. It can be called on a two dimensional numpy array and 
+	returns the multiplied outputs of all letters called on the input 
+	array.
+	"""
 	def __init__(self):
 		self._letters = []
 
@@ -15,13 +22,17 @@ class Monomial:
 		for letter in self._letters:
 			yield letter
 
-	def __call__(self, X):
+	def __call__(self, X:np.ndarray):
 		X_mul = np.ones(X.shape[1])
 		for letter in self.letters():
 			X_mul *= letter(X)
 		return X_mul
 
 class SummationIterator:
+	"""Class SummationIterator
+	
+	This (mostly abstractly) used class is a collection of Monomials.
+	"""
 	def __init__(self, name:str=""):
 		self._name = name
 		# array of monomials
@@ -51,10 +62,13 @@ class SummationIterator:
 		for mon in self._monomials:
 			yield mon
 
-	def __call__(self, X):
-		return [mon(X) for mon in self.monomials()]
-
 class SimpleWord(SummationIterator):
+	"""Class SimpleWord
+
+	A SimpleWord is a concatenation of monomials that have letters 
+	(functions) which extract a single dimension of a multidimesional 
+	time series.
+	"""
 	def __init__(self, string):
 		super().__init__()
 		if not re.fullmatch(r"(\[\d+\])+", string):
@@ -79,6 +93,22 @@ def generate_random_words(number:int,
 						  dim:int=1,
 						  monomial_length:int=3,
 						  n_monomials:int=3) -> list:
+	"""Returns randomly initialized instances of the class SimpleWord.
+	
+	:param number: number of instances created
+	:type number: int
+	:param dim: maximal dimensionality the letters of any Monomial in 
+	any	SimpleWord can extract, defaults to 1
+	:type dim: int, optional
+	:param monomial_length: maximal number of letters of any Monomial, 
+	defaults to 3
+	:type monomial_length: int, optional
+	:param n_monomials: maximal number of Monomials of any SimpleWord, 
+	defaults to 3
+	:type n_monomials: int, optional
+	:returns: list of SimpleWords
+	:rtype: {list}
+	"""
 	words = []
 	av_elements = [str(i+1) for i in range(dim)]
 	for i in range(number):
@@ -93,6 +123,21 @@ def generate_random_words(number:int,
 def generate_words(dim:int=1,
 				   monomial_length:int=1,
 				   n_monomials:int=1) -> list:
+	"""Returns all possible and unique SimpleWords up to the given 
+	boundaries.
+	
+	:param dim: maximal dimensionality the letters of any Monomial in 
+	any	SimpleWord can extract, defaults to 1
+	:type dim: int, optional
+	:param monomial_length: maximal number of letters of any Monomial, 
+	defaults to 1
+	:type monomial_length: int, optional
+	:param n_monomials: maximal number of Monomials of any SimpleWord, 
+	defaults to 1
+	:type n_monomials: int, optional
+	:returns: list of SimpleWords
+	:rtype: {list}
+	"""
 	monomials = []
 	for l in range(1, monomial_length+1):
 		mons = list(itertools.combinations_with_replacement(

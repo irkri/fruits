@@ -1,6 +1,12 @@
 import numpy as np
 
 class DataPreparateur:
+	"""Class DataPreperateur
+	
+	A DataPreparateur object can be called on a three dimensional numpy 
+	array. The output should be a numpy array that matches the shape of 
+	the input array.
+	"""
 	def __init__(self, name:str):
 		self._name = name
 		self._func = None

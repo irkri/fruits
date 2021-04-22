@@ -1,6 +1,11 @@
 import numpy as np
 
 class FeatureFilter:
+	"""Class FeatureFilter
+	
+	A FeatureFilter object is used to extract a single number out of an
+	multidimensional numpy array.
+	"""
 	def __init__(self, name:str=""):
 		self._name = name
 		self._args = ()

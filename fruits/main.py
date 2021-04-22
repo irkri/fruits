@@ -6,6 +6,19 @@ from fruits.features import FeatureFilter
 
 def iterated_sums(Z:np.ndarray, 
 				  sum_iter:SummationIterator) -> np.ndarray:
+	"""Calculates the Iterated Sums Signature for any SummationIterator.
+	
+	For a given time series Z, this function returns the iteratively 
+	calulcated cummulative sums of the input data, which will be 
+	stepwise transformed using the specified SummationIterator.
+	:param Z: one dimensional input data array, e.g. time series data
+	:type Z: numpy.ndarray
+	:param sum_iter: used for a stepwise transformation of the input
+	data
+	:type sum_iter: SummationIterator
+	:returns: numpy array holding the transformed cummulative sums
+	:rtype: {numpy.ndarray}
+	"""
 	if len(Z.shape)==1:
 		Z = np.expand_dims(Z, axis=0)
 	P = np.ones(Z.shape[1], dtype=np.float64)
@@ -14,6 +27,33 @@ def iterated_sums(Z:np.ndarray,
 	return P	
 
 class Fruit:
+	"""Feature Extractor using iterated sums.
+	
+	A Fruit object extracts values from time series data that are 
+	somehow representative of the input data.
+	The user can customize any of the following three steps the 
+	extractor is going to do in order to get the so called features.
+
+	Data Preparation:
+	Apply functions at the start of the extraction procedure.
+	There are many so called DataPreparateurs in fruits available
+	for preprocessing. The preparateurs will be applied sequentially 
+	to the input data.
+
+	Calculating Iterated Sums:
+	The preprocessed data is now used to calculate the iterated sums
+	signature for different SummationIterators the user can specify.
+	Multiple iterators lead to multiple data arrays created for one 
+	input array.
+
+	Extracting the Features:
+	FeatureFilters may now be added to the Fruit object.
+	Each filter has a corresponding function that will be called on 
+	the	iterated sums from the previous step. The Fruit object then  
+	returns an array of numbers, i.e. the features for each time series.
+	The number of features for one time series is equal to:: 
+		[number of iterators] x [number of filters] 
+	"""
 	def __init__(self):
 		# used functions and class instances for data processing
 		# preparateurs will be called in the order that they're added
