@@ -47,11 +47,8 @@ class SummationIterator:
 	def name(self, name:str):
 		self._name = name
 
-	def __str__(self) -> str:
-		return self._name
-
 	def __repr__(self) -> str:
-		return "SummationIterator('"+str(self)+"')"
+		return "SummationIterator('"+self._name+"')"
 
 	def append(self, mon:Monomial):
 		if not isinstance(mon, Monomial):
@@ -87,7 +84,7 @@ class SimpleWord(SummationIterator):
 		self.name = string
 
 	def __repr__(self) -> str:
-		return "SimpleWord("+str(self)+")"
+		return "SimpleWord("+self.name+")"
 
 def generate_random_words(number:int,
 						  dim:int=1,
