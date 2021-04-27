@@ -89,6 +89,9 @@ class Fruit:
 		self._iterated = False
 		self._filtered = False
 
+	def get_data_preparateurs(self):
+		return self._preparateurs
+
 	def clear_data_preparateurs(self):
 		self._preparateurs = []
 		self._prepared = False
@@ -100,6 +103,9 @@ class Fruit:
 		self._iterated = False
 		self._filtered = False
 
+	def get_summation_iterators(self):
+		return self._iterators
+
 	def clear_summation_iterators(self):
 		self._iterators = []
 		self._iterated = False
@@ -110,7 +116,10 @@ class Fruit:
 		self._filters.append(feat)
 		self._filtered = False
 
-	def clear_feature_filter(self):
+	def get_feature_filters(self):
+		return self._filters
+
+	def clear_feature_filters(self):
 		self._filters = []
 		self._filtered = False
 
