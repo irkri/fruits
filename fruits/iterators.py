@@ -2,42 +2,15 @@ import itertools
 import re
 import numpy as np
 
-class Monomial:
-	"""Class Monomial
-	
-	An instance of this class is a collection of functions, so called 
-	letters. It can be called on a two dimensional numpy array and 
-	returns the multiplied outputs of all letters called on the input 
-	array.
-	"""
-	def __init__(self):
-		self._letters = []
-
-	def append(self, letter):
-		if not callable(letter):
-			raise TypeError("Cannot append non-callable object")
-		self._letters.append(letter)
-
-	def letters(self):
-		for letter in self._letters:
-			yield letter
-
-	def __call__(self, X:np.ndarray):
-		X_mul = np.ones(X.shape[1])
-		for letter in self.letters():
-			X_mul *= letter(X)
-		return X_mul
-
 class SummationIterator:
 	"""Class SummationIterator
 	
 	This (mostly abstractly) used class is a collection of Monomials.
 	"""
 	def __init__(self, name:str=""):
-		self._name = name
-		# array of monomials
+		self.name = name
+		# list of lists (inner lists are monomials)
 		self._monomials = []
-		self._monomial_index = 0
 
 	@property
 	def name(self) -> str:
@@ -50,10 +23,15 @@ class SummationIterator:
 	def __repr__(self) -> str:
 		return "SummationIterator('"+self._name+"')"
 
-	def append(self, mon:Monomial):
-		if not isinstance(mon, Monomial):
-			raise TypeError("")
-		self._monomials.append(mon)
+	def append(self, *objects):
+		objects = np.array(objects, dtype=object)
+		if objects.ndim>2:
+			raise ValueError("Cannot append object with dimensionality > 2")
+		for obj in objects:
+			try:
+				self._monomials.append(list(obj))
+			except TypeError:
+				self._monomials.append([obj])
 
 	def monomials(self):
 		for mon in self._monomials:
@@ -62,26 +40,39 @@ class SummationIterator:
 class SimpleWord(SummationIterator):
 	"""Class SimpleWord
 
-	A SimpleWord is a concatenation of monomials that have letters 
-	(functions) which extract a single dimension of a multidimesional 
+	A SimpleWord is a special form of a SummationIterator that contains
+	functions which extract a single dimension of a multidimesional 
 	time series.
+	It is used to speed up the calculation of iterated sums.
 	"""
-	def __init__(self, string):
+	def __init__(self, string:str):
 		super().__init__()
 		if not re.fullmatch(r"(\[\d+\])+", string):
 			raise ValueError("SimpleWord can only be initilized with a string "+
 							 "matching the regular expression "+
 							 r"'(\[\d+\])+'")
-		monomials = [x[1:] for x in string.split("]")][:-1]
-		for monomial in monomials:
-			mon = Monomial()
-			counts = {int(letter)-1: monomial.count(letter) for letter in 
-					  set([x for x in monomial])}
-			for i in counts:
-				mon.append(lambda X: X[i, :]**counts[i])
-			self.append(mon)
+		monomials_raw = [x[1:] for x in string.split("]")][:-1]
+		max_dim = 0
+		monomials = []
+		for monomial_raw in monomials_raw:
+			monomial = []
+			for letter in monomial_raw:
+				if int(letter)-1>max_dim:
+					max_dim = int(letter)-1
+				monomial.append(int(letter)-1)
+			monomials.append(monomial)
+		self.max_dim = max_dim
 
+		for monomial in monomials:
+			m = np.zeros(max_dim+1, dtype=np.int32)
+			for i in range(max_dim+1):
+				m[i] = monomial.count(i)
+			self.append(m)
 		self.name = string
+
+	def monomials(self):
+		for mon in self._monomials:
+			yield mon
 
 	def __repr__(self) -> str:
 		return "SimpleWord("+self.name+")"
@@ -150,5 +141,6 @@ def generate_words(dim:int=1,
 
 	for i in range(len(words)):
 		words[i] = SimpleWord(words[i])
+		print(f"Created {words[i]}")
 
 	return words
