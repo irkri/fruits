@@ -3,28 +3,7 @@ import re
 from fruits.iterators import SummationIterator
 from fruits.preparateurs import DataPreparateur
 from fruits.features import FeatureFilter
-
-def iterated_sums(Z:np.ndarray, 
-				  sum_iter:SummationIterator) -> np.ndarray:
-	"""Calculates the Iterated Sums Signature for any SummationIterator.
-	
-	For a given time series Z, this function returns the iteratively 
-	calulcated cummulative sums of the input data, which will be 
-	stepwise transformed using the specified SummationIterator.
-	:param Z: one dimensional input data array, e.g. time series data
-	:type Z: numpy.ndarray
-	:param sum_iter: used for a stepwise transformation of the input
-	data
-	:type sum_iter: SummationIterator
-	:returns: numpy array holding the transformed cummulative sums
-	:rtype: {numpy.ndarray}
-	"""
-	if len(Z.shape)==1:
-		Z = np.expand_dims(Z, axis=0)
-	P = np.ones(Z.shape[1], dtype=np.float64)
-	for word in sum_iter.monomials():
-		P = np.cumsum(P*word(Z))
-	return P	
+from fruits.core import ISS
 
 class Fruit:
 	"""Feature Extractor using iterated sums.
@@ -124,7 +103,7 @@ class Fruit:
 		self._filtered = False
 
 	def add(self, *objects):
-		objects = np.array(objects).flatten()
+		objects = np.array(objects, dtype=object).flatten()
 		for obj in objects:
 			if isinstance(obj, DataPreparateur):
 				self.add_data_preparateur(obj)
@@ -177,10 +156,7 @@ class Fruit:
 		self.prepare()
 		self._iterated_data = np.zeros((self._ts, len(self._iterators), 
 										self._ts_length))
-		for i in range(self._ts):
-			for j in range(len(self._iterators)):
-				self._iterated_data[i, j, :] = iterated_sums(
-							self._prepared_data[i, :, :], self._iterators[j])
+		self._iterated_data = ISS(self._prepared_data, self._iterators)
 		self._iterated = True
 
 	def iterated_sums(self) -> np.ndarray:
