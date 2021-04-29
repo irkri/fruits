@@ -41,9 +41,7 @@ def ISS(Z:np.ndarray, iterators:list) -> np.ndarray:
 		for i in range(len(fast_iterators)):
 			for j in range(len(fast_iterators[i])):
 				for k in range(len(fast_iterators[i][j])):
-					fast_iterators_transformed[i, j, k] = fast_iterators[i][j][k]
-		print("transformed")
-		print(fast_iterators_transformed)
+					fast_iterators_transformed[i,j,k] = fast_iterators[i][j][k]
 		ISS_fast = _fast_ISS(Z, fast_iterators_transformed)
 
 	if slow_iterators:
@@ -61,22 +59,13 @@ def _fast_ISS(Z:np.ndarray, iterators:np.ndarray) -> np.ndarray:
 	result = np.zeros((Z.shape[0], len(iterators), Z.shape[2]))
 	for i in numba.prange(Z.shape[0]):
 		for j in numba.prange(len(iterators)):
-			if i==0:
-				print("starting iterator")
-				print(iterators[j])
 			result[i, j, :] = np.ones(Z.shape[2], dtype=np.float64)
 			for k in range(len(iterators[j])):
 				if not np.any(iterators[j][k]):
 					continue
-				if i==0:
-					print("starting monomial")
-					print(iterators[j][k])
 				C = np.ones(Z.shape[2], dtype=np.float64)
 				for l in range(len(iterators[j][k])):
 					if iterators[j][k][l]!=0:
-						if i==0:
-							print("doing iteration")
-							print(iterators[j][k][l])
 						C = C * Z[i, l, :]**iterators[j][k][l]
 				result[i, j, :] = np.cumsum(result[i, j, :]*C)
 
