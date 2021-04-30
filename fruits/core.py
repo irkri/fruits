@@ -54,13 +54,13 @@ def ISS(Z:np.ndarray, iterators:list) -> np.ndarray:
 	elif slow_iterators:
 		return ISS_slow
 
-@numba.njit()
+@numba.njit(parallel=True, fastmath=True)
 def _fast_ISS(Z:np.ndarray, iterators:np.ndarray) -> np.ndarray:
 	result = np.zeros((Z.shape[0], len(iterators), Z.shape[2]))
 	for i in numba.prange(Z.shape[0]):
 		for j in numba.prange(len(iterators)):
 			result[i, j, :] = np.ones(Z.shape[2], dtype=np.float64)
-			for k in range(len(iterators[j])):
+			for k in numba.prange(len(iterators[j])):
 				if not np.any(iterators[j][k]):
 					continue
 				C = np.ones(Z.shape[2], dtype=np.float64)
