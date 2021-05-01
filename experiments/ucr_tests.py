@@ -14,6 +14,7 @@ from context import fruits
 import argparse
 from timeit import default_timer as Timer
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import RidgeClassifierCV
 import re
 import numpy as np
 import os
@@ -40,13 +41,20 @@ else:
 
 featex = fruits.Fruit()
 
+featex.add(fruits.preparateurs.STD)
 featex.add(fruits.preparateurs.INC)
 
-featex.add(fruits.iterators.generate_words(1, 3, 1))
+featex.add(fruits.iterators.generate_words(1, 4, 4))
 
+DIFF = fruits.features.FeatureSieve("slope")
+DIFF.set_function(lambda X: X[:, -1]-X[:, 0])
+
+featex.add(fruits.features.PPV(quantile=0.2, constant=False, sample_size=0.2))
 featex.add(fruits.features.PPV(quantile=0.5, constant=False, sample_size=0.2))
+featex.add(fruits.features.PPV(quantile=0.8, constant=False, sample_size=0.2))
 featex.add(fruits.features.MAX)
 featex.add(fruits.features.MIN)
+featex.add(DIFF)
 
 results = np.zeros((len(datasets), arguments.num_runs, 4))
 
@@ -72,7 +80,7 @@ for i, dataset in enumerate(datasets):
 
 		start = Timer()
 		# choose a classifier
-		classifier = KNeighborsClassifier(n_neighbors=4)
+		classifier = RidgeClassifierCV(alphas = np.logspace(-3, 3, 10), normalize = True)
 		classifier.fit(train_features, y_train)
 		results[i, j, 1] = Timer()-start
 
@@ -93,7 +101,7 @@ out += "Iterators:\n"
 for smit in featex.get_summation_iterators():
 	out += f"\t+ {smit}\n"
 out += "Filters:\n"
-for fltr in featex.get_feature_filters():
+for fltr in featex.get_feature_sieves():
 	out += f"\t+ {fltr}\n"
 
 out += "\n"+80*"-"+"\n\n"
