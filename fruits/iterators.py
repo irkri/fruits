@@ -141,6 +141,5 @@ def generate_words(dim:int=1,
 
 	for i in range(len(words)):
 		words[i] = SimpleWord(words[i])
-		print(f"Created {words[i]}")
 
 	return words
