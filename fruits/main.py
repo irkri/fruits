@@ -2,7 +2,7 @@ import numpy as np
 import re
 from fruits.iterators import SummationIterator
 from fruits.preparateurs import DataPreparateur
-from fruits.features import FeatureFilter
+from fruits.features import FeatureSieve
 from fruits.core import ISS
 
 class Fruit:
@@ -26,31 +26,31 @@ class Fruit:
 	input array.
 
 	Extracting the Features:
-	FeatureFilters may now be added to the Fruit object.
-	Each filter has a corresponding function that will be called on 
+	FeatureSieves may now be added to the Fruit object.
+	Each sieve has a corresponding function that will be called on 
 	the	iterated sums from the previous step. The Fruit object then  
 	returns an array of numbers, i.e. the features for each time series.
 	The number of features for one time series is equal to:: 
-		[number of iterators] x [number of filters] 
+		[number of iterators] x [number of sieves] 
 	"""
 	def __init__(self):
 		# used functions and class instances for data processing
 		# preparateurs will be called in the order that they're added
 		self._preparateurs = []
 		self._iterators = []
-		self._filters = []
+		self._sieves = []
 
 		# bool variables so data has to be processed only once
 		self._prepared = False
 		self._iterated = False
-		self._filtered = False
+		self._sieved = False
 
 		# data variables that hold the processed data
 		self._prepared_data = None
 		self._iterated_data = None
-		self._filtered_data = None
+		self._sieved_data = None
 
-		# first step at every action with FeatureFilter: set input data
+		# first step at every action with FeatureSieve: set input data
 		self._input_data = None
 		# shape of input data
 		self._ts = 0
@@ -58,7 +58,7 @@ class Fruit:
 		self._ts_length = 0
 
 	def nfeatures(self) -> int:
-		return len(self._filters)*len(self._iterators)
+		return len(self._sieves)*len(self._iterators)
 
 	def add_data_preparateur(self, preparateur:DataPreparateur):
 		if not isinstance(preparateur, DataPreparateur):
@@ -66,7 +66,7 @@ class Fruit:
 		self._preparateurs.append(preparateur)
 		self._prepared = False
 		self._iterated = False
-		self._filtered = False
+		self._sieved = False
 
 	def get_data_preparateurs(self):
 		return self._preparateurs
@@ -80,7 +80,7 @@ class Fruit:
 			raise TypeError
 		self._iterators.append(sum_iter)
 		self._iterated = False
-		self._filtered = False
+		self._sieved = False
 
 	def get_summation_iterators(self):
 		return self._iterators
@@ -89,18 +89,18 @@ class Fruit:
 		self._iterators = []
 		self._iterated = False
 		
-	def add_feature_filter(self, feat:FeatureFilter):
-		if not isinstance(feat, FeatureFilter):
+	def add_feature_sieve(self, feat:FeatureSieve):
+		if not isinstance(feat, FeatureSieve):
 			raise TypeError
-		self._filters.append(feat)
-		self._filtered = False
+		self._sieves.append(feat)
+		self._sieved = False
 
-	def get_feature_filters(self):
-		return self._filters
+	def get_feature_sieves(self):
+		return self._sieves
 
-	def clear_feature_filters(self):
-		self._filters = []
-		self._filtered = False
+	def clear_feature_sieves(self):
+		self._sieves = []
+		self._sieved = False
 
 	def add(self, *objects):
 		objects = np.array(objects, dtype=object).flatten()
@@ -109,15 +109,15 @@ class Fruit:
 				self.add_data_preparateur(obj)
 			elif isinstance(obj, SummationIterator):
 				self.add_summation_iterator(obj)
-			elif isinstance(obj, FeatureFilter):
-				self.add_feature_filter(obj)
+			elif isinstance(obj, FeatureSieve):
+				self.add_feature_sieve(obj)
 			else:
 				raise TypeError(f"Cannot add variable of type {type(obj)}")
 
 	def clear(self):
 		self.clear_data_preparateurs()
 		self.clear_summation_iterators()
-		self.clear_feature_filters()
+		self.clear_feature_sieves()
 
 	def set_input_data(self, X:np.ndarray):
 		if len(X.shape)==1:
@@ -132,7 +132,7 @@ class Fruit:
 		self._input_data = X
 		self._prepared = False
 		self._iterated = False
-		self._filtered = False
+		self._sieved = False
 
 	def prepare(self):
 		if self._input_data is None:
@@ -141,7 +141,7 @@ class Fruit:
 			return
 		self._prepared_data = self._input_data
 		for prep in self._preparateurs:
-			self._prepared_data = prep(self._prepared_data)
+			self._prepared_data = prep.prepare(self._prepared_data)
 		self._prepared = True
 
 	def prepared_data(self) -> np.ndarray:
@@ -163,25 +163,25 @@ class Fruit:
 		self.iterate()
 		return self._iterated_data
 
-	def filter(self):
-		if self._filtered:
+	def sieve(self):
+		if self._sieved:
 			return
 		self.prepare()
 		self.iterate()
-		if not self._filters:
-			raise RuntimeError("No FeatureFilter specified")
-		self._filtered_data = np.zeros((self._ts, self.nfeatures()))
+		if not self._sieves:
+			raise RuntimeError("No FeatureSieve specified")
+		self._sieved_data = np.zeros((self._ts, self.nfeatures()))
 		k = 0
 		for i in range(len(self._iterators)):
-			for j, feat in enumerate(self._filters):
-				self._filtered_data[:, k] = feat.filter(
+			for feat in self._sieves:
+				self._sieved_data[:, k] = feat.sieve(
 					self._iterated_data[:, i, :])
 				k += 1
-		self._filtered = True
+		self._sieved = True
 
 	def features(self) -> np.ndarray:
-		self.filter()
-		return self._filtered_data
+		self.sieve()
+		return self._sieved_data
 
 	def __call__(self, Z:np.ndarray) -> np.ndarray:
 		self.set_input_data(Z)
