@@ -74,3 +74,15 @@ def _std(X:np.ndarray) -> np.ndarray:
 
 STD = DataPreparateur("standardization")
 STD.set_function(_std)
+
+def _nrm(X:np.ndarray) -> np.ndarray:
+	out = np.zeros(X.shape)
+	for i in range(X.shape[0]):
+		for j in range(X.shape[1]):
+			mini = np.min(X[i, j, :])
+			maxi = np.max(X[i, j, :])
+			out[i, j, :] = (X[i, j, :]-mini)/(maxi-mini)
+	return out
+
+NRM = DataPreparateur("normalization")
+NRM.set_function(_nrm)
