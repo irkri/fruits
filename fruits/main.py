@@ -50,7 +50,7 @@ class Fruit:
 		self._iterated_data = None
 		self._sieved_data = None
 
-		# first step at every action with FeatureSieve: set input data
+		# first step at every action with Fruit: set input data
 		self._input_data = None
 		# shape of input data
 		self._ts = 0
@@ -74,6 +74,8 @@ class Fruit:
 	def clear_data_preparateurs(self):
 		self._preparateurs = []
 		self._prepared = False
+		self._iterated = False
+		self._sieved = False
 
 	def add_summation_iterator(self, sum_iter:SummationIterator):
 		if not isinstance(sum_iter, SummationIterator):
@@ -88,6 +90,7 @@ class Fruit:
 	def clear_summation_iterators(self):
 		self._iterators = []
 		self._iterated = False
+		self._sieved = False
 		
 	def add_feature_sieve(self, feat:FeatureSieve):
 		if not isinstance(feat, FeatureSieve):
@@ -134,7 +137,7 @@ class Fruit:
 		self._iterated = False
 		self._sieved = False
 
-	def prepare(self):
+	def _prepare(self):
 		if self._input_data is None:
 			raise RuntimeError("No input data")
 		if self._prepared:
@@ -145,29 +148,28 @@ class Fruit:
 		self._prepared = True
 
 	def prepared_data(self) -> np.ndarray:
-		self.prepare()
+		self._prepare()
 		return self._prepared_data
 
-	def iterate(self):
+	def _iterate(self):
 		if self._iterated:
 			return
 		if not self._iterators:
 			raise RuntimeError("No SummationIterator specified")
-		self.prepare()
+		self._prepare()
 		self._iterated_data = np.zeros((self._ts, len(self._iterators), 
 										self._ts_length))
 		self._iterated_data = ISS(self._prepared_data, self._iterators)
 		self._iterated = True
 
 	def iterated_sums(self) -> np.ndarray:
-		self.iterate()
+		self._iterate()
 		return self._iterated_data
 
-	def sieve(self):
+	def _sieve(self):
 		if self._sieved:
 			return
-		self.prepare()
-		self.iterate()
+		self._iterate()
 		if not self._sieves:
 			raise RuntimeError("No FeatureSieve specified")
 		self._sieved_data = np.zeros((self._ts, self.nfeatures()))
@@ -180,7 +182,7 @@ class Fruit:
 		self._sieved = True
 
 	def features(self) -> np.ndarray:
-		self.sieve()
+		self._sieve()
 		return self._sieved_data
 
 	def __call__(self, Z:np.ndarray) -> np.ndarray:
