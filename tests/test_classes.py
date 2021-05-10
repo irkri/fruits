@@ -1,6 +1,6 @@
-from context import fruits
 import numpy as np
 import unittest
+import fruits
 
 class TestFruit(unittest.TestCase):
 
