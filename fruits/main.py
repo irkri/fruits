@@ -33,7 +33,9 @@ class Fruit:
 	The number of features for one time series is equal to:: 
 		[number of iterators] x [number of sieves] 
 	"""
-	def __init__(self):
+	def __init__(self, name=""):
+		# simple identifier for the Fruit object
+		self.name = name
 		# used functions and class instances for data processing
 		# preparateurs will be called in the order that they're added
 		self._preparateurs = []
@@ -57,7 +59,21 @@ class Fruit:
 		self._ts_dim = 0
 		self._ts_length = 0
 
+	@property
+	def name(self) -> str:
+		return self._name
+	
+	@name.setter
+	def name(self, name:str):
+		self._name = name
+
 	def nfeatures(self) -> int:
+		"""Returns the total number of features the current
+		configuration produces.
+		
+		:returns: number of features
+		:rtype: {int}
+		"""
 		return len(self._sieves)*len(self._iterators)
 
 	def add_data_preparateur(self, preparateur:DataPreparateur):
