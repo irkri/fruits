@@ -7,21 +7,36 @@ class SummationIterator:
 	
 	This (mostly abstractly) used class is a collection of Monomials.
 	"""
-	def __init__(self, name:str=""):
+	def __init__(self, name:str="", scale:int=0):
 		self.name = name
 		# list of lists (inner lists are monomials)
 		self._monomials = []
+		self.scale = scale
 
 	@property
 	def name(self) -> str:
+		"""Simple Identifier for the SummationIterator.
+		"""
 		return self._name
 
 	@name.setter
 	def name(self, name:str):
 		self._name = name
 
+	@property
+	def scale(self) -> int:
+		"""Results from iterated sums may be to large and turn to inf or
+		nan values very quick. Therefore we divide the results in each
+		step of ISS(X, iterators) by [length of the time series]**scale.
+		"""
+		return self._scale
+
+	@scale.setter
+	def scale(self, scale:int):
+		self._scale = scale
+
 	def __repr__(self) -> str:
-		return "SummationIterator('"+self._name+"')"
+		return "SummationIterator('"+self.name+"')"
 
 	def append(self, *objects):
 		objects = np.array(objects, dtype=object)

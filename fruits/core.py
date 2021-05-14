@@ -43,15 +43,18 @@ def ISS(Z:np.ndarray, iterators:list) -> np.ndarray:
 	# the same length and monomial length
 	if fast_iterators:
 		max_dim = max(x.max_dim for x in fast_iterators)
-		fast_iterators = [list(x.monomials()) for x in fast_iterators]
-		max_word_length = max(len(x) for x in fast_iterators)
+		fast_iterators_raw = [list(x.monomials()) for x in fast_iterators]
+		max_word_length = max(len(x) for x in fast_iterators_raw)
 		fast_iterators_transformed = np.zeros((len(iterators), 
 											   max_word_length, max_dim+1))
-		for i in range(len(fast_iterators)):
-			for j in range(len(fast_iterators[i])):
-				for k in range(len(fast_iterators[i][j])):
-					fast_iterators_transformed[i,j,k] = fast_iterators[i][j][k]
-		ISS_fast = _fast_ISS(Z, fast_iterators_transformed)
+		scales = np.zeros((len(fast_iterators_raw),))
+		for i in range(len(fast_iterators_raw)):
+			scales[i] = fast_iterators[i].scale
+			for j in range(len(fast_iterators_raw[i])):
+				for k in range(len(fast_iterators_raw[i][j])):
+					fast_iterators_transformed[i,j,k] = \
+												fast_iterators_raw[i][j][k]
+		ISS_fast = _fast_ISS(Z, fast_iterators_transformed, scales)
 
 	# get solution for SummationIterators that are not of type SimpleWord
 	if slow_iterators:
@@ -71,12 +74,14 @@ def ISS(Z:np.ndarray, iterators:list) -> np.ndarray:
 		return ISS_slow
 
 @numba.njit(parallel=True, fastmath=True)
-def _fast_ISS(Z:np.ndarray, iterators:np.ndarray) -> np.ndarray:
+def _fast_ISS(Z:np.ndarray, 
+			  iterators:np.ndarray,
+			  scales:np.ndarray) -> np.ndarray:
 	result = np.zeros((Z.shape[0], len(iterators), Z.shape[2]))
 	for i in numba.prange(Z.shape[0]):
 		for j in numba.prange(len(iterators)):
 			result[i, j, :] = np.ones(Z.shape[2], dtype=np.float64)
-			for k in numba.prange(len(iterators[j])):
+			for k in range(len(iterators[j])):
 				if not np.any(iterators[j][k]):
 					continue
 				C = np.ones(Z.shape[2], dtype=np.float64)
@@ -84,10 +89,12 @@ def _fast_ISS(Z:np.ndarray, iterators:np.ndarray) -> np.ndarray:
 					if iterators[j][k][l]!=0:
 						C = C * Z[i, l, :]**iterators[j][k][l]
 				result[i, j, :] = np.cumsum(result[i, j, :]*C)
+				result[i, j, :] /= Z.shape[2]**scales[j]
 
 	return result
 
-def _slow_ISS(Z:np.ndarray, iterators:list) -> np.ndarray:
+def _slow_ISS(Z:np.ndarray,
+			  iterators:list) -> np.ndarray:
 	result = np.zeros((Z.shape[0], len(iterators), Z.shape[2]))
 	for i in range(Z.shape[0]):
 		for j in range(len(iterators)):
@@ -97,5 +104,6 @@ def _slow_ISS(Z:np.ndarray, iterators:list) -> np.ndarray:
 				for l in range(len(mon)):
 					C = C * mon[l](Z[i, :, :])
 				result[i, j, :] = np.cumsum(result[i, j, :]*C)
+				result[i, j, :] /= Z.shape[2]**iterators[j].scale
 
 	return result
