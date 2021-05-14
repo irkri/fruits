@@ -30,7 +30,7 @@ class FeatureSieve:
 	def __repr__(self) -> str:
 		out = "FeatureSieve('"+self._name+"'"
 		if self._args:
-			out += ",".join(self._args)
+			out += ","+",".join([str(x) for x in self._args])
 		if self._kwargs:
 			out += ","+",".join([str(x)+"="+str(self._kwargs[x]) 
 								 for x in self._kwargs])
@@ -125,3 +125,9 @@ def _min(X:np.ndarray):
 
 MIN = FeatureSieve("minimal value")
 MIN.set_function(_min)
+
+def _end(X:np.ndarray):
+	return X[:, -1]
+
+END = FeatureSieve("last value")
+END.set_function(_end)
