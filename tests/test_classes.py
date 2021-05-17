@@ -127,5 +127,31 @@ class TestFruit(unittest.TestCase):
 
 		features = featex(self.X_1)
 
+	def test_multiple_branches(self):
+		featex = fruits.Fruit()
+
+		w1 = fruits.iterators.SimpleWord("[1]")
+		w2 = fruits.iterators.SimpleWord("[2]")
+		w3 = fruits.iterators.SimpleWord("[11]")
+		w4 = fruits.iterators.SimpleWord("[12]")
+		w5 = fruits.iterators.SimpleWord("[1][1]")
+		w6 = fruits.iterators.SimpleWord("[1][2]")
+
+		featex.add(w1, w2, w3)
+		featex.add(fruits.features.MAX)
+		featex.start_new_branch()
+		featex.add(w4, w5, w6)
+		featex.add(fruits.features.MIN)
+
+		self.assertEqual(featex.nfeatures(), 6)
+
+		features = featex(self.X_1)
+		print(features)
+		self.assertEqual(features.shape, (2, 6))
+
+		self.assertTrue(np.allclose(features,
+									np.array([[1.8,3,50.64,-8,13.44,-11.2],
+											  [21,-5,129,-44,25,-276.5]])))
+
 if __name__=='__main__':
 	unittest.main()
