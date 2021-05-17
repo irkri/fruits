@@ -3,20 +3,23 @@ from configurations import CONFIGURATIONS
 import os
 import logging
 import numpy as np
+import pandas as pd
 from timeit import default_timer as Timer
 from sklearn.linear_model import RidgeClassifierCV
 
-DATA_PATH = "../../data/"
-TABLE_HEADER = "{:=^25}{:=^25}{:=^25}{:=^25}{:=^25}".format("Dataset",
+TABLE_HEADER = "{:=^25}{:=^25}{:=^25}{:=^25}".format("Dataset",
 					"Feature Calculation Time",
-					"Training Time",
-					"Testing Time",
-					"Test Accuracy")
+					"Test Accuracy",
+					"Rocket Mean Accuracy")
+DATA_PATH = "../../data/"
 OUTPUT_FILE = "ucr_configuration_results.txt"
+ROCKET_RESULTS_FILE = "rocket_results_ucr.csv"
 
 # empty the output file if it exists already
 with open(OUTPUT_FILE, "w") as f:
 	f.truncate(0)
+
+rocket_results = pd.read_csv(ROCKET_RESULTS_FILE)
 
 # create a logger that flushes accuracy results to the given file path
 # at the end of the classification of each dataset
@@ -51,25 +54,22 @@ for k, fruit in enumerate(CONFIGURATIONS):
 		X_test_feat = fruit(X_test)
 		results[k, i, 0] = Timer()-start
 
-		start = Timer()
 		classifier = RidgeClassifierCV(alphas = np.logspace(-3, 3, 10), 
 									   normalize = True)
 		classifier.fit(X_train_feat, y_train)
-		results[k, i, 1] = Timer()-start
 
-		start = Timer()
-		results[k, i, 3] = classifier.score(X_test_feat, y_test)
-		results[k, i, 2] = Timer()-start
-		logger.info("{: ^25}{: ^25}{: ^25}{: ^25}{: ^25}".format(datasets[i],
-			f"{round(results[k, i, 0], 3)}", f"{round(results[k, i, 1], 3)}",
-			f"{round(results[k, i, 2], 3)}", f"{round(results[k, i, 3], 3)}"))
+		results[k, i, 1] = classifier.score(X_test_feat, y_test)
+		logger.info("{: ^25}{: ^25}{: ^25}{: ^25}".format(dataset,
+			round(results[k, i, 0], 3), round(results[k, i, 1], 3),
+			round(rocket_results[rocket_results["dataset"]==\
+				dataset]["accuracy_mean"].to_numpy()[0], 3)))
+		logger.handlers[0].flush()
 
 	logger.info(len(TABLE_HEADER)*"-")
-	logger.info("{: ^25}{: ^25}{: ^25}{: ^25}{: ^25}".format("MEAN",
-			f"{round(results[k, :, 0].mean(), 6)}",
-			f"{round(results[k, :, 1].mean(), 6)}",
-			f"{round(results[k, :, 2].mean(), 6)}",
-			f"{round(results[k, :, 3].mean(), 6)}"))
+	logger.info("{: ^25}{: ^25}{: ^25}{: ^25}".format("MEAN",
+			round(results[k, :, 0].mean(), 6),
+			round(results[k, :, 1].mean(), 6),
+			round(rocket_results["accuracy_mean"].to_numpy().mean(), 6)))
 	if k<len(CONFIGURATIONS)-1:
 		logger.info("\n"+len(TABLE_HEADER)*"*"+"\n")
 	
