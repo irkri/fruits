@@ -42,6 +42,14 @@ class Fruit:
 		"""
 		self._branches.append(branch)
 
+	def start_new_branch(self):
+		"""Adds a new and empty branch to the pipeline and switches to
+		it. All future operations on this Fruit object will be called
+		on the new branch.
+		"""
+		self._branches.append(FruitBranch())
+		self._current_branch = self._branches[-1]
+
 	def branches(self) -> list:
 		"""Returns all branches of this Fruit object.
 		
@@ -139,12 +147,11 @@ class Fruit:
 		"""
 		if len(self._branches)==1:
 			return self._current_branch.features()
-		result = np.zeros((len(self._branches), self._current_branch._ts,
-			self.nfeatures()))
+		result = np.zeros((self._current_branch._ts, self.nfeatures()))
 		index = 0
-		for i, branch in enumerate(self._branches):
+		for branch in self._branches:
 			k = branch.nfeatures()
-			result[i, :, index:index+k] = branch.features()
+			result[:, index:index+k] = branch.features()
 			index += k
 		return result
 
