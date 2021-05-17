@@ -137,8 +137,8 @@ cranberry.add(fruits.features.MIN)
 blackberry = fruits.Fruit("Blackberry")
 blackberry.add(fruits.preparateurs.INC)
 
-blackberry.add(generate_complex_words(simple_words_degree_4, RELU))
-blackberry.add(generate_complex_words(simple_words_degree_4, SIGMOID))
+blackberry.add(generate_complex_words(simple_words_degree_3, RELU))
+blackberry.add(generate_complex_words(simple_words_degree_3, SIGMOID))
 blackberry.add(fruits.iterators.generate_words(1, 5, 3))
 
 blackberry.add(fruits.features.PPV(quantile=0.1, constant=False, sample_size=1))
@@ -148,6 +148,35 @@ blackberry.add(fruits.features.MAX)
 blackberry.add(fruits.features.MIN)
 blackberry.add(fruits.features.END)
 
+# configuration 10
+starfruit = fruits.Fruit("Starfruit")
+starfruit.add(fruits.preparateurs.INC)
+starfruit.add(simple_words_degree_3)
+starfruit.add(fruits.features.PPV(quantile=0.2, constant=False, sample_size=1))
+starfruit.add(fruits.features.PPV(quantile=0.5, constant=False, sample_size=1))
+starfruit.add(fruits.features.PPV(quantile=0.8, constant=False, sample_size=1))
+starfruit.add(fruits.features.MAX)
+starfruit.add(fruits.features.MIN)
+starfruit.add(fruits.features.END)
+
+starfruit.start_new_branch()
+starfruit.add(simple_words_degree_3)
+starfruit.add(fruits.features.PPV(quantile=0.2, constant=False, sample_size=1))
+starfruit.add(fruits.features.PPV(quantile=0.5, constant=False, sample_size=1))
+starfruit.add(fruits.features.PPV(quantile=0.8, constant=False, sample_size=1))
+starfruit.add(fruits.features.MAX)
+starfruit.add(fruits.features.MIN)
+starfruit.add(fruits.features.END)
+
+starfruit.start_new_branch()
+starfruit.add(generate_complex_words(simple_words_degree_3, leakyRELU))
+starfruit.add(fruits.features.PPV(quantile=0.2, constant=False, sample_size=1))
+starfruit.add(fruits.features.PPV(quantile=0.5, constant=False, sample_size=1))
+starfruit.add(fruits.features.PPV(quantile=0.8, constant=False, sample_size=1))
+starfruit.add(fruits.features.MAX)
+starfruit.add(fruits.features.MIN)
+starfruit.add(fruits.features.END)
+
 CONFIGURATIONS = [apple,
 				  banana,
 				  orange,
@@ -156,4 +185,5 @@ CONFIGURATIONS = [apple,
 				  strawberry,
 				  pineapple,
 				  cranberry,
-				  blackberry]
+				  blackberry,
+				  starfruit]
