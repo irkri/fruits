@@ -1,5 +1,5 @@
 from context import fruits
-from configurations import CONFIGURATIONS
+from crazy_configs import CONFIGURATIONS
 import os
 import logging
 import numpy as np
@@ -36,7 +36,8 @@ results = np.zeros((len(CONFIGURATIONS), len(datasets), 4))
 
 for k, fruit in enumerate(CONFIGURATIONS):
 
-	logger.info(f"Configuration: {fruit.name}\n")
+	logger.info(f"Configuration: {fruit.name}, "+
+				f"Features: {fruit.nfeatures()}\n")
 	logger.info(TABLE_HEADER)
 
 	print(f"Starting: Configuration {k+1}")
