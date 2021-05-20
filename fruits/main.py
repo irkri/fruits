@@ -1,3 +1,4 @@
+# vim: tabstop=4 noexpandtab
 import numpy as np
 import re
 from fruits.iterators import SummationIterator

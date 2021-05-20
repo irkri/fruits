@@ -1,3 +1,4 @@
+# vim: tabstop=4 noexpandtab
 import itertools
 import re
 import numpy as np

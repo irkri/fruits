@@ -1,3 +1,4 @@
+# vim: tabstop=4 noexpandtab
 from context import fruits
 from crazy_configs import CONFIGURATIONS
 import os

@@ -1,3 +1,4 @@
+# vim: tabstop=4 noexpandtab
 from context import fruits
 import numpy as np
 
