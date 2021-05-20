@@ -94,6 +94,30 @@ def _ppv(X:np.ndarray,
 PPV = FeatureSieve("proportion of positive values")
 PPV.set_function(_ppv)
 
+def get_ppv(n:int=1, a:float=0, b:float=1, 
+			constant:bool=False, sample_size:float=0.05) -> list:
+	"""Returns a list of PPV feature sieves.
+	
+	:param n: Number of sieves (quantiles will be evenly spaced numbers
+	between `a` and `b`), defaults to 1
+	:type n: int, optional
+	:param a: Left interval border where the quantiles will be drawn
+	from, defaults to 0
+	:type a: float, optional
+	:param b: Left interval border where the quantiles will be drawn
+	from, defaults to 1
+	:type b: float, optional
+	:param constant: if `True`, the quantiles will be interpreted as
+	actual numbers, not percentiles, defaults to False
+	:type constant: bool, optional
+	:param sample_size: The quantiles will be calculated on this 
+	proportion of the input data, Only matters if `constant` is set to
+	`False`, defaults to 0.05
+	:type sample_size: float, optional
+	"""
+	return [PPV(q, constant=constant, sample_size=sample_size)
+			for q in np.linspace(a, b, num=n)]
+
 @numba.njit(parallel=True, fastmath=True)
 def _max(X:np.ndarray):
 	result = np.zeros(len(X))
