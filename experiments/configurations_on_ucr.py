@@ -1,9 +1,8 @@
 import os
 import logging
+from timeit import default_timer as Timer
 
 import numpy as np
-import pandas as pd
-from timeit import default_timer as Timer
 from sklearn.linear_model import RidgeClassifierCV
 
 from context import fruits
