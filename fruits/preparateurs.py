@@ -8,7 +8,7 @@ class DataPreparateur:
     array. The output should be a numpy array that matches the shape of 
     the input array.
     """
-    def __init__(self, name:str=""):
+    def __init__(self, name: str = ""):
         self._name = name
         self._args = ()
         self._kwargs = {}
@@ -24,7 +24,7 @@ class DataPreparateur:
         return self._name
 
     @name.setter
-    def name(self, name:str):
+    def name(self, name: str):
         self._name = name
 
     def __repr__(self) -> str:
@@ -44,13 +44,13 @@ class DataPreparateur:
         dp.set_function(self._func)
         return dp
 
-    def prepare(self, X:np.ndarray):
+    def prepare(self, X: np.ndarray):
         if self._func is None:
             raise RuntimeError("No function specified")
         X = np.atleast_3d(X)
         return self._func(X, *self._args, **self._kwargs)
 
-def _inc(X:np.ndarray, zero_padding:bool=True) -> np.ndarray:
+def _inc(X: np.ndarray, zero_padding: bool = True) -> np.ndarray:
     if zero_padding:
         out = np.delete((np.roll(X, -1, axis=2) - X), -1, axis=2)
         pad_widths = [(0,0) for dim in range(3)]
@@ -65,23 +65,24 @@ def _inc(X:np.ndarray, zero_padding:bool=True) -> np.ndarray:
 INC = DataPreparateur("increments")
 INC.set_function(_inc)
 
-def _std(X:np.ndarray) -> np.ndarray:
+def _std(X: np.ndarray) -> np.ndarray:
     out = np.zeros(X.shape)
     for i in range(X.shape[0]):
         for j in range(X.shape[1]):
-            out[i, j, :] = (X[i, j, :]-np.mean(X[i, j, :]))/np.std(X[i, j, :])
+            out[i, j, :] = X[i, j, :] - np.mean(X[i, j, :])
+            out[i, j, :] /= np.std(X[i, j, :])
     return out
 
 STD = DataPreparateur("standardization")
 STD.set_function(_std)
 
-def _nrm(X:np.ndarray) -> np.ndarray:
+def _nrm(X: np.ndarray) -> np.ndarray:
     out = np.zeros(X.shape)
     for i in range(X.shape[0]):
         for j in range(X.shape[1]):
             mini = np.min(X[i, j, :])
             maxi = np.max(X[i, j, :])
-            out[i, j, :] = (X[i, j, :]-mini)/(maxi-mini)
+            out[i, j, :] = (X[i, j, :]-mini) / (maxi-mini)
     return out
 
 NRM = DataPreparateur("normalization")

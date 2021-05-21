@@ -12,7 +12,7 @@ class Fruit:
     end of the pipeline, each branch returns their own features and
     they will be concatenated by this class.
     """
-    def __init__(self, name:str=""):
+    def __init__(self, name: str = ""):
         # simple identifier for the Fruit object
         self.name = name
         # list of FruitBranches
@@ -58,7 +58,7 @@ class Fruit:
         """
         return self._branches
 
-    def switch_branch(self, index:int):
+    def switch_branch(self, index: int):
         """Switches to the branch with the given index. If the Fruit
         objects points to a branch, then each method that is called on
         the Fruit object is actually called on this branch.
@@ -77,7 +77,7 @@ class Fruit:
         """
         return sum([branch.nfeatures() for branch in self._branches])
 
-    def add_data_preparateur(self, preparateur:DataPreparateur):
+    def add_data_preparateur(self, preparateur: DataPreparateur):
         self._current_branch.add_data_preparateur(preparateur)
 
     def get_data_preparateurs(self) -> list:
@@ -86,7 +86,7 @@ class Fruit:
     def clear_data_preparateurs(self):
         self._current_branch.clear_data_preparateurs()
 
-    def add_summation_iterator(self, sum_iter:SummationIterator):
+    def add_summation_iterator(self, sum_iter: SummationIterator):
         self._current_branch.add_summation_iterator(sum_iter)
 
     def get_summation_iterators(self) -> list:
@@ -95,7 +95,7 @@ class Fruit:
     def clear_summation_iterators(self):
         self._current_branch.clear_summation_iterators()
         
-    def add_feature_sieve(self, feat:FeatureSieve):
+    def add_feature_sieve(self, feat: FeatureSieve):
         self._current_branch.add_feature_sieve(feat)
 
     def get_feature_sieves(self) -> list:
@@ -110,7 +110,7 @@ class Fruit:
     def clear(self):
         self._current_branch.clear()
 
-    def set_input_data(self, X:np.ndarray):
+    def set_input_data(self, X: np.ndarray):
         for branch in self._branches:
             branch.set_input_data(X)
 
@@ -145,7 +145,7 @@ class Fruit:
         :returns: two dimensional feature array
         :rtype: {np.ndarray}
         """
-        if len(self._branches)==1:
+        if len(self._branches) == 1:
             return self._current_branch.features()
         result = np.zeros((self._current_branch._ts, self.nfeatures()))
         index = 0
@@ -155,7 +155,7 @@ class Fruit:
             index += k
         return result
 
-    def __call__(self, X:np.ndarray) -> np.ndarray:
+    def __call__(self, X: np.ndarray) -> np.ndarray:
         self.set_input_data(X)
         return self.features()
 
@@ -219,9 +219,9 @@ class FruitBranch:
         :returns: number of features
         :rtype: {int}
         """
-        return len(self._sieves)*len(self._iterators)
+        return len(self._sieves) * len(self._iterators)
 
-    def add_data_preparateur(self, preparateur:DataPreparateur):
+    def add_data_preparateur(self, preparateur: DataPreparateur):
         if not isinstance(preparateur, DataPreparateur):
             raise TypeError
         self._preparateurs.append(preparateur)
@@ -238,7 +238,7 @@ class FruitBranch:
         self._iterated = False
         self._sieved = False
 
-    def add_summation_iterator(self, sum_iter:SummationIterator):
+    def add_summation_iterator(self, sum_iter: SummationIterator):
         if not isinstance(sum_iter, SummationIterator):
             raise TypeError
         self._iterators.append(sum_iter)
@@ -253,7 +253,7 @@ class FruitBranch:
         self._iterated = False
         self._sieved = False
         
-    def add_feature_sieve(self, feat:FeatureSieve):
+    def add_feature_sieve(self, feat: FeatureSieve):
         if not isinstance(feat, FeatureSieve):
             raise TypeError
         self._sieves.append(feat)
@@ -283,12 +283,12 @@ class FruitBranch:
         self.clear_summation_iterators()
         self.clear_feature_sieves()
 
-    def set_input_data(self, X:np.ndarray):
-        if len(X.shape)==1:
+    def set_input_data(self, X: np.ndarray):
+        if len(X.shape) == 1:
             X = np.expand_dims(X, axis=0)
-        if len(X.shape)==2:
+        if len(X.shape) == 2:
             X = np.expand_dims(X, axis=1)
-        if X.ndim!=3:
+        if X.ndim != 3:
             raise ValueError("Unsupported input shape")
         self._ts = X.shape[0]
         self._ts_dim = X.shape[1]
@@ -346,6 +346,6 @@ class FruitBranch:
         self._sieve()
         return self._sieved_data
 
-    def __call__(self, Z:np.ndarray) -> np.ndarray:
+    def __call__(self, Z: np.ndarray) -> np.ndarray:
         self.set_input_data(Z)
         return self.features()

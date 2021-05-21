@@ -7,7 +7,7 @@ class SummationIterator:
     
     This (mostly abstractly) used class is a collection of Monomials.
     """
-    def __init__(self, name:str="", scale:int=0):
+    def __init__(self, name: str = "", scale: int = 0):
         self.name = name
         # list of lists (inner lists are monomials)
         self._monomials = []
@@ -20,7 +20,7 @@ class SummationIterator:
         return self._name
 
     @name.setter
-    def name(self, name:str):
+    def name(self, name: str):
         self._name = name
 
     @property
@@ -32,15 +32,15 @@ class SummationIterator:
         return self._scale
 
     @scale.setter
-    def scale(self, scale:int):
+    def scale(self, scale: int):
         self._scale = scale
 
     def __repr__(self) -> str:
-        return "SummationIterator('"+self.name+"')"
+        return "SummationIterator('" + self.name + "')"
 
     def append(self, *objects):
         objects = np.array(objects, dtype=object)
-        if objects.ndim>2:
+        if objects.ndim > 2:
             raise ValueError("Cannot append object with dimensionality > 2")
         for obj in objects:
             try:
@@ -60,11 +60,11 @@ class SimpleWord(SummationIterator):
     time series.
     It is used to speed up the calculation of iterated sums.
     """
-    def __init__(self, string:str):
+    def __init__(self, string: str):
         super().__init__()
         if not re.fullmatch(r"(\[\d+\])+", string):
-            raise ValueError("SimpleWord can only be initilized with a string "+
-                             "matching the regular expression "+
+            raise ValueError("SimpleWord can only be initilized with a "+
+                             "string matching the regular expression "+
                              r"'(\[\d+\])+'")
         monomials_raw = [x[1:] for x in string.split("]")][:-1]
         max_dim = 0
@@ -72,14 +72,14 @@ class SimpleWord(SummationIterator):
         for monomial_raw in monomials_raw:
             monomial = []
             for letter in monomial_raw:
-                if int(letter)-1>max_dim:
-                    max_dim = int(letter)-1
+                if int(letter)-1 > max_dim:
+                    max_dim = int(letter) - 1
                 monomial.append(int(letter)-1)
             monomials.append(monomial)
         self.max_dim = max_dim
 
         for monomial in monomials:
-            m = np.zeros(max_dim+1, dtype=np.int32)
+            m = np.zeros(max_dim + 1, dtype=np.int32)
             for i in range(max_dim+1):
                 m[i] = monomial.count(i)
             self.append(m)
@@ -90,12 +90,12 @@ class SimpleWord(SummationIterator):
             yield mon
 
     def __repr__(self) -> str:
-        return "SimpleWord("+self.name+")"
+        return "SimpleWord(" + self.name + ")"
 
-def generate_random_words(number:int,
-                          dim:int=1,
-                          monomial_length:int=3,
-                          n_monomials:int=3) -> list:
+def generate_random_words(number: int,
+                          dim: int = 1,
+                          monomial_length: int = 3,
+                          n_monomials: int = 3) -> list:
     """Returns randomly initialized instances of the class SimpleWord.
     
     :param number: number of instances created
@@ -115,17 +115,18 @@ def generate_random_words(number:int,
     words = []
     av_elements = [str(i+1) for i in range(dim)]
     for i in range(number):
-        length = np.random.randint(1,n_monomials+1)
+        length = np.random.randint(1, n_monomials+1)
         conc = ""
         for j in range(length):
-            clength = np.random.randint(1,monomial_length+1)
-            conc += "["+"".join(np.random.choice(av_elements, size=clength))+"]"
+            clength = np.random.randint(1, monomial_length+1)
+            conc += "[" + "".join(np.random.choice(av_elements, size=clength))
+            conc += "]"
         words.append(SimpleWord(conc))
     return words
 
-def generate_words(dim:int=1,
-                   monomial_length:int=1,
-                   n_monomials:int=1) -> list:
+def generate_words(dim: int = 1,
+                   monomial_length: int = 1,
+                   n_monomials: int = 1) -> list:
     """Returns all possible and unique SimpleWords up to the given 
     boundaries.
     

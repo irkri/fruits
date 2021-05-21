@@ -2,7 +2,7 @@ import numpy as np
 import numba
 from fruits.iterators import SummationIterator, SimpleWord
 
-def ISS(Z:np.ndarray, iterators:list) -> np.ndarray:
+def ISS(Z: np.ndarray, iterators: list) -> np.ndarray:
     """Top level function that takes in a number of time series and a
     list of SummationIterators and decides which function to use at each
     iterator to get the best performance possible.
@@ -46,7 +46,7 @@ def ISS(Z:np.ndarray, iterators:list) -> np.ndarray:
         fast_iterators_raw = [list(x.monomials()) for x in fast_iterators]
         max_word_length = max(len(x) for x in fast_iterators_raw)
         fast_iterators_transformed = np.zeros((len(iterators), 
-                                               max_word_length, max_dim+1))
+                                               max_word_length, max_dim + 1))
         scales = np.zeros((len(fast_iterators_raw),))
         for i in range(len(fast_iterators_raw)):
             scales[i] = fast_iterators[i].scale
@@ -74,9 +74,9 @@ def ISS(Z:np.ndarray, iterators:list) -> np.ndarray:
         return ISS_slow
 
 @numba.njit(parallel=True, fastmath=True)
-def _fast_ISS(Z:np.ndarray, 
-              iterators:np.ndarray,
-              scales:np.ndarray) -> np.ndarray:
+def _fast_ISS(Z: np.ndarray, 
+              iterators: np.ndarray,
+              scales: np.ndarray) -> np.ndarray:
     result = np.zeros((Z.shape[0], len(iterators), Z.shape[2]))
     for i in numba.prange(Z.shape[0]):
         for j in numba.prange(len(iterators)):
@@ -86,15 +86,15 @@ def _fast_ISS(Z:np.ndarray,
                     continue
                 C = np.ones(Z.shape[2], dtype=np.float64)
                 for l in range(len(iterators[j][k])):
-                    if iterators[j][k][l]!=0:
+                    if iterators[j][k][l] != 0:
                         C = C * Z[i, l, :]**iterators[j][k][l]
-                result[i, j, :] = np.cumsum(result[i, j, :]*C)
+                result[i, j, :] = np.cumsum(result[i, j, :] * C)
                 result[i, j, :] /= Z.shape[2]**scales[j]
 
     return result
 
-def _slow_ISS(Z:np.ndarray,
-              iterators:list) -> np.ndarray:
+def _slow_ISS(Z: np.ndarray,
+              iterators: list) -> np.ndarray:
     result = np.zeros((Z.shape[0], len(iterators), Z.shape[2]))
     for i in range(Z.shape[0]):
         for j in range(len(iterators)):
@@ -103,7 +103,7 @@ def _slow_ISS(Z:np.ndarray,
                 C = np.ones(Z.shape[2], dtype=np.float64)
                 for l in range(len(mon)):
                     C = C * mon[l](Z[i, :, :])
-                result[i, j, :] = np.cumsum(result[i, j, :]*C)
+                result[i, j, :] = np.cumsum(result[i, j, :] * C)
                 result[i, j, :] /= Z.shape[2]**iterators[j].scale
 
     return result
