@@ -1,5 +1,6 @@
-import numpy as np
 from copy import copy
+
+import numpy as np
 
 class DataPreparateur:
     """Class DataPreperateur

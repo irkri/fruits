@@ -1,5 +1,6 @@
-import numpy as np
 import numba
+import numpy as np
+
 from fruits.iterators import SummationIterator, SimpleWord
 
 def ISS(Z: np.ndarray, iterators: list) -> np.ndarray:

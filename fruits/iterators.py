@@ -1,5 +1,6 @@
-import itertools
 import re
+import itertools
+
 import numpy as np
 
 class SummationIterator:

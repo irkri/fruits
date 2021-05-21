@@ -1,9 +1,11 @@
-import numpy as np
 import re
+
+import numpy as np
+
+from fruits.core import ISS
+from fruits.features import FeatureSieve
 from fruits.iterators import SummationIterator
 from fruits.preparateurs import DataPreparateur
-from fruits.features import FeatureSieve
-from fruits.core import ISS
 
 class Fruit:
     """Feature Extractor using iterated sums.
