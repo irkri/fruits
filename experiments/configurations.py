@@ -59,6 +59,17 @@ apple.add(fruits.features.PPV(quantile=0.5, constant=False, sample_size=1))
 apple.add(fruits.features.MAX)
 apple.add(fruits.features.MIN)
 
+# configuration 1.1
+apple_c = fruits.Fruit("Apple (connected)")
+apple_c.add(fruits.preparateurs.INC)
+
+apple_c.add(simple_words_degree_4)
+
+#apple_c.add(fruits.features.PPV(quantile=0.5, constant=False, sample_size=1))
+apple_c.add(fruits.features.PPV_connected(quantile=0.5, constant=False, sample_size=1))
+apple_c.add(fruits.features.MAX)
+apple_c.add(fruits.features.MIN)
+
 # configuration 2
 banana = fruits.Fruit("Banana")
 banana.add(fruits.preparateurs.STD)
@@ -179,6 +190,7 @@ starfruit.add(fruits.features.MIN)
 starfruit.add(fruits.features.END)
 
 CONFIGURATIONS = [apple,
+                  apple_c,
 				  banana,
 				  orange,
 				  peach,
@@ -186,5 +198,5 @@ CONFIGURATIONS = [apple,
 				  strawberry,
 				  pineapple,
 				  cranberry,
-				  blackberry,
+				  #blackberry,
 				  starfruit]

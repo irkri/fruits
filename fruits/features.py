@@ -95,6 +95,36 @@ def _ppv(X:np.ndarray,
 PPV = FeatureSieve("proportion of positive values")
 PPV.set_function(_ppv)
 
+def _ppv_connected_components( X:np.ndarray,
+							 quantile:float=0.5,
+							 constant:bool=False,
+							 sample_size:float=0.05) -> np.ndarray:
+	"""Count connected components, i.e. the number of consecutive strips of 1's."""
+	if len(X.shape) == 1:
+		X = np.expand_dims(X, axis=0)
+	if len(X)==0:
+		return 0
+	if constant:
+		ref_value = quantile
+	else:
+		if not 0<quantile<1:
+			raise ValueError("If 'constant' is set to False, quantile has "+
+							 "to be a value between 0 and 1")
+		sample_size = int(sample_size*len(X))
+		sample_size = 1 if sample_size<1 else sample_size
+		selection = np.random.choice(np.arange(len(X)), size=sample_size,
+									 replace=False)
+		ref_value = np.quantile(np.array([X[i] for i in selection]).flatten(),
+								quantile)
+
+	positive = np.pad( (X > ref_value).astype(int), ( (0,0), (1,0) ), 'constant', constant_values=0 )
+	diff = positive[:,1:] - positive[:,:-1]
+	s = np.sum( diff == 1, axis=-1)
+	return 2 * s / X.shape[1] # At most X.shape[1]/2 connected components are possible.
+
+PPV_connected = FeatureSieve("proportion of connected components of positive values")
+PPV_connected.set_function(_ppv_connected_components)
+
 def get_ppv(n:int=1, a:float=0, b:float=1, 
 			constant:bool=False, sample_size:float=0.05) -> list:
 	"""Returns a list of PPV feature sieves.

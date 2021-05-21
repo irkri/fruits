@@ -1,4 +1,6 @@
 # vim: tabstop=4 noexpandtab
+import sys
+sys.path.insert(0, "../")
 import numpy as np
 import unittest
 import fruits
@@ -109,6 +111,9 @@ class TestFruit(unittest.TestCase):
 		self.assertTrue(np.allclose(maxi, np.array([5,2])))
 		self.assertTrue(np.allclose(mini, np.array([0,-8])))
 
+		ppv_c = fruits.features.PPV_connected(quantile=0, constant=True).sieve(self.X_1[0])
+		np.testing.assert_allclose( ppv_c, [0.8,0.4] )
+
 	def test_fruit(self):
 		featex = fruits.Fruit()
 
@@ -147,7 +152,7 @@ class TestFruit(unittest.TestCase):
 		self.assertEqual(featex.nfeatures(), 6)
 
 		features = featex(self.X_1)
-		print(features)
+		#print(features)
 		self.assertEqual(features.shape, (2, 6))
 
 		self.assertTrue(np.allclose(features,
