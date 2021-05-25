@@ -57,8 +57,8 @@ for k, fruit in enumerate(CONFIGURATIONS):
         X_test_feat = fruit(X_test)
         results[k, i, 0] = Timer() - start
 
-        classifier = RidgeClassifierCV(alphas = np.logspace(-3, 3, 10), 
-                                       normalize = True)
+        classifier = RidgeClassifierCV(alphas=np.logspace(-3, 3, 10), 
+                                       normalize=True)
         classifier.fit(X_train_feat, y_train)
 
         results[k, i, 1] = classifier.score(X_test_feat, y_test)
@@ -69,6 +69,7 @@ for k, fruit in enumerate(CONFIGURATIONS):
             round(rocket_results[rocket_results["dataset"] == \
                 dataset]["accuracy_mean"].to_numpy()[0], 3)))
         logger.handlers[0].flush()
+        print(".", end="", flush=True)
 
     logger.info(len(TABLE_HEADER) * "-")
     logger.info("{: ^25}{: ^25}{: ^25}{: ^25}".format(
