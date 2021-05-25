@@ -8,10 +8,9 @@ X_1 = np.array([
                ])
 
 def test_increments():
-    prep = fruits.preparateurs.DataPreparateur()
-
     X_1_1 = fruits.preparateurs.INC(True).prepare(X_1)
-    X_1_2 = fruits.preparateurs.INC(zero_padding=False).prepare(X_1)
+    prep = fruits.preparateurs.INC(zero_padding=False)
+    X_1_2 = prep.prepare(X_1)
 
     np.testing.assert_allclose(np.array([
                                 [[0,4.8,-0.8,5,-8], [0,-1,-1,0,-7]],
@@ -23,3 +22,7 @@ def test_increments():
                                 [[5,3,-6,4,-6], [-5,4,-3,3.5,-7.5]]
                                ]),
                                X_1_2)
+
+    X_1_2_copy = prep.copy().prepare(X_1)
+
+    np.testing.assert_allclose(X_1_2, X_1_2_copy)

@@ -25,6 +25,10 @@ def test_n_features():
 
     assert featex.nfeatures() == 1500
 
+    featex_copy = featex.copy()
+
+    assert featex_copy.nfeatures() == 1500
+
     del featex
 
 def test_branches():

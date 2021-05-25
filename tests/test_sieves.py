@@ -8,13 +8,17 @@ X_1 = np.array([
                ])
 
 def test_ppv():
-    ppv_1 = fruits.features.PPV(quantile=0,
-                                constant=True).sieve(X_1[0])
+    const_ppv = fruits.features.PPV(quantile=0, constant=True)
+    ppv_1 = const_ppv.sieve(X_1[0])
     ppv_2 = fruits.features.PPV(quantile=0.5, constant=False,
                                 sample_size=1).sieve(X_1[1])
 
     np.testing.assert_allclose(np.array([3/5,4/5]), ppv_1)
     np.testing.assert_allclose(np.array([1,0]), ppv_2)
+
+    ppv_1_copy = const_ppv.copy().sieve(X_1[0])
+
+    np.testing.assert_allclose(ppv_1, ppv_1_copy)
 
     ppv_c = fruits.features.PPV_connected(quantile=0,
                                 constant=True).sieve(X_1[0])

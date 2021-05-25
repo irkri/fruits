@@ -31,6 +31,12 @@ def test_fast_slow_iss():
 
     np.testing.assert_allclose(result_slow, result_fast)
 
+    it1_copy = it1.copy()
+    it2_copy = it2.copy()
+    result_slow_copy = fruits.core.ISS(X_1, [it1_copy, it2_copy])
+
+    np.testing.assert_allclose(result_slow, result_slow_copy)
+
 def test_simpleword_iss():
     w1 = fruits.iterators.SimpleWord("[1]")
     w2 = fruits.iterators.SimpleWord("[2]")
@@ -71,6 +77,11 @@ def test_simpleword_iss():
                                     [-25,-38,-98,-108.5,-276.5]
                                ]),
                                r1[:,5,:])
+
+    w1_copy = w1.copy()
+
+    np.testing.assert_allclose(r1[:,0,:],
+                               fruits.core.ISS(X_1, [w1_copy])[:,0,:])
 
 def test_complex_words():
     # word: [relu(0)][relu(1)]

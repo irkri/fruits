@@ -1,5 +1,3 @@
-from copy import copy
-
 import numba
 import numpy as np
 
@@ -25,7 +23,7 @@ class FeatureSieve:
         return self._name
 
     @name.setter
-    def name(self, name:str):
+    def name(self, name: str):
         self._name = name
 
     def __repr__(self) -> str:
@@ -41,16 +39,20 @@ class FeatureSieve:
     def __call__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
-        return copy(self)
-
-    def __copy__(self):
-        ff = FeatureSieve(self.name)
-        ff._args = self._args
-        ff._kwargs = self._kwargs
+        fs = self.copy()
         self._args = ()
         self._kwargs = {}
-        ff.set_function(self._func)
-        return ff
+        return fs
+
+    def copy(self):
+        fs = FeatureSieve(self.name)
+        fs._args = self._args
+        fs._kwargs = self._kwargs.copy()
+        fs.set_function(self._func)
+        return fs
+
+    def __copy__(self):
+        return self.copy()
 
     def sieve(self, X: np.ndarray):
         if self._func is None:

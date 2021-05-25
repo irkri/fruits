@@ -1,5 +1,3 @@
-from copy import copy
-
 import numpy as np
 
 class DataPreparateur:
@@ -29,14 +27,14 @@ class DataPreparateur:
         self._name = name
 
     def __repr__(self) -> str:
-        return "DataPreparateur('"+self._name+"')"
+        return "DataPreparateur('" + self._name + "')"
 
     def __call__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
-        return copy(self)
+        return self.copy()
 
-    def __copy__(self):
+    def copy(self):
         dp = DataPreparateur(self.name)
         dp._args = self._args
         dp._kwargs = self._kwargs
@@ -44,6 +42,9 @@ class DataPreparateur:
         self._kwargs = {}
         dp.set_function(self._func)
         return dp
+
+    def __copy__(self):
+        return self.copy()
 
     def prepare(self, X: np.ndarray):
         if self._func is None:

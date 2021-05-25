@@ -21,6 +21,7 @@ class Fruit:
         self._branches = [FruitBranch()]
         # pointer for the current branch
         self._current_branch = self._branches[0]
+        self._current_branch_index = 0
         # arrays of processed data for each branch
         # if only one branch exists, these arrays will be three dimensional
         # for multiple branches they are going to have four dimensions
@@ -51,6 +52,7 @@ class Fruit:
         """
         self._branches.append(FruitBranch())
         self._current_branch = self._branches[-1]
+        self._current_branch_index = len(self._branches) - 1
 
     def branches(self) -> list:
         """Returns all branches of this Fruit object.
@@ -69,6 +71,27 @@ class Fruit:
         :type index: int
         """
         self._current_branch = self._branches[index]
+        self._current_branch_index = index
+
+    def current_branch(self):
+        """Returns the branch that is currently selected.
+
+        The selected branch is used to extend the pipeline by calling
+        functions like `add()` on the Fruit object. Normally this is
+        done on a FruitBranch object. 
+        
+        :returns: the current branch in self.branches
+        :rtype: FruitBranch
+        """
+        return self._current_branch_index
+
+    def current_branch_index(self) -> int:
+        """Returns the index of the currently selected branch.
+        
+        :returns: index of the current branch in self.branches
+        :rtype: int
+        """
+        return self._current_branch_index
 
     def nfeatures(self) -> int:
         """Returns the total number of features of all branches 
@@ -155,11 +178,23 @@ class Fruit:
             k = branch.nfeatures()
             result[:, index:index+k] = branch.features()
             index += k
-        return result
+        return result   
+
+    def copy(self):
+        copy_ = Fruit(self.name+" (Copy)")
+        copy_._branches = [self._current_branch.copy()]
+        copy_._current_branch = copy_._branches[0]
+        for i in range(len(self._branches)):
+            if i != self._current_branch_index:
+                copy_.add_branch(self._branches[i])
+        return copy_
 
     def __call__(self, X: np.ndarray) -> np.ndarray:
         self.set_input_data(X)
         return self.features()
+
+    def __copy__(self):
+        return self.copy()
 
 
 class FruitBranch:
@@ -348,6 +383,19 @@ class FruitBranch:
         self._sieve()
         return self._sieved_data
 
-    def __call__(self, Z: np.ndarray) -> np.ndarray:
+    def copy(self):
+        copy_ = FruitBranch()
+        for preparateur in self.get_data_preparateurs():
+            copy_.add(preparateur)
+        for iterator in self.get_summation_iterators():
+            copy_.add(iterator)
+        for sieve in self.get_feature_sieves():
+            copy_.add(sieve)
+        return copy_
+
+    def __call__(self, Z:np.ndarray) -> np.ndarray:
         self.set_input_data(Z)
         return self.features()
+
+    def __copy__(self):
+        return self.copy()

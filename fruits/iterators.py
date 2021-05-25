@@ -53,6 +53,15 @@ class SummationIterator:
         for mon in self._monomials:
             yield mon
 
+    def copy(self):
+        si = SummationIterator(self.name)
+        si._monomials = [x.copy() for x in self._monomials]
+        si.scale = self.scale
+        return si
+
+    def __copy__(self):
+        return self.copy()
+
 class SimpleWord(SummationIterator):
     """Class SimpleWord
 
@@ -92,6 +101,15 @@ class SimpleWord(SummationIterator):
 
     def __repr__(self) -> str:
         return "SimpleWord(" + self.name + ")"
+
+    def copy(self):
+        si = SimpleWord(self.name)
+        si._monomials = [x.copy() for x in self._monomials]
+        si.scale = self.scale
+        return si
+
+    def __copy__(self):
+        return self.copy()
 
 def generate_random_words(number: int,
                           dim: int = 1,
