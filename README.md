@@ -39,3 +39,6 @@ myfruit.add(fruits.features.MAX)
 # 2*9 = 20 features for each time series
 extracted_features = myfruit(X)
 ```
+
+## UCR-Experiments
+We test the pipeline by doing classification tests of some UCR-datasets. You can [download](http://www.timeseriesclassification.com/) them and execute the script [configurations_on_ucr.py](experiments/configurations_on_ucr.py) after configuring the self-explaining global variables in the script. This will produce an output file that contains the classification-accuracy results.
