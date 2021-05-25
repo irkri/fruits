@@ -1,8 +1,14 @@
 # FRUITS
 (**F**eature Ext**R**action **U**sing **IT**erated **S**ums)
 
+## Installation
+This package can be installed on your local machine by executing the file [setup.py](setup.py).
+```
+  $ python setup.py install
+```
+
 ## Pipeline
-The `fruits` module works as a pipeline that extracts features from multidimensional time series data.<br>
+The `fruits` package works as a pipeline that extracts features from multidimensional time series data.<br>
 To initialize the data one has to create a `fruits.Fruit` object. This object can now be customized by the user in three different ways. There are standard configurations and objects for each of the following steps in `fruits` available to choose from.
 - Data Preparation: `DataPreparateur` objects are used to preprocess the data. This is an optional step.
 - Calculation of Iterated Sums: `SummationIterator` objects specify which Iterated Sums should be calculated<br>
@@ -41,4 +47,11 @@ extracted_features = myfruit(X)
 ```
 
 ## UCR-Experiments
-We test the pipeline by doing classification tests of some UCR-datasets. You can [download](http://www.timeseriesclassification.com/) them and execute the script [configurations_on_ucr.py](experiments/configurations_on_ucr.py) after configuring the self-explaining global variables in the script. This will produce an output file that contains the classification-accuracy results.
+We test the pipeline for accuracy by doing classification experiments of some UCR-datasets. You can [download](https://www.timeseriesclassification.com/Downloads/Archives/Univariate2018_arff.zip) them from [timeseriesclassification.com](https://timeseriesclassification.com) and execute the script [configurations_on_ucr.py](experiments/configurations_on_ucr.py) after configuring the self-explaining global variables in the script. This will produce an output file that contains the classification-accuracy results.
+
+## Unit tests
+There are a bunch of tests for __fruits__ available to execute. To do this, enter the command
+```
+  $ python -m pytest tests
+```
+in a console from the main directory of this repository.
