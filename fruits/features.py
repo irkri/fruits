@@ -1,25 +1,25 @@
-import numba
+from abc import ABC, abstractmethod
+
 import numpy as np
 
-class FeatureSieve:
-    """Class FeatureSieve
+from fruits import accelerated
+
+class FeatureSieve(ABC):
+    """Abstract class FeatureSieve
     
     A FeatureSieve object is used to extract a single number out of an
     multidimensional numpy array.
+    Each class that inherits FeatureSieve must override the methods
+    `FeatureSieve.fit` and `FeatureSieve.sieve`.
     """
     def __init__(self, name: str = ""):
         self._name = name
-        self._args = ()
-        self._kwargs = {}
-        self._func = None
-
-    def set_function(self, f):
-        if not callable(f):
-            raise TypeError("Cannot set non-callable object as function")
-        self._func = f
 
     @property
     def name(self) -> str:
+        """Simple identifier for a FeatureSieve object without any
+        computational meaninng.
+        """
         return self._name
 
     @name.setter
@@ -27,107 +27,259 @@ class FeatureSieve:
         self._name = name
 
     def __repr__(self) -> str:
-        out = "FeatureSieve('" + self._name + "'"
-        if self._args:
-            out += "," + ",".join([str(x) for x in self._args])
-        if self._kwargs:
-            out += "," + ",".join([str(x) + "=" + str(self._kwargs[x]) 
-                                 for x in self._kwargs])
-        out += ")"
+        out = "FeatureSieve('" + self._name + "')"
         return out
 
-    def __call__(self, *args, **kwargs):
-        self._args = args
-        self._kwargs = kwargs
-        fs = self.copy()
-        self._args = ()
-        self._kwargs = {}
-        return fs
-
     def copy(self):
+        """Returns a copy of this FeatureSieve object.
+
+        :returns: Copy of this object
+        :rtype: FeatureSieve
+        """
         fs = FeatureSieve(self.name)
-        fs._args = self._args
-        fs._kwargs = self._kwargs.copy()
-        fs.set_function(self._func)
         return fs
 
     def __copy__(self):
         return self.copy()
 
-    def sieve(self, X: np.ndarray):
-        if self._func is None:
-            raise RuntimeError("No function specified")
-        X = np.atleast_2d(X)
-        return self._func(X, *self._args, **self._kwargs)
+    def fit(self, X: np.ndarray):
+        """Fits the FeatureSieve to the dataset. This method may do
+        nothing for some classes that inherit FeatureSieve.
 
-@numba.njit(parallel=True, fastmath=True)
-def _fast_ppv(X: np.ndarray, ref_value: float) -> np.ndarray:
-    result = np.zeros(len(X))
-    for i in numba.prange(len(X)):
-        c = 0
-        for j in range(len(X[i])):
-            if X[i][j] >= ref_value:
-                c += 1
-        if len(X[i]) == 0:
-            result[i] = 0
-        else:
-            result[i] = c / len(X[i])
-    return result
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        """
+        pass
 
-def _ppv(X: np.ndarray,
-         quantile: float = 0.5,
-         constant: bool = False,
-         sample_size: float = 0.05) -> np.ndarray:
-    if constant:
-        ref_value = quantile
-    else:
-        if not 0 < quantile < 1:
-            raise ValueError("If 'constant' is set to False, quantile has " +
-                             "to be a value between 0 and 1")
-        sample_size = int(sample_size * len(X))
-        sample_size = 1 if sample_size < 1 else sample_size
-        selection = np.random.choice(np.arange(len(X)), size=sample_size,
-                                     replace=False)
-        ref_value = np.quantile(np.array([X[i] for i in selection]).flatten(),
-                                quantile)
-    if len(X) == 0:
-        return 0
-    return _fast_ppv(X, ref_value)
+    @abstractmethod
+    def sieve(self, X: np.ndarray) -> np.ndarray:
+        pass
 
-PPV = FeatureSieve("proportion of positive values")
-PPV.set_function(_ppv)
+    def fit_sieve(self, X: np.ndarray) -> np.ndarray:
+        """Equivalent of calling `FeatureSieve.fit` and
+        `FeatureSieve.sieve` consecutively.
+        
+        :param X: (onedimensional) time series dataset
+        :type X: np.ndarray
+        :returns: array of features (one for each time series)
+        :rtype: np.ndarray
+        """
+        self.fit(X)
+        return self.sieve(X)
 
-def _ppv_connected_components(X: np.ndarray,
-                              quantile: float = 0.5,
-                              constant: bool = False,
-                              sample_size: float = 0.05) -> np.ndarray:
-    """Count connected components, i.e. the number of consecutive 
-    strips of 1's.
+
+class PPV(FeatureSieve):
+    """FeatureSieve: Proportion of positive values
+    
+    For a calculated quantile with `PPV.fit`, this FeatureSieve
+    calculates the proportion of values in a time series that is greater
+    than the calculated quantile.
+
+    :param quantile: Quantile as actual value or probability for
+    quantile calculation (e.g. 0.5 for the 0.5-quantile),
+    defaults to 0.5
+    :type quantile: float, optional
+    :param constant: if `True`, the argument `quantile` is interpreted
+    as the actual value for the quantile, defaults to False
+    :type constant: bool, optional
+    :param sample_size: Sample size to use for quantile calculation.
+    This option can be ignored if `constant` is set to `True`,
+    defaults to 0.05
+    :type sample_size: float, optional
+    :param name: Name for the object,
+    defaults to "Proportion of positive values"
+    :type name: str, optional
     """
-    if len(X) == 0:
-        return 0
-    if constant:
-        ref_value = quantile
-    else:
-        if not 0 < quantile < 1:
-            raise ValueError("If 'constant' is set to False, quantile has " +
-                             "to be a value between 0 and 1")
-        sample_size = int(sample_size * len(X))
-        sample_size = 1 if sample_size < 1 else sample_size
-        selection = np.random.choice(np.arange(len(X)), size=sample_size,
-                                     replace=False)
-        ref_value = np.quantile(np.array([X[i] for i in selection]).flatten(),
-                                quantile)
-    positive = np.pad((X > ref_value).astype(np.int32), 
-                      ((0,0), (1,0)), 'constant')
-    diff = positive[:, 1:] - positive[:, :-1]
-    s = np.sum(diff == 1, axis=-1)
-    # At most X.shape[1]/2 connected components are possible.
-    return 2*s / X.shape[1]
+    def __init__(self,
+                 quantile: float = 0.5,
+                 constant: bool = False,
+                 sample_size: float = 0.05,
+                 name: str = "Proportion of positive values"):
+        super().__init__(name)
+        self._q_input = quantile
+        self._q = None
+        self._constant = constant
+        self._sample_size = sample_size
+        if not constant and not (0 < self._q_input < 1):
+            raise ValueError("If 'constant' is set to False, quantile "+
+                             "has to be a value between 0 and 1")
+        if not 0 < sample_size < 1:
+            raise ValueError("'sample_size' has to be a float between 0 and 1")
 
-PPV_connected = FeatureSieve("proportion of connected components " +
-                             "of positive values")
-PPV_connected.set_function(_ppv_connected_components)
+    def fit(self, X: np.ndarray):
+        """Calculates and remembers the quantile of the time series
+        data.
+        
+        :param X: (onedimensional) time series dataset
+        :type X: np.ndarray
+        """
+        self._q = self._q_input
+        if not constant:
+            sample_size = int(sample_size * len(X))
+            if sample_size < 1:
+                self._sample_size = 1
+            selection = np.random.choice(np.arange(len(X)),
+                                         size=self._sample_size,
+                                         replace=False)
+            self._q = np.quantile(np.array(
+                                    [X[i] for i in selection]
+                                  ).flatten(),
+                                  self._q_input)
+
+    def sieve(self, X: np.ndarray) -> np.ndarray:
+        """Returns `sum(X>=q)/len(X)` if q denotes the quantile
+        calculated with `self.fit`.
+        
+        :param X: (onedimensional) time series dataset
+        :type X: np.ndarray
+        :returns: array of features (one for each time series)
+        :rtype: np.ndarray
+        :raises: RuntimeError if `self.fit` wasn't called
+        """
+        if self._q is None:
+            raise RuntimeError("Missing call of PPV.fit()")
+        return accelerated._fast_ppv(X, self._q)
+
+    def copy(self):
+        """Returns a copy of this object.
+        
+        :returns: Copy of this object
+        :rtype: PPV
+        """
+        fs = PPV(self._q_input,
+                 self._constant,
+                 self._sample_size,
+                 self.name)
+        return fs
+
+
+class PPVC(PPV):
+    """FeatureSieve: Proportion of connected components of positive
+    values
+    
+    For a calculated quantile with `PPV.fit`, this FeatureSieve
+    calculates the connected components of the proportion of values in
+    a time series that is greater than the calculated quantile.
+    This is equivalent to the number of consecutive strips of 1's in
+    the array (X>=quantile).
+
+    :param quantile: Quantile as actual value or probability for
+    quantile calculation (e.g. 0.5 for the 0.5-quantile),
+    defaults to 0.5
+    :type quantile: float, optional
+    :param constant: if `True`, the argument `quantile` is interpreted
+    as the actual value for the quantile, defaults to False
+    :type constant: bool, optional
+    :param sample_size: Sample size to use for quantile calculation.
+    This option can be ignored if `constant` is set to `True`,
+    defaults to 0.05
+    :type sample_size: float, optional
+    :param name: Name for the object,
+    defaults to "Proportion of connected components of positive values"
+    :type name: str, optional
+    """
+    def __init__(self,
+                 quantile: float = 0.5,
+                 constant: bool = False,
+                 sample_size: float = 0.05,
+                 name:str = "Proportion of connected components of "+
+                            "positive values"):
+        super().__init__(quantile,
+                         constant,
+                         sample_size,
+                         name)
+
+    def sieve(self, X: np.ndarray) -> np.ndarray:
+        """Returns the number of consecutive strips of 1's in `(X>=q)`
+        if q denotes the quantile calculated with `self.fit`.
+        
+        :param X: (onedimensional) time series dataset
+        :type X: np.ndarray
+        :returns: array of features (one for each time series)
+        :rtype: np.ndarray
+        :raises: RuntimeError if `self.fit` wasn't called
+        """
+        if self._q is None:
+            raise RuntimeError("Missing call of PPV.fit()")
+        positive = np.pad((X >= self._q).astype(np.int32), 
+                          ((0,0), (1,0)), 'constant')
+        diff = positive[:, 1:] - positive[:, :-1]
+        s = np.sum(diff == 1, axis=-1)
+        # At most X.shape[1]/2 connected components are possible.
+        return 2*s / X.shape[1]
+
+
+class MAX(FeatureSieve):
+    """FeatureSieve: Maximal value
+    
+    This FeatureSieve returns the maximal value for each time series in
+    a given dataset.
+    
+    :param name: Name of the object, defaults to "Maximal value"
+    :type name: str, optional
+    """
+    def __init__(self,
+                 name: str = "Maximal value"):
+        super().__init__(name)
+
+    def sieve(self, X: np.ndarray) -> np.ndarray:
+        """Returns np.array([max(X[i,:]) for i in range(len(X))]).
+
+        :param X: (onedimensional) time series dataset
+        :type X: np.ndarray
+        :returns: feature array (one feature for each time series)
+        :rtype: np.ndarray
+        """
+        return accelerated._max(X)
+
+
+class MIN(FeatureSieve):
+    """FeatureSieve: Minimal value
+    
+    This FeatureSieve returns the minimal value for each time series in
+    a given dataset.
+    
+    :param name: Name of the object, defaults to "Minimal value"
+    :type name: str, optional
+    """
+    def __init__(self,
+                 name: str = "Minimal value"):
+        super().__init__(name)
+
+    def sieve(self, X: np.ndarray):
+        """Returns np.array([min(X[i,:]) for i in range(len(X))]).
+
+        :param X: (onedimensional) time series dataset
+        :type X: np.ndarray
+        :returns: feature array (one feature for each time series)
+        :rtype: np.ndarray
+        """
+        return accelerated._min(X)
+
+
+class END(FeatureSieve):
+    """FeatureSieve: Last value
+    
+    This FeatureSieve returns the last value of each time series in a
+    given dataset.
+    
+    :param name: Name of the object, defaults to "Last value"
+    :type name: str, optional
+    """
+    def __init__(self,
+                 name: str = "Last value"):
+        super().__init__(name)
+
+    def sieve(self, X: np.ndarray):
+        """Returns np.array[X[i, -1] for i in range(len(X))]).
+
+        :param X: (onedimensional) time series dataset
+        :type X: np.ndarray
+        :returns: feature array (one feature for each time series)
+        :rtype: np.ndarray
+        """
+        return X[:, -1]
+
 
 def get_ppv(n: int = 1,
             a: float = 0,
@@ -155,41 +307,3 @@ def get_ppv(n: int = 1,
     """
     return [PPV(q, constant=constant, sample_size=sample_size)
             for q in np.linspace(a, b, num=n)]
-
-@numba.njit(parallel=True, fastmath=True)
-def _max(X: np.ndarray):
-    result = np.zeros(len(X))
-    for i in numba.prange(len(X)):
-        if len(X[i]) == 0:
-            continue
-        maximum = X[i][0]
-        for j in range(len(X[i])):
-            if X[i][j] > maximum:
-                maximum = X[i][j]
-        result[i] = maximum
-    return result
-
-MAX = FeatureSieve("maximal value")
-MAX.set_function(_max)
-
-@numba.njit(parallel=True, fastmath=True)
-def _min(X:np.ndarray):
-    result = np.zeros(len(X))
-    for i in numba.prange(len(X)):
-        if len(X[i]) == 0:
-            continue
-        minimum = X[i][0]
-        for j in range(len(X[i])):
-            if X[i][j] < minimum:
-                minimum = X[i][j]
-        result[i] = minimum
-    return result
-
-MIN = FeatureSieve("minimal value")
-MIN.set_function(_min)
-
-def _end(X:np.ndarray):
-    return X[:, -1]
-
-END = FeatureSieve("last value")
-END.set_function(_end)

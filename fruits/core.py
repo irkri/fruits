@@ -1,6 +1,6 @@
-import numba
 import numpy as np
 
+from fruits import accelerated
 from fruits.iterators import SummationIterator, SimpleWord
 
 def ISS(Z: np.ndarray, iterators: list) -> np.ndarray:
@@ -55,7 +55,7 @@ def ISS(Z: np.ndarray, iterators: list) -> np.ndarray:
                 for k in range(len(fast_iterators_raw[i][j])):
                     fast_iterators_transformed[i,j,k] = \
                                                 fast_iterators_raw[i][j][k]
-        ISS_fast = _fast_ISS(Z, fast_iterators_transformed, scales)
+        ISS_fast = accelerated._fast_ISS(Z, fast_iterators_transformed, scales)
 
     # get solution for SummationIterators that are not of type SimpleWord
     if slow_iterators:
@@ -73,26 +73,6 @@ def ISS(Z: np.ndarray, iterators: list) -> np.ndarray:
         return ISS_fast
     elif slow_iterators:
         return ISS_slow
-
-@numba.njit(parallel=True, fastmath=True)
-def _fast_ISS(Z: np.ndarray, 
-              iterators: np.ndarray,
-              scales: np.ndarray) -> np.ndarray:
-    result = np.zeros((Z.shape[0], len(iterators), Z.shape[2]))
-    for i in numba.prange(Z.shape[0]):
-        for j in numba.prange(len(iterators)):
-            result[i, j, :] = np.ones(Z.shape[2], dtype=np.float64)
-            for k in range(len(iterators[j])):
-                if not np.any(iterators[j][k]):
-                    continue
-                C = np.ones(Z.shape[2], dtype=np.float64)
-                for l in range(len(iterators[j][k])):
-                    if iterators[j][k][l] != 0:
-                        C = C * Z[i, l, :]**iterators[j][k][l]
-                result[i, j, :] = np.cumsum(result[i, j, :] * C)
-                result[i, j, :] /= Z.shape[2]**scales[j]
-
-    return result
 
 def _slow_ISS(Z: np.ndarray,
               iterators: list) -> np.ndarray:
