@@ -46,14 +46,14 @@ def generate_complex_words(simple_words, FUNCTION, scale=0):
         complex_words[-1].scale = scale
     return complex_words
 
+simple_words_degree_2 = fruits.iterators.generate_words(1, 2, 2)
 simple_words_degree_3 = fruits.iterators.generate_words(1, 3, 3)
-simple_words_degree_4 = fruits.iterators.generate_words(1, 4, 4)
 
 # configuration 1
 apple = fruits.Fruit("Apple")
 apple.add(fruits.preparateurs.INC)
 
-apple.add(simple_words_degree_4)
+apple.add(simple_words_degree_3)
 
 apple.add(fruits.features.PPV(quantile=0.5, sample_size=1))
 apple.add(fruits.features.MAX)
@@ -63,7 +63,7 @@ apple.add(fruits.features.MIN)
 apple_c = fruits.Fruit("Apple (connected)")
 apple_c.add(fruits.preparateurs.INC)
 
-apple_c.add(simple_words_degree_4)
+apple_c.add(simple_words_degree_3)
 
 apple_c.add(fruits.features.PPVC(quantile=0.5, sample_size=1))
 apple_c.add(fruits.features.MAX)
@@ -73,7 +73,7 @@ apple_c.add(fruits.features.MIN)
 banana = fruits.Fruit("Banana")
 banana.add(fruits.preparateurs.STD)
 
-banana.add(simple_words_degree_4)
+banana.add(simple_words_degree_3)
 
 banana.add(fruits.features.PPV(quantile=0.5, sample_size=1))
 banana.add(fruits.features.MAX)
@@ -83,7 +83,7 @@ banana.add(fruits.features.MIN)
 orange = fruits.Fruit("Orange")
 orange.add(fruits.preparateurs.INC)
 
-orange.add(simple_words_degree_4)
+orange.add(simple_words_degree_3)
 
 orange.add(fruits.features.PPV(quantile=0.5, sample_size=1))
 orange.add(fruits.features.MAX)
@@ -93,7 +93,7 @@ orange.add(fruits.features.END)
 # configuration 4
 peach = fruits.Fruit("Peach")
 
-peach.add(simple_words_degree_4)
+peach.add(simple_words_degree_3)
 
 peach.add(fruits.features.PPV(quantile=0.5, sample_size=1))
 peach.add(fruits.features.MAX)
@@ -103,7 +103,7 @@ peach.add(fruits.features.END)
 #configuration 5
 watermelon = fruits.Fruit("Watermelon")
 
-watermelon.add(generate_complex_words(simple_words_degree_4, TANH))
+watermelon.add(generate_complex_words(simple_words_degree_2, TANH))
 
 watermelon.add(fruits.features.PPV(quantile=0.2, sample_size=1))
 watermelon.add(fruits.features.PPV(quantile=0.5, sample_size=1))
@@ -115,7 +115,7 @@ watermelon.add(fruits.features.END)
 # configuration 6
 strawberry = fruits.Fruit("Strawberry")
 
-strawberry.add(generate_complex_words(simple_words_degree_4, leakyRELU))
+strawberry.add(generate_complex_words(simple_words_degree_2, leakyRELU))
 
 strawberry.add(fruits.features.PPV(quantile=0.5, sample_size=1))
 strawberry.add(fruits.features.MAX)
@@ -125,8 +125,8 @@ strawberry.add(fruits.features.END)
 # configuration 7
 pineapple = fruits.Fruit("Pineapple")
 
-pineapple.add(generate_complex_words(simple_words_degree_3, RELU))
-pineapple.add(generate_complex_words(simple_words_degree_3, SIGMOID))
+pineapple.add(generate_complex_words(simple_words_degree_2, RELU))
+pineapple.add(generate_complex_words(simple_words_degree_2, SIGMOID))
 pineapple.add(simple_words_degree_3)
 
 pineapple.add(fruits.features.PPV(quantile=0.5, sample_size=1))
@@ -138,7 +138,7 @@ pineapple.add(fruits.features.END)
 cranberry = fruits.Fruit("Cranberry")
 cranberry.add(fruits.preparateurs.INC)
 
-cranberry.add(generate_complex_words(simple_words_degree_3, IEXP, scale=3))
+cranberry.add(generate_complex_words(simple_words_degree_2, IEXP, scale=3))
 cranberry.add(simple_words_degree_3)
 
 cranberry.add(fruits.features.MAX)
@@ -162,7 +162,7 @@ blackberry.add(fruits.features.END)
 # configuration 10
 starfruit = fruits.Fruit("Starfruit")
 starfruit.add(fruits.preparateurs.INC)
-starfruit.add(simple_words_degree_3)
+starfruit.add(simple_words_degree_2)
 starfruit.add(fruits.features.PPV(quantile=0.2, sample_size=1))
 starfruit.add(fruits.features.PPV(quantile=0.5, sample_size=1))
 starfruit.add(fruits.features.PPV(quantile=0.8, sample_size=1))
@@ -171,7 +171,7 @@ starfruit.add(fruits.features.MIN)
 starfruit.add(fruits.features.END)
 
 starfruit.start_new_branch()
-starfruit.add(simple_words_degree_3)
+starfruit.add(simple_words_degree_2)
 starfruit.add(fruits.features.PPV(quantile=0.2, sample_size=1))
 starfruit.add(fruits.features.PPV(quantile=0.5, sample_size=1))
 starfruit.add(fruits.features.PPV(quantile=0.8, sample_size=1))
@@ -180,7 +180,7 @@ starfruit.add(fruits.features.MIN)
 starfruit.add(fruits.features.END)
 
 starfruit.start_new_branch()
-starfruit.add(generate_complex_words(simple_words_degree_3, leakyRELU))
+starfruit.add(generate_complex_words(simple_words_degree_2, leakyRELU))
 starfruit.add(fruits.features.PPV(quantile=0.2, sample_size=1))
 starfruit.add(fruits.features.PPV(quantile=0.5, sample_size=1))
 starfruit.add(fruits.features.PPV(quantile=0.8, sample_size=1))
@@ -189,15 +189,15 @@ starfruit.add(fruits.features.MIN)
 starfruit.add(fruits.features.END)
 
 CONFIGURATIONS = [
-                    # apple,
-                    # apple_c,
-                    # banana,
-                    # orange,
-                    # peach,
-                    # watermelon,
-                    # strawberry,
-                    # pineapple,
-                    # cranberry,
+                    apple,
+                    apple_c,
+                    banana,
+                    orange,
+                    peach,
+                    watermelon,
+                    strawberry,
+                    pineapple,
+                    cranberry,
                     # blackberry, # way too much features and sigmoid
                     #               turns out to not work very well
                     starfruit,
