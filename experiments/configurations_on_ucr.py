@@ -58,6 +58,7 @@ for k, fruit in enumerate(CONFIGURATIONS):
         X_train_feat = fruit.transform(X_train)
         X_test_feat = fruit.transform(X_test)
         results[k, i, 0] = Timer() - start
+        fruit.clear_cache()
 
         classifier = RidgeClassifierCV(alphas=np.logspace(-3, 3, 10), 
                                        normalize=True)
