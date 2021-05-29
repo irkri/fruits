@@ -15,7 +15,7 @@ def test_n_features():
     featex.add(fruits.iterators.generate_words(1,3,5))
     featex.add(fruits.iterators.generate_random_words(12,2,3,5))
 
-    assert len(featex.get_summation_iterators()) == 375
+    assert len(featex.get_iterators()) == 375
 
     featex.add(fruits.features.PPV(quantile=0, constant=True))
     featex.add(fruits.features.PPV(quantile=0.2, constant=False, 
@@ -49,7 +49,7 @@ def test_branches():
 
     assert featex.nfeatures() == 6
 
-    features = featex(X_1)
+    features = featex.fit_transform(X_1)
 
     assert features.shape == (2, 6)
 
