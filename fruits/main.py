@@ -210,7 +210,7 @@ class Fruit:
         :rtype: np.ndarray
         :raises: RuntimeError if Fruit.fit wasn't called
         """
-        result = np.zeros((self._current_branch._ts, self.nfeatures()))
+        result = np.zeros((X.shape[0], self.nfeatures()))
         index = 0
         for branch in self._branches:
             k = branch.nfeatures()
@@ -492,10 +492,10 @@ class FruitBranch:
             raise RuntimeError("Missing call of FruitBranch.fit")
         if X is not None:
             reshaped_X = self._reshape_input(X)
-            if not np.allclose(self._input_data, reshaped_X):
+            if not np.array_equal(self._input_data, reshaped_X):
                 self._input_data = reshaped_X
                 self._prepared_data = self._prepare(self._input_data)
-                self._iterated_data = self._iterated_data(self._prepared_data)
+                self._iterated_data = self._iterate(self._prepared_data)
         return self._sieve(self._iterated_data)
 
     def fit_transform(self, X: np.ndarray) -> np.ndarray:
