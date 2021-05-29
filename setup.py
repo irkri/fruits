@@ -3,7 +3,7 @@ from setuptools import setup
 if __name__ == "__main__":
     setup(
         name='fruits',
-        version='0.4.0',
+        version='0.5.0',
         author='alienkrieg',
         author_email='alienkrieg@gmail.com',
         description='Feature extRation Using ITerated Sums',
@@ -11,12 +11,15 @@ if __name__ == "__main__":
         ext_package="",
         ext_modules=[],
         package_dir={'fruits':'fruits'},
-        py_modules=['fruits.__init__',
+        py_modules=[
+                    'fruits.__init__',
                     'fruits.core',
                     'fruits.features',
                     'fruits.iterators',
                     'fruits.preparateurs',
-                    'fruits.main'],
+                    'fruits.main',
+                    'fruits.accelerated',
+                   ],
         long_description=open('README.md').read(),
         install_requires=[
             "numpy >= 1.19.2",
