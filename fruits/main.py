@@ -236,6 +236,13 @@ class Fruit:
             index += k
         return result
 
+    def clear_cache(self):
+        """Executes the clear_cache method on all branches in the Fruit
+        object.
+        """
+        for branch in self._branches:
+            branch.clear_cache()
+
     def copy(self):
         """Creates a copy of this Fruit object.
         This also creates copies of all branches in this object.
@@ -509,6 +516,14 @@ class FruitBranch:
         """
         self.fit(X)
         return self.transform(X)
+
+    def clear_cache(self):
+        """Clears all cached data but doesn't change or remove the added
+        DataPreparateur/SummationIterator/FeatureSieve objects.
+        """
+        self._input_data = None
+        self._prepared_data = None
+        self._iterated_data = None
 
     def copy(self):
         """Returns a copy of this FruitBranch object.
