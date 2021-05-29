@@ -42,7 +42,7 @@ def generate_complex_words(simple_words, FUNCTION, scale=0):
             for i, letter in enumerate(monomial):
                 for l in range(letter):
                     mon.append(FUNCTION(i))
-        complex_words[-1].append(mon)
+        complex_words[-1].multiply(mon)
         complex_words[-1].scale = scale
     return complex_words
 
@@ -65,7 +65,7 @@ apple_c.add(fruits.preparateurs.INC)
 
 apple_c.add(simple_words_degree_4)
 
-apple_c.add(fruits.features.PPV_connected(quantile=0.5, sample_size=1))
+apple_c.add(fruits.features.PPVC(quantile=0.5, sample_size=1))
 apple_c.add(fruits.features.MAX)
 apple_c.add(fruits.features.MIN)
 
@@ -189,16 +189,16 @@ starfruit.add(fruits.features.MIN)
 starfruit.add(fruits.features.END)
 
 CONFIGURATIONS = [
-    apple,
-    apple_c,
-    banana,
-    orange,
-    peach,
-    watermelon,
-    strawberry,
-    pineapple,
-    cranberry,
-    # blackberry, # way too much features and sigmoid turns out to not
-    # work very well
-    starfruit,
-    ]
+                    # apple,
+                    # apple_c,
+                    # banana,
+                    # orange,
+                    # peach,
+                    # watermelon,
+                    # strawberry,
+                    # pineapple,
+                    # cranberry,
+                    # blackberry, # way too much features and sigmoid
+                    #               turns out to not work very well
+                    starfruit,
+                 ]

@@ -3,6 +3,7 @@ import logging
 from timeit import default_timer as Timer
 
 import numpy as np
+import pandas as pd
 from sklearn.linear_model import RidgeClassifierCV
 
 from context import fruits
@@ -53,8 +54,9 @@ for k, fruit in enumerate(CONFIGURATIONS):
         y_test, X_test = test[:, 0].astype(np.int32), test[:, 1:]
 
         start = Timer()
-        X_train_feat = fruit(X_train)
-        X_test_feat = fruit(X_test)
+        fruit.fit(X_train)
+        X_train_feat = fruit.transform(X_train)
+        X_test_feat = fruit.transform(X_test)
         results[k, i, 0] = Timer() - start
 
         classifier = RidgeClassifierCV(alphas=np.logspace(-3, 3, 10), 
@@ -81,4 +83,4 @@ for k, fruit in enumerate(CONFIGURATIONS):
     if k < len(CONFIGURATIONS)-1:
         logger.info("\n" + len(TABLE_HEADER)*"*" + "\n")
     
-    print(f"Done.")
+    print(f"\nDone.")
