@@ -1,4 +1,5 @@
 import re
+import inspect
 
 import numpy as np
 
@@ -227,7 +228,7 @@ class Fruit:
         :returns: two dimensional feature array
         :rtype: np.ndarray
         """
-        result = np.zeros((self._current_branch._ts, self.nfeatures()))
+        result = np.zeros((X.shape[0], self.nfeatures()))
         index = 0
         for branch in self._branches:
             k = branch.nfeatures()
@@ -386,6 +387,8 @@ class FruitBranch:
         """
         objects = np.array(objects, dtype=object).flatten()
         for obj in objects:
+            if inspect.isclass(obj):
+                obj = obj()
             if isinstance(obj, DataPreparateur):
                 self.add_preparateur(obj)
             elif isinstance(obj, SummationIterator):
@@ -447,30 +450,30 @@ class FruitBranch:
         prepared_data = X.copy()
         for prep in self._preparateurs:
             prepared_data = prep(prepared_data)
-        self._prepared = True
         return prepared_data
 
     def _iterate(self, X: np.ndarray) -> np.ndarray:
         if not self._iterators:
             raise RuntimeError("No SummationIterator specified")
-        self._prepare()
+        if self._prepared_data is None:
+            raise RuntimeError("Data hasn't been preparated yet")
         iterated_data = np.zeros((X.shape[0], len(self._iterators), 
                                    X.shape[2]))
         iterated_data = ISS(X.copy(), self._iterators)
-        self._iterated = True
         return iterated_data
 
     def _sieve(self, X: np.ndarray) -> np.ndarray:
-        self._iterate()
         if not self._sieves:
             raise RuntimeError("No FeatureSieve specified")
+        if self._iterated_data is None:
+            raise RuntimeError("Iterated sums aren't calculated yet")
         sieved_data = np.zeros((X.shape[0], self.nfeatures()))
         k = 0
+        X_copy = X.copy()
         for i in range(len(self._iterators)):
             for sieve in self._sieves:
-                sieved_data[:, k] = sieve.sieve(X.copy()[:, i, :])
+                sieved_data[:, k] = sieve.sieve(X_copy[:, i, :])
                 k += 1
-        self._sieved = True
         return sieved_data
 
     def transform(self, X: np.ndarray = None) -> np.ndarray:
