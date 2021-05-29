@@ -14,9 +14,8 @@ class SummationIterator:
     Example:
     ```
     >>> iterator = SummationIterator()
-    >>> iterator.append_monomials([lambda X: X[0, :]**2,
-                                   lambda X: X[1, :]**3],
-                                  [lambda X: X[0, :]])
+    >>> iterator.multiply([lambda X: X[0, :]**2, lambda X: X[1, :]**3])
+    >>> iterator.multiply([lambda X: X[0, :])
     >>> fruits.core.ISS(X, [iterator])
     ```
     The result of this last function call is
@@ -58,18 +57,22 @@ class SummationIterator:
     def __repr__(self) -> str:
         return "SummationIterator('" + self.name + "')"
 
-    def append_monomials(self, *objects):
-        """Append a list of functions to the class. One list is
+    def multiply(self, obj):
+        """Appends a list of functions to the class. This list is
         interpreted as a monomial in the SummationIterator.
         
-        :param *objects: List(s) of functions
-        :type *objects: list or multiple lists
+        :param monomial: List of functions
+        :type monomial: list
         :raises: ValueError if monomials aren't lists
         """
-        for obj in objects:
-            if not instances(obj, list):
-                raise ValueError("Monomials have to be given in form of lists")
+        if isinstance(obj, list):
             self._monomials.append(obj)
+        elif isinstance(obj, SummationIterator):
+            for monomial in obj.monomials():
+                self._monomials.append(monomial)
+        else:
+            raise ValueError("SummationIterator can only be mutliplied with "+
+                             "a list or another SummationIterator")
 
     def monomials(self):
         """Returns a generator of all monomials in this object.
@@ -130,10 +133,10 @@ class SimpleWord(SummationIterator):
         self.max_dim = max_dim
 
         for monomial in monomials:
-            m = np.zeros(max_dim + 1, dtype=np.int32)
+            m = []
             for i in range(max_dim+1):
-                m[i] = monomial.count(i)
-            self.append_monomials(m)
+                m.append(monomial.count(i))
+            self.multiply(m)
 
     def monomials(self):
         """Returns a generator of all monomials in this object.
