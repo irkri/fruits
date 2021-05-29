@@ -103,7 +103,7 @@ class PPV(FeatureSieve):
         if not constant and not (0 < self._q_input < 1):
             raise ValueError("If 'constant' is set to False, quantile "+
                              "has to be a value between 0 and 1")
-        if not 0 < sample_size < 1:
+        if not 0 < sample_size <= 1:
             raise ValueError("'sample_size' has to be a float between 0 and 1")
 
     def fit(self, X: np.ndarray):
@@ -114,12 +114,12 @@ class PPV(FeatureSieve):
         :type X: np.ndarray
         """
         self._q = self._q_input
-        if not constant:
-            sample_size = int(sample_size * len(X))
+        if not self._constant:
+            sample_size = int(self._sample_size * len(X))
             if sample_size < 1:
-                self._sample_size = 1
+                sample_size = 1
             selection = np.random.choice(np.arange(len(X)),
-                                         size=self._sample_size,
+                                         size=sample_size,
                                          replace=False)
             self._q = np.quantile(np.array(
                                     [X[i] for i in selection]
