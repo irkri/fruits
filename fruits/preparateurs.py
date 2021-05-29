@@ -10,7 +10,7 @@ class DataPreparateur:
     the input array.
     """
     def __init__(self, name: str = ""):
-        self._name = name
+        self.name = name
 
     @property
     def name(self) -> str:
@@ -20,9 +20,6 @@ class DataPreparateur:
     @name.setter
     def name(self, name: str):
         self._name = name
-
-    def __repr__(self) -> str:
-        return "DataPreparateur('" + self._name + "')"
 
     def copy(self):
         """Returns a copy of the DataPreparateur object.
@@ -49,7 +46,10 @@ class DataPreparateur:
         :returns: preprocessed dataset
         :rtype: np.ndarray
         """
-        return self.prepare(X)
+        return self._prepare(X)
+
+    def __repr__(self) -> str:
+        return "DataPreparateur('" + self._name + "')"
 
 
 class INC(DataPreparateur):
@@ -65,6 +65,7 @@ class INC(DataPreparateur):
     def __init__(self,
                  zero_padding: bool = True,
                  name: str = "Increments"):
+        super().__init__(name)
         self._zero_padding = zero_padding
 
     def _prepare(self, X: np.ndarray) -> np.ndarray:
@@ -78,6 +79,15 @@ class INC(DataPreparateur):
             out[:, :, 1:] = np.delete((np.roll(X, -1, axis=2) - X), -1, axis=2)
             out[:, :, 0] = X[:, :, 0]
         return out
+
+    def copy(self):
+        """Returns a copy of the DataPreparateur object.
+        
+        :returns: Copy of this object
+        :rtype: INC
+        """
+        dp = INC(self._zero_padding, self.name)
+        return dp
 
 
 class STD(DataPreparateur):
@@ -98,6 +108,15 @@ class STD(DataPreparateur):
                 out[i, j, :] /= np.std(X[i, j, :])
         return out
 
+    def copy(self):
+        """Returns a copy of the DataPreparateur object.
+        
+        :returns: Copy of this object
+        :rtype: STD
+        """
+        dp = STD(self.name)
+        return dp
+
 
 class NRM(DataPreparateur):
     """DataPreparateur: Normalization
@@ -117,3 +136,12 @@ class NRM(DataPreparateur):
                 maxi = np.max(X[i, j, :])
                 out[i, j, :] = (X[i, j, :]-mini) / (maxi-mini)
         return out
+
+    def copy(self):
+        """Returns a copy of the DataPreparateur object.
+        
+        :returns: Copy of this object
+        :rtype: NRM
+        """
+        dp = NRM(self.name)
+        return dp
