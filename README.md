@@ -19,7 +19,8 @@ To initialize the data one has to create a `fruits.Fruit` object. This object ca
 ## Example
 A simple example could look like this:
 ```python
-X = numpy.array([...]) # think of a 3 dimensional time series dataset
+# think of a 3 dimensional time series dataset
+X_train, y_train, X_test, y_test = ...
 
 # create a Fruit object
 myfruit = fruits.Fruit("myfruit - Fruit class example")
@@ -42,8 +43,12 @@ myfruit.add(simple_words)
 myfruit.add(fruits.features.PPV(quantile=0.5, constant=False))
 myfruit.add(fruits.features.MAX)
 
-# 2*9 = 20 features for each time series
-extracted_features = myfruit(X)
+# fit the object to the data
+myfruit.fit(X_train)
+# get features for the training data
+X_train_features = myfruit.transform(X_train)
+# get features for the testing data
+X_test_features = myfruit.transform(X_test)
 ```
 
 ## UCR-Experiments
