@@ -296,6 +296,11 @@ class FruitBranch:
         self._iterators = []
         self._sieves = []
 
+        # list with inner lists containing sieves
+        # all sieves in one list are trained on one specific output
+        # of an ISS-result
+        self._sieves_extended = []
+
         # input data is specified by calling FruitBranch.fit
         self._input_data = None
 
@@ -416,6 +421,7 @@ class FruitBranch:
         self.clear_preparateurs()
         self.clear_iterators()
         self.clear_sieves()
+        self._sieves_extended = []
 
     def nfeatures(self) -> int:
         """Returns the total number of features the current
@@ -437,11 +443,15 @@ class FruitBranch:
         :type X: np.ndarray
         :raises: ValueError if `X.ndims > 3`
         """
+        self._sieves_extended = []
         self._input_data = self._reshape_input(X)
         self._prepared_data = self._prepare(self._input_data)
         self._iterated_data = self._iterate(self._prepared_data)
-        for sieve in self._sieves:
-            sieve.fit(self._iterated_data)
+        for i in range(len(self._iterators)):
+            sieves_copy = [x.copy() for x in self._sieves]
+            for sieve in sieves_copy:
+                sieve.fit(self._iterated_data[:, i, :])
+            self._sieves_extended.append(sieves_copy)
 
     def _reshape_input(self, X: np.ndarray) -> np.ndarray:
         out = X.copy()
@@ -478,7 +488,7 @@ class FruitBranch:
         k = 0
         X_copy = X.copy()
         for i in range(len(self._iterators)):
-            for sieve in self._sieves:
+            for sieve in self._sieves_extended[i]:
                 sieved_data[:, k] = sieve.sieve(X_copy[:, i, :])
                 k += 1
         return sieved_data
@@ -524,6 +534,7 @@ class FruitBranch:
         self._input_data = None
         self._prepared_data = None
         self._iterated_data = None
+        self._sieves_extended = []
 
     def copy(self):
         """Returns a copy of this FruitBranch object.
