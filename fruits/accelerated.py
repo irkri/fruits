@@ -5,6 +5,8 @@ import numpy as np
 def _fast_ISS(Z: np.ndarray, 
               iterators: np.ndarray,
               scales: np.ndarray) -> np.ndarray:
+    # accelerated function for calculation of
+    # fruits.core.ISS(X, [SimpleWord(...)])
     result = np.zeros((Z.shape[0], len(iterators), Z.shape[2]))
     for i in numba.prange(Z.shape[0]):
         for j in numba.prange(len(iterators)):
@@ -23,6 +25,7 @@ def _fast_ISS(Z: np.ndarray,
 
 @numba.njit(parallel=True, fastmath=True)
 def _fast_ppv(X: np.ndarray, ref_value: float) -> np.ndarray:
+    # accelerated function for fruits.features.PPV
     result = np.zeros(len(X))
     for i in numba.prange(len(X)):
         c = 0
@@ -37,6 +40,7 @@ def _fast_ppv(X: np.ndarray, ref_value: float) -> np.ndarray:
 
 @numba.njit(parallel=True, fastmath=True)
 def _max(X: np.ndarray):
+    # accelerated function for fruits.features.MAX
     result = np.zeros(len(X))
     for i in numba.prange(len(X)):
         if len(X[i]) == 0:
@@ -50,6 +54,7 @@ def _max(X: np.ndarray):
 
 @numba.njit(parallel=True, fastmath=True)
 def _min(X:np.ndarray):
+    # accelerated function for fruits.features.MIN
     result = np.zeros(len(X))
     for i in numba.prange(len(X)):
         if len(X[i]) == 0:
@@ -60,3 +65,21 @@ def _min(X:np.ndarray):
                 minimum = X[i][j]
         result[i] = minimum
     return result
+
+@numba.njit(parallel=True)
+def _coquantile(X: np.ndarray, q: float):
+    # calculates R = <[11], ISS(X_i)> for every time series X_i in X
+    # calculates the q-quantiles in R for every X_i
+    # and an index in R of the last element less than or equal
+    # to this q-quantile for every X_i
+    # the (rounded) mean of those quantiles will be returned
+    iss = _fast_ISS(np.expand_dims(X, 1),
+                    np.array([[[2]]]),
+                    np.array([0]))[:, 0, :]
+    coquantiles = np.zeros(X.shape[0])
+    maxima = _max(iss)
+    for i in numba.prange(X.shape[0]):
+        q_max = maxima[i] * q
+        coquantiles[i] = np.sum((iss[i] <= q_max))
+
+    return int(coquantiles.mean())
