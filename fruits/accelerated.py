@@ -66,7 +66,7 @@ def _min(X:np.ndarray):
         result[i] = minimum
     return result
 
-@numba.njit(parallel=True)
+@numba.njit
 def _coquantile(X: np.ndarray, q: float):
     # calculates R = <[11], ISS(X_i)> for every time series X_i in X
     # calculates the q-quantiles in R for every X_i
@@ -77,9 +77,8 @@ def _coquantile(X: np.ndarray, q: float):
                     np.array([[[2]]]),
                     np.array([0]))[:, 0, :]
     coquantiles = np.zeros(X.shape[0])
-    maxima = _max(iss)
-    for i in numba.prange(X.shape[0]):
-        q_max = maxima[i] * q
-        coquantiles[i] = np.sum((iss[i] <= q_max))
+    relative_max = iss[:, -1] * q
+    for i in range(X.shape[0]):
+        coquantiles[i] = np.sum((iss[i] <= relative_max[i]))
 
-    return int(coquantiles.mean())
+    return int(coquantiles.min())
