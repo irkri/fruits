@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from fruits import accelerated
+from fruits import accelerated, core
 
 class FeatureSieve(ABC):
     """Abstract class FeatureSieve
@@ -30,14 +30,14 @@ class FeatureSieve(ABC):
         out = "FeatureSieve('" + self._name + "')"
         return out
 
+    @abstractmethod
     def copy(self):
         """Returns a copy of this FeatureSieve object.
 
         :returns: Copy of this object
         :rtype: FeatureSieve
         """
-        fs = FeatureSieve(self.name)
-        return fs
+        pass
 
     def __copy__(self):
         return self.copy()
@@ -214,13 +214,37 @@ class MAX(FeatureSieve):
     
     This FeatureSieve returns the maximal value for each time series in
     a given dataset.
-    
+
+    :param cut: If cut is an index of the time series array, the time
+    series will be cut at this point before calculating the maximum. If
+    it is a real number in (0,1), the corresponding coquantile will be
+    calculated first and the result will be treated as the cutting
+    index., defaults to -1
+    :type cut: int, optional
     :param name: Name of the object, defaults to "Maximal value"
     :type name: str, optional
     """
     def __init__(self,
+                 cut: int = -1,
                  name: str = "Maximal value"):
         super().__init__(name)
+        self._cut = cut
+
+    def fit(self, X: np.ndarray):
+        """Fits the MAX feature sieve to the given dataset by
+        calculating a cutting point if neccessary.
+        
+        :param X: (onedimensional) time series dataset
+        :type X: np.ndarray
+        """
+        if self._cut >= X.shape[1]:
+            self._cut = X.shape[1] - 1
+        elif 0 < self._cut < 1:
+            self._cut = accelerated._coquantile(X, self._cut)
+        elif self._cut < 0:
+            self._cut = X.shape[1]
+        elif self._cut == 0:
+            self._cut = 1
 
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns np.array([max(X[i,:]) for i in range(len(X))]).
@@ -230,7 +254,16 @@ class MAX(FeatureSieve):
         :returns: feature array (one feature for each time series)
         :rtype: np.ndarray
         """
-        return accelerated._max(X)
+        return accelerated._max(X[:, :self._cut])
+
+    def copy(self):
+        """Returns a copy of this object.
+        
+        :returns: Copy of this object
+        :rtype: MAX
+        """
+        fs = MAX(self._cut, self.name)
+        return fs
 
 
 class MIN(FeatureSieve):
@@ -239,12 +272,36 @@ class MIN(FeatureSieve):
     This FeatureSieve returns the minimal value for each time series in
     a given dataset.
     
+    :param cut: If cut is an index of the time series array, the time
+    series will be cut at this point before calculating the minimum. If
+    it is a real number in (0,1), the corresponding coquantile will be
+    calculated first and the result will be treated as the cutting
+    index., defaults to -1
+    :type cut: int, optional
     :param name: Name of the object, defaults to "Minimal value"
     :type name: str, optional
     """
     def __init__(self,
+                 cut: int = -1,
                  name: str = "Minimal value"):
         super().__init__(name)
+        self._cut = cut
+
+    def fit(self, X: np.ndarray):
+        """Fits the MIN feature sieve to the given dataset by
+        calculating a cutting point if neccessary.
+        
+        :param X: (onedimensional) time series dataset
+        :type X: np.ndarray
+        """
+        if self._cut >= X.shape[1]:
+            self._cut = X.shape[1] - 1
+        elif 0 < self._cut < 1:
+            self._cut = accelerated._coquantile(X, self._cut)
+        elif self._cut < 0:
+            self._cut = X.shape[1]
+        elif self._cut == 0:
+            self._cut = 1
 
     def sieve(self, X: np.ndarray):
         """Returns np.array([min(X[i,:]) for i in range(len(X))]).
@@ -254,7 +311,16 @@ class MIN(FeatureSieve):
         :returns: feature array (one feature for each time series)
         :rtype: np.ndarray
         """
-        return accelerated._min(X)
+        return accelerated._min(X[:, :self._cut])
+
+    def copy(self):
+        """Returns a copy of this object.
+        
+        :returns: Copy of this object
+        :rtype: MIN
+        """
+        fs = MIN(self._cut, self.name)
+        return fs
 
 
 class END(FeatureSieve):
@@ -262,13 +328,37 @@ class END(FeatureSieve):
     
     This FeatureSieve returns the last value of each time series in a
     given dataset.
-    
+
+    :param cut: If cut is an index of the time series array, this sieve
+    will extract the value of the time series at this position. If it
+    is a real number in (0,1), the corresponding coquantile will be
+    calculated first and the result will be treated as the value
+    index., defaults to -1
+    :type cut: int, optional
     :param name: Name of the object, defaults to "Last value"
     :type name: str, optional
     """
     def __init__(self,
+                 cut: int = -1,
                  name: str = "Last value"):
         super().__init__(name)
+        self._cut = cut
+
+    def fit(self, X: np.ndarray):
+        """Fits the END feature sieve to the given dataset by
+        calculating a cutting point if neccessary.
+        
+        :param X: (onedimensional) time series dataset
+        :type X: np.ndarray
+        """
+        if self._cut >= X.shape[1]:
+            self._cut = X.shape[1] - 1
+        elif 0 < self._cut < 1:
+            self._cut = accelerated._coquantile(X, self._cut)
+        elif self._cut < 0:
+            self._cut = -1
+        elif self._cut == 0:
+            self._cut = 1
 
     def sieve(self, X: np.ndarray):
         """Returns np.array[X[i, -1] for i in range(len(X))]).
@@ -278,7 +368,16 @@ class END(FeatureSieve):
         :returns: feature array (one feature for each time series)
         :rtype: np.ndarray
         """
-        return X[:, -1]
+        return X[:, self._cut]
+
+    def copy(self):
+        """Returns a copy of this object.
+        
+        :returns: Copy of this object
+        :rtype: END
+        """
+        fs = END(self._cut, self.name)
+        return fs
 
 
 def get_ppv(n: int = 1,
