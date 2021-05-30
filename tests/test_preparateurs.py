@@ -26,3 +26,19 @@ def test_increments():
     X_1_2_copy = increments.copy()(X_1)
 
     np.testing.assert_allclose(X_1_2, X_1_2_copy)
+
+def test_standardization():
+    X_1_1 = fruits.preparateurs.STD()(X_1)
+
+    for i in range(X_1.shape[0]):
+        for j in range(X_1.shape[1]):
+            np.testing.assert_almost_equal(0, np.mean(X_1_1[i,j]))
+            np.testing.assert_almost_equal(1, np.std(X_1_1[i,j]))
+
+def test_normalization():
+    X_1_1 = fruits.preparateurs.NRM()(X_1)
+
+    for i in range(X_1.shape[0]):
+        for j in range(X_1.shape[1]):
+            np.testing.assert_almost_equal(0, np.min(X_1_1[i,j]))
+            np.testing.assert_almost_equal(1, np.max(X_1_1[i,j]))
