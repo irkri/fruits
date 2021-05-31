@@ -445,6 +445,8 @@ class FruitBranch:
         """
         self._sieves_extended = []
         self._input_data = self._reshape_input(X)
+        for prep in self._preparateurs:
+            prep.fit(self._input_data)
         self._prepared_data = self._prepare(self._input_data)
         self._iterated_data = self._iterate(self._prepared_data)
         for i in range(len(self._iterators)):
@@ -466,7 +468,7 @@ class FruitBranch:
     def _prepare(self, X: np.ndarray) -> np.ndarray:
         prepared_data = X.copy()
         for prep in self._preparateurs:
-            prepared_data = prep(prepared_data)
+            prepared_data = prep.prepare(prepared_data)
         return prepared_data
 
     def _iterate(self, X: np.ndarray) -> np.ndarray:

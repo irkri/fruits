@@ -2,14 +2,15 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-class DataPreparateur:
+class DataPreparateur(ABC):
     """Abstract class DataPreperateur
     
-    A DataPreparateur object can be called on a three dimensional numpy 
-    array. The output should be a numpy array that matches the shape of 
-    the input array.
+    A DataPreparateur object can be fitted on a three dimensional numpy 
+    array. The output of DataPreparateur.prepare is a numpy array that
+    matches the shape of the input array.
     """
     def __init__(self, name: str = ""):
+        super().__init__()
         self.name = name
 
     @property
@@ -30,23 +31,30 @@ class DataPreparateur:
         dp = DataPreparateur(self.name)
         return dp
 
-    @abstractmethod
-    def _prepare(self, X: np.ndarray) -> np.ndarray:
+    def fit(self, X: np.ndarray):
+        """Fits the DataPreparateur to the given dataset.
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        """
         pass
+
+    @abstractmethod
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        pass
+
+    def fit_prepare(self, X: np.ndarray) -> np.ndarray:
+        """Fits the given dataset to the DataPreparateur and returns
+        the preparated results.
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        """
+        self.fit(X)
+        return self.prepare(X)
 
     def __copy__(self):
         return self.copy()
-
-    def __call__(self, X: np.ndarray) -> np.ndarray:
-        """Applies the DataPreparateur object to the input time series
-        dataset.
-
-        :param X: (multidimensional) time series dataset
-        :type X: np.ndarray
-        :returns: preprocessed dataset
-        :rtype: np.ndarray
-        """
-        return self._prepare(X)
 
     def __repr__(self) -> str:
         return "DataPreparateur('" + self._name + "')"
@@ -68,7 +76,15 @@ class INC(DataPreparateur):
         super().__init__(name)
         self._zero_padding = zero_padding
 
-    def _prepare(self, X: np.ndarray) -> np.ndarray:
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        """Returns the increments of all time series in X.
+        This is the equivalent of the convolution of X and [-1,1].
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        :returns: stepwise slopes of each time series in X
+        :rtype: np.ndarray
+        """
         if self._zero_padding:
             out = np.delete((np.roll(X, -1, axis=2) - X), -1, axis=2)
             pad_widths = [(0,0) for dim in range(3)]
@@ -99,13 +115,41 @@ class STD(DataPreparateur):
     def __init__(self,
                  name: str = "Standardization"):
         super().__init__(name)
+        self._means = None
+        self._stds = None
 
-    def _prepare(self, X: np.ndarray) -> np.ndarray:
+    def fit(self, X: np.ndarray):
+        """Fits the dataset X to the DataPreparateur by calculating
+        the mean and standard deviation of each time series in X and
+        storing the calculations for later usage in self.prepare().
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        """
+        self._means = np.zeros(X.shape[:2])
+        self._stds = np.zeros(X.shape[:2])
+        for i in range(X.shape[0]):
+            for j in range(X.shape[1]):
+                self._means[i, j] = np.mean(X[i, j, :])
+                self._stds[i, j] = np.std(X[i, j, :])
+
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        """Returns (X_i-mu)/v where mu is the calculated mean and v is
+        the standard deviation in self.fit().
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        :returns: (standardized) dataset
+        :rtype: np.ndarray
+        :raises: RuntimeError if self.fit() wasn't called
+        """
+        if self._means is None or self._stds is None:
+            raise RuntimeError("Missing call of STD.fit")
         out = np.zeros(X.shape)
         for i in range(X.shape[0]):
             for j in range(X.shape[1]):
-                out[i, j, :] = X[i, j, :] - np.mean(X[i, j, :])
-                out[i, j, :] /= np.std(X[i, j, :])
+                out[i, j, :] = X[i, j, :] - self._means[i, j]
+                out[i, j, :] /= self._stds[i, j]
         return out
 
     def copy(self):
@@ -127,14 +171,37 @@ class NRM(DataPreparateur):
     def __init__(self,
                  name: str = "Normalization"):
         super().__init__(name)
+        self._maxs = None
+        self._mins = None
 
-    def _prepare(self, X: np.ndarray) -> np.ndarray:
+    def fit(self, X: np.ndarray):
+        """Fits the dataset X to the DataPreparateur by calculating
+        the maximum and minimum of each time series in X and storing
+        both values for later usage in self.prepare().
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        """
+        self._maxs= np.max(X, axis=2)
+        self._mins= np.min(X, axis=2)
+
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        """Returns (X_i-min)/(max-min) where max/min were calculated in
+        a call of self.fit().
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        :returns: (normalized) dataset
+        :rtype: np.ndarray
+        :raises: RuntimeError if self.fit() wasn't called
+        """
+        if self._maxs is None or self._mins is None:
+            raise RuntimeError("Missing call of NRM.fit")
         out = np.zeros(X.shape)
         for i in range(X.shape[0]):
             for j in range(X.shape[1]):
-                mini = np.min(X[i, j, :])
-                maxi = np.max(X[i, j, :])
-                out[i, j, :] = (X[i, j, :]-mini) / (maxi-mini)
+                out[i, j, :] = X[i, j, :] - self._mins[i, j]
+                out[i, j, :] /= self._maxs[i, j] - self._mins[i, j]
         return out
 
     def copy(self):
