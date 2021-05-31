@@ -13,6 +13,7 @@ class FeatureSieve(ABC):
     `FeatureSieve.fit` and `FeatureSieve.sieve`.
     """
     def __init__(self, name: str = ""):
+        super().__init__()
         self._name = name
 
     @property
@@ -361,7 +362,7 @@ class END(FeatureSieve):
             self._cut = 1
 
     def sieve(self, X: np.ndarray):
-        """Returns np.array[X[i, -1] for i in range(len(X))]).
+        """Returns np.array([X[i, -1] for i in range(len(X))]).
 
         :param X: (onedimensional) time series dataset
         :type X: np.ndarray
