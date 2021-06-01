@@ -7,8 +7,14 @@ This package can be installed on your local machine by executing the file [setup
   $ python setup.py install
 ```
 
+## Documentation
+The documentation of __FRUITS__ can be created by calling `make html` in the [docs](https://github.com/alienkrieg/tsclassification/tree/fit_transform/docs) folder. This will need a few dependencies to work. Please install the following packages using `pip` before executing the `make` command.
+- sphinx
+- sphinx_rtd_theme
+- m2r2
+
 ## Pipeline
-The `fruits` package works as a pipeline that extracts features from multidimensional time series data.<br>
+The __FRUITS__ package works as a pipeline that extracts features from multidimensional time series data.<br>
 To initialize the data one has to create a `fruits.Fruit` object. This object can now be customized by the user in three different ways. There are standard configurations and objects for each of the following steps in `fruits` available to choose from.
 - Data Preparation: `DataPreparateur` objects are used to preprocess the data. This is an optional step.
 - Calculation of Iterated Sums: `SummationIterator` objects specify which Iterated Sums should be calculated<br>
@@ -55,7 +61,7 @@ X_test_features = myfruit.transform(X_test)
 We test the pipeline for accuracy by doing classification experiments of some UCR-datasets. You can [download](https://www.timeseriesclassification.com/Downloads/Archives/Univariate2018_arff.zip) them from [timeseriesclassification.com](https://timeseriesclassification.com) and execute the script [configurations_on_ucr.py](experiments/configurations_on_ucr.py) after configuring the self-explaining global variables in the script. This will produce an output file that contains the classification-accuracy results.
 
 ## Unit tests
-There are a bunch of tests for __fruits__ available to execute. To do this, enter the command
+There are a bunch of tests for __FRUITS__ available to execute. To do this, enter the command
 ```
   $ python -m pytest tests
 ```
