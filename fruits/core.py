@@ -8,16 +8,17 @@ def ISS(Z: np.ndarray, iterators: list) -> np.ndarray:
     list of SummationIterators and decides which function to use at each
     iterator to get the best performance possible.
 
-    For each given time series Z, this function returns the iteratively 
-    calulcated cummulative sums of the input data, which will be 
+    For each given time series Z, this function returns the iteratively
+    calulcated cummulative sums of the input data, which will be
     stepwise transformed using the specified SummationIterator[s].
+
     :param Z: three dimensional array containing multidimensional 
-    time series data
+        time series data
     :type Z: numpy.ndarray
     :param iterators: list of objects of type SummationIterator
     :type iterators: list
     :returns: numpy array of shape (Z.shape[0], len(iterators), 
-    Z.shape[2])
+        Z.shape[2])
     :rtype: {numpy.ndarray}
     """
     if isinstance(iterators, SummationIterator):

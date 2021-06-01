@@ -173,7 +173,7 @@ class Fruit:
         
         :param objects: Object(s) to add
         :type objects: Object of mentioned type(s) or iterable object
-        containing multiple objects of mentioned type(s)
+            containing multiple objects of mentioned type(s)
         :raises: TypeError if one of the objects has an unknown type
         """
         self._current_branch.add(objects)
@@ -223,7 +223,7 @@ class Fruit:
         transformed results of X from all branches.
         
         :param X: features of each time series in X for all branches
-        concatenated
+            concatenated
         :type X: np.ndarray
         :returns: two dimensional feature array
         :rtype: np.ndarray
@@ -288,7 +288,7 @@ class FruitBranch:
     the iterated sums from the previous step. The Fruit object then  
     returns an array of numbers, i.e. the features for each time series.
     The number of features for one time series is equal to:
-        [number of iterators] x [number of sieves] 
+    `[number of iterators] x [number of sieves]`
     """
     def __init__(self):
         # lists of used classes for data processing
@@ -394,7 +394,7 @@ class FruitBranch:
         
         :param objects: Object(s) to add to the branch
         :type objects: Object of mentioned type(s) or iterable object
-        containing multiple objects of mentioned type(s)
+            containing multiple objects of mentioned type(s)
         :raises: TypeError if one of the objects has an unknown type
         """
         objects = np.array(objects, dtype=object).flatten()
@@ -438,8 +438,8 @@ class FruitBranch:
         and sieves.
         
         :param X: (multidimensional) time series dataset;
-        If `X.ndims < 3` then the array will be expanded to contain 3
-        dimensions. This could lead to unwanted behaviour.
+            If `X.ndims < 3` then the array will be expanded to contain
+            3 dimensions. This could lead to unwanted behaviour.
         :type X: np.ndarray
         :raises: ValueError if `X.ndims > 3`
         """
@@ -500,8 +500,9 @@ class FruitBranch:
         the calculated features for the different time series.
         
         :param X: (multidimensional) time series dataset
-        If nothing is supplied, X will be set to the dataset specified
-        in the last FruitBranch.fit call., defaults to None
+            If nothing is supplied, X will be set to the dataset
+            specified in the last FruitBranch.fit call.,
+            defaults to None
         :type X: np.ndarray, optional
         :returns: Features for all time series in X
         :rtype: np.ndarray
@@ -542,7 +543,7 @@ class FruitBranch:
         """Returns a copy of this FruitBranch object.
         
         :returns: Copy of the branch with same settings but all
-        calculations done erased.
+            calculations done erased.
         :rtype: FruitBranch
         """
         copy_ = FruitBranch()

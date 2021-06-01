@@ -11,15 +11,18 @@ class SummationIterator:
     and return numpy arrays. The results from each monomial are
     multiplied before the cumulative sums are calculated.
     This happens in fruits.core.ISS.
+    
     Example:
-    ```
-    >>> iterator = SummationIterator()
-    >>> iterator.multiply([lambda X: X[0, :]**2, lambda X: X[1, :]**3])
-    >>> iterator.multiply([lambda X: X[0, :])
-    >>> fruits.core.ISS(X, [iterator])
-    ```
+
+    .. code-block:: python
+
+        iterator = SummationIterator()
+        iterator.multiply([lambda X: X[0, :]**2, lambda X: X[1, :]**3])
+        iterator.multiply([lambda X: X[0, :])
+        fruits.core.ISS(X, [iterator])
+    
     The result of this last function call is
-    `CS(CS(X[0, :]**2 * X[1, :]**3)) * X[0, :])`,
+    ``CS(CS(X[0, :]**2 * X[1, :]**3)) * X[0, :])``,
     where CS denotes the function that calulcates the cumulative sums.
     
     :param name: Name for the object, defaults to ""
@@ -107,12 +110,12 @@ class SimpleWord(SummationIterator):
     It is used to speed up the calculation of iterated sums.
 
     :param string: Name for the object that is also used to create
-    the monomials of the SummationIterator, e.g. '[11][221][1122]'
+        the monomials of the SummationIterator, e.g. '[11][221][1122]'
     :type string: str
     :param scale: Scale of the object, uncommon option, defaults to 0
     :type scale: int, optional
     :raises: ValueError if `string` doesn't match the regular
-    expression '([d+])+' where 'd+' denotes one or more digits.
+        expression '([d+])+' where 'd+' denotes one or more digits.
     """
     def __init__(self, string: str, scale: int = 0):
         super().__init__(string, scale)
@@ -174,13 +177,13 @@ def generate_random_words(number: int,
     :param number: number of instances created
     :type number: int
     :param dim: maximal dimensionality the letters of any Monomial in 
-    any SimpleWord can extract, defaults to 1
+        any SimpleWord can extract, defaults to 1
     :type dim: int, optional
     :param monomial_length: maximal number of letters of any Monomial, 
-    defaults to 3
+        defaults to 3
     :type monomial_length: int, optional
     :param n_monomials: maximal number of Monomials of any SimpleWord, 
-    defaults to 3
+        defaults to 3
     :type n_monomials: int, optional
     :returns: List of SimpleWords
     :rtype: list
@@ -204,13 +207,13 @@ def generate_words(dim: int = 1,
     boundaries.
     
     :param dim: maximal dimensionality the letters of any Monomial in 
-    any SimpleWord can extract, defaults to 1
+        any SimpleWord can extract, defaults to 1
     :type dim: int, optional
     :param monomial_length: maximal number of letters of any Monomial, 
-    defaults to 1
+        defaults to 1
     :type monomial_length: int, optional
     :param n_monomials: maximal number of Monomials of any SimpleWord, 
-    defaults to 1
+        defaults to 1
     :type n_monomials: int, optional
     :returns: List of SimpleWords
     :rtype: list

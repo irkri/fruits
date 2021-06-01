@@ -77,18 +77,18 @@ class PPV(FeatureSieve):
     than the calculated quantile.
 
     :param quantile: Quantile as actual value or probability for
-    quantile calculation (e.g. 0.5 for the 0.5-quantile),
-    defaults to 0.5
+        quantile calculation (e.g. 0.5 for the 0.5-quantile),
+        defaults to 0.5
     :type quantile: float, optional
     :param constant: if `True`, the argument `quantile` is interpreted
-    as the actual value for the quantile, defaults to False
+        as the actual value for the quantile, defaults to False
     :type constant: bool, optional
     :param sample_size: Sample size to use for quantile calculation.
-    This option can be ignored if `constant` is set to `True`,
-    defaults to 0.05
+        This option can be ignored if `constant` is set to `True`,
+        defaults to 0.05
     :type sample_size: float, optional
     :param name: Name for the object,
-    defaults to "Proportion of positive values"
+        defaults to "Proportion of positive values"
     :type name: str, optional
     """
     def __init__(self,
@@ -165,18 +165,18 @@ class PPVC(PPV):
     the array (X>=quantile).
 
     :param quantile: Quantile as actual value or probability for
-    quantile calculation (e.g. 0.5 for the 0.5-quantile),
-    defaults to 0.5
+        quantile calculation (e.g. 0.5 for the 0.5-quantile),
+        defaults to 0.5
     :type quantile: float, optional
     :param constant: if `True`, the argument `quantile` is interpreted
-    as the actual value for the quantile, defaults to False
+        as the actual value for the quantile, defaults to False
     :type constant: bool, optional
     :param sample_size: Sample size to use for quantile calculation.
-    This option can be ignored if `constant` is set to `True`,
-    defaults to 0.05
+        This option can be ignored if `constant` is set to `True`,
+        defaults to 0.05
     :type sample_size: float, optional
-    :param name: Name for the object,
-    defaults to "Proportion of connected components of positive values"
+    :param name: Name for the object, defaults to
+        "Proportion of connected components of positive values"
     :type name: str, optional
     """
     def __init__(self,
@@ -217,10 +217,10 @@ class MAX(FeatureSieve):
     a given dataset.
 
     :param cut: If cut is an index of the time series array, the time
-    series will be cut at this point before calculating the maximum. If
-    it is a real number in (0,1), the corresponding coquantile will be
-    calculated first and the result will be treated as the cutting
-    index., defaults to -1
+        series will be cut at this point before calculating the maximum.
+        If it is a real number in (0,1), the corresponding coquantile
+        will be calculated first and the result will be treated as the
+        cutting index., defaults to -1
     :type cut: int, optional
     :param name: Name of the object, defaults to "Maximal value"
     :type name: str, optional
@@ -274,10 +274,10 @@ class MIN(FeatureSieve):
     a given dataset.
     
     :param cut: If cut is an index of the time series array, the time
-    series will be cut at this point before calculating the minimum. If
-    it is a real number in (0,1), the corresponding coquantile will be
-    calculated first and the result will be treated as the cutting
-    index., defaults to -1
+        series will be cut at this point before calculating the minimum.
+        If it is a real number in (0,1), the corresponding coquantile
+        will be calculated first and the result will be treated as the
+        cutting index., defaults to -1
     :type cut: int, optional
     :param name: Name of the object, defaults to "Minimal value"
     :type name: str, optional
@@ -331,13 +331,14 @@ class END(FeatureSieve):
     given dataset.
 
     :param cut: If cut is an index of the time series array, this sieve
-    will extract the value of the time series at this position. If it
-    is a real number in (0,1), the corresponding coquantile will be
-    calculated first and the result will be treated as the value
-    index., defaults to -1
+        will extract the value of the time series at this position. If
+        it is a real number in (0,1), the corresponding coquantile will
+        be calculated first and the result will be treated as the value
+        index., defaults to -1
     :type cut: int, optional
     :param name: Name of the object, defaults to "Last value"
     :type name: str, optional
+
     """
     def __init__(self,
                  cut: int = -1,
@@ -389,20 +390,20 @@ def get_ppv(n: int = 1,
     """Returns a list of PPV feature sieves.
     
     :param n: Number of sieves (quantiles will be evenly spaced numbers
-    between `a` and `b`), defaults to 1
+        between `a` and `b`), defaults to 1
     :type n: int, optional
     :param a: Left interval border where the quantiles will be drawn
-    from, defaults to 0
+        from, defaults to 0
     :type a: float, optional
     :param b: Left interval border where the quantiles will be drawn
-    from, defaults to 1
+        from, defaults to 1
     :type b: float, optional
     :param constant: if `True`, the quantiles will be interpreted as
-    actual numbers, not percentiles, defaults to False
+        actual numbers, not percentiles, defaults to False
     :type constant: bool, optional
     :param sample_size: The quantiles will be calculated on this 
-    proportion of the input data, Only matters if `constant` is set to
-    `False`, defaults to 0.05
+        proportion of the input data, Only matters if `constant` is set
+        to `False`, defaults to 0.05
     :type sample_size: float, optional
     """
     return [PPV(q, constant=constant, sample_size=sample_size)
