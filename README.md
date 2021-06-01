@@ -13,6 +13,8 @@ The documentation of __FRUITS__ can be created by calling `make html` in the [do
 - sphinx_rtd_theme
 - m2r2
 
+This should create a local directory `docs/build`. Open the file `docs/build/index.html` in a browser to access the documentation.
+
 ## Pipeline
 The __FRUITS__ package works as a pipeline that extracts features from multidimensional time series data.<br>
 To initialize the data one has to create a `fruits.Fruit` object. This object can now be customized by the user in three different ways. There are standard configurations and objects for each of the following steps in `fruits` available to choose from.
