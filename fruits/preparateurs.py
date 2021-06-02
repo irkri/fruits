@@ -120,21 +120,22 @@ class STD(DataPreparateur):
 
     def fit(self, X: np.ndarray):
         """Fits the dataset X to the DataPreparateur by calculating
-        the mean and standard deviation of each time series in X and
-        storing the calculations for later usage in self.prepare().
+        the mean and standard deviation of all time series in X 
+        (seperately for each dimension) and stores the calculations for
+        later usage in self.prepare().
         
         :param X: (multidimensional) time series dataset
         :type X: np.ndarray
         """
-        self._means = np.zeros(X.shape[:2])
-        self._stds = np.zeros(X.shape[:2])
-        for i in range(X.shape[0]):
-            for j in range(X.shape[1]):
-                self._means[i, j] = np.mean(X[i, j, :])
-                self._stds[i, j] = np.std(X[i, j, :])
+        self._means = np.zeros(X.shape[1:])
+        self._stds = np.zeros(X.shape[1:])
+        for i in range(X.shape[1]):
+            for j in range(X.shape[2]):
+                self._means[i, j] = np.mean(X[:, i, j])
+                self._stds[i, j] = np.std(X[:, i, j])
 
     def prepare(self, X: np.ndarray) -> np.ndarray:
-        """Returns (X_i-mu)/v where mu is the calculated mean and v is
+        """Returns (X-mu)/v where mu is the calculated mean and v is
         the standard deviation in self.fit().
         
         :param X: (multidimensional) time series dataset
@@ -145,11 +146,11 @@ class STD(DataPreparateur):
         """
         if self._means is None or self._stds is None:
             raise RuntimeError("Missing call of STD.fit")
-        out = np.zeros(X.shape)
-        for i in range(X.shape[0]):
-            for j in range(X.shape[1]):
-                out[i, j, :] = X[i, j, :] - self._means[i, j]
-                out[i, j, :] /= self._stds[i, j]
+        out = X.copy()
+        for i in range(X.shape[1]):
+            for j in range(X.shape[2]):
+                out[:, i, j] -= self._means[i, j]
+                out[:, i, j] /= self._stds[i, j]
         return out
 
     def copy(self):
@@ -159,56 +160,4 @@ class STD(DataPreparateur):
         :rtype: STD
         """
         dp = STD(self.name)
-        return dp
-
-
-class NRM(DataPreparateur):
-    """DataPreparateur: Normalization
-    
-    For a time series `X` this class produces the output
-    `X_nrm = (X-min(X))/(max(X)-min(X))`.
-    """    
-    def __init__(self,
-                 name: str = "Normalization"):
-        super().__init__(name)
-        self._maxs = None
-        self._mins = None
-
-    def fit(self, X: np.ndarray):
-        """Fits the dataset X to the DataPreparateur by calculating
-        the maximum and minimum of each time series in X and storing
-        both values for later usage in self.prepare().
-        
-        :param X: (multidimensional) time series dataset
-        :type X: np.ndarray
-        """
-        self._maxs= np.max(X, axis=2)
-        self._mins= np.min(X, axis=2)
-
-    def prepare(self, X: np.ndarray) -> np.ndarray:
-        """Returns (X_i-min)/(max-min) where max/min were calculated in
-        a call of self.fit().
-        
-        :param X: (multidimensional) time series dataset
-        :type X: np.ndarray
-        :returns: (normalized) dataset
-        :rtype: np.ndarray
-        :raises: RuntimeError if self.fit() wasn't called
-        """
-        if self._maxs is None or self._mins is None:
-            raise RuntimeError("Missing call of NRM.fit")
-        out = np.zeros(X.shape)
-        for i in range(X.shape[0]):
-            for j in range(X.shape[1]):
-                out[i, j, :] = X[i, j, :] - self._mins[i, j]
-                out[i, j, :] /= self._maxs[i, j] - self._mins[i, j]
-        return out
-
-    def copy(self):
-        """Returns a copy of the DataPreparateur object.
-        
-        :returns: Copy of this object
-        :rtype: NRM
-        """
-        dp = NRM(self.name)
         return dp
