@@ -202,9 +202,9 @@ class PPVC(PPV):
         """
         if self._q is None:
             raise RuntimeError("Missing call of PPV.fit()")
-        positive = np.pad((X >= self._q).astype(np.int32), 
-                          ((0,0), (1,0)), 'constant')
-        diff = positive[:, 1:] - positive[:, :-1]
+        diff = accelerated._increments(np.expand_dims(
+                                        (X >= self._q).astype(np.int32),
+                                        axis=1))[:, 0, :]
         s = np.sum(diff == 1, axis=-1)
         # At most X.shape[1]/2 connected components are possible.
         return 2*s / X.shape[1]
@@ -231,31 +231,17 @@ class MAX(FeatureSieve):
         super().__init__(name)
         self._cut = cut
 
-    def fit(self, X: np.ndarray):
-        """Fits the MAX feature sieve to the given dataset by
-        calculating a cutting point if neccessary.
-        
-        :param X: (onedimensional) time series dataset
-        :type X: np.ndarray
-        """
-        if self._cut >= X.shape[1]:
-            self._cut = X.shape[1] - 1
-        elif 0 < self._cut < 1:
-            self._cut = accelerated._coquantile(X, self._cut)
-        elif self._cut < 0:
-            self._cut = X.shape[1]
-        elif self._cut == 0:
-            self._cut = 1
-
     def sieve(self, X: np.ndarray) -> np.ndarray:
-        """Returns np.array([max(X[i,:]) for i in range(len(X))]).
+        """Returns `np.array([max(X[i,:c]) for i in range(len(X))])`.
+        Here `c` is a cutting index that will be calculated based on
+        `cut`.
 
         :param X: (onedimensional) time series dataset
         :type X: np.ndarray
         :returns: feature array (one feature for each time series)
         :rtype: np.ndarray
         """
-        return accelerated._max(X[:, :self._cut])
+        return accelerated._max(X, self._cut)
 
     def copy(self):
         """Returns a copy of this object.
@@ -288,31 +274,17 @@ class MIN(FeatureSieve):
         super().__init__(name)
         self._cut = cut
 
-    def fit(self, X: np.ndarray):
-        """Fits the MIN feature sieve to the given dataset by
-        calculating a cutting point if neccessary.
-        
-        :param X: (onedimensional) time series dataset
-        :type X: np.ndarray
-        """
-        if self._cut >= X.shape[1]:
-            self._cut = X.shape[1] - 1
-        elif 0 < self._cut < 1:
-            self._cut = accelerated._coquantile(X, self._cut)
-        elif self._cut < 0:
-            self._cut = X.shape[1]
-        elif self._cut == 0:
-            self._cut = 1
-
     def sieve(self, X: np.ndarray):
-        """Returns np.array([min(X[i,:]) for i in range(len(X))]).
+        """Returns `np.array([min(X[i,:c]) for i in range(len(X))])`.
+        Here `c` is a cutting index that will be calculated based on
+        `cut`.
 
         :param X: (onedimensional) time series dataset
         :type X: np.ndarray
         :returns: feature array (one feature for each time series)
         :rtype: np.ndarray
         """
-        return accelerated._min(X[:, :self._cut])
+        return accelerated._min(X, self._cut)
 
     def copy(self):
         """Returns a copy of this object.
@@ -344,33 +316,28 @@ class END(FeatureSieve):
                  cut: int = -1,
                  name: str = "Last value"):
         super().__init__(name)
-        self._cut = cut
-
-    def fit(self, X: np.ndarray):
-        """Fits the END feature sieve to the given dataset by
-        calculating a cutting point if neccessary.
-        
-        :param X: (onedimensional) time series dataset
-        :type X: np.ndarray
-        """
-        if self._cut >= X.shape[1]:
-            self._cut = X.shape[1] - 1
-        elif 0 < self._cut < 1:
-            self._cut = accelerated._coquantile(X, self._cut)
-        elif self._cut < 0:
-            self._cut = -1
-        elif self._cut == 0:
-            self._cut = 1
+        self._cut = cut        
 
     def sieve(self, X: np.ndarray):
-        """Returns np.array([X[i, -1] for i in range(len(X))]).
+        """Returns `np.array([X[i, c] for i in range(len(X))])`, where
+        `c` is based on the specified `cut`.
 
         :param X: (onedimensional) time series dataset
         :type X: np.ndarray
         :returns: feature array (one feature for each time series)
         :rtype: np.ndarray
         """
-        return X[:, self._cut]
+        last = np.zeros(X.shape[0])
+        for i in range(X.shape[0]):
+            cut = self._cut
+            if 0 < cut < 1:
+                cut = accelerated._coquantile(X[i, :], cut)
+            elif cut < 0:
+                cut = X.shape[1]
+            elif cut > X.shape[1]:
+                raise IndexError("Cutting index out of range")
+            last[i] = X[i, cut-1]
+        return last
 
     def copy(self):
         """Returns a copy of this object.

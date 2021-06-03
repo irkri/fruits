@@ -50,4 +50,4 @@ def test_end():
 
     end_cut = fruits.features.END(cut=0.2).fit_sieve(X_1[0])
 
-    np.testing.assert_allclose(np.array([-4,2]), end_cut)
+    np.testing.assert_allclose(np.array([-4,0]), end_cut)

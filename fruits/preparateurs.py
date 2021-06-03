@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
+from fruits import accelerated
+
 class DataPreparateur(ABC):
     """Abstract class DataPreperateur
     
@@ -85,15 +87,9 @@ class INC(DataPreparateur):
         :returns: stepwise slopes of each time series in X
         :rtype: np.ndarray
         """
+        out = accelerated._increments(X)
         if self._zero_padding:
-            out = np.delete((np.roll(X, -1, axis=2) - X), -1, axis=2)
-            pad_widths = [(0,0) for dim in range(3)]
-            pad_widths[2] = (1,0)
-            out = np.pad(out, pad_width=pad_widths, mode="constant")
-        else:
-            out = np.zeros(X.shape)
-            out[:, :, 1:] = np.delete((np.roll(X, -1, axis=2) - X), -1, axis=2)
-            out[:, :, 0] = X[:, :, 0]
+            out[:, :, 0] = 0
         return out
 
     def copy(self):
