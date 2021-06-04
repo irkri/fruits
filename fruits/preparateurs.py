@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from fruits import accelerated
+from fruits import _accelerated
 
 class DataPreparateur(ABC):
     """Abstract class DataPreperateur
@@ -87,7 +87,7 @@ class INC(DataPreparateur):
         :returns: stepwise slopes of each time series in X
         :rtype: np.ndarray
         """
-        out = accelerated._increments(X)
+        out = _accelerated._increments(X)
         if self._zero_padding:
             out[:, :, 0] = 0
         return out

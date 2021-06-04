@@ -2,15 +2,15 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from fruits import accelerated, core
+from fruits import _accelerated, core
 
 class FeatureSieve(ABC):
     """Abstract class FeatureSieve
     
-    A FeatureSieve object is used to extract a single number out of an
-    multidimensional numpy array.
+    A FeatureSieve object is used to transforms a twodimensional numpy
+    array into a onedimensional numpy array.
     Each class that inherits FeatureSieve must override the methods
-    `FeatureSieve.fit` and `FeatureSieve.sieve`.
+    `FeatureSieve.sieve`.
     """
     def __init__(self, name: str = ""):
         super().__init__()
@@ -202,7 +202,7 @@ class PPVC(PPV):
         """
         if self._q is None:
             raise RuntimeError("Missing call of PPV.fit()")
-        diff = accelerated._increments(np.expand_dims(
+        diff = _accelerated._increments(np.expand_dims(
                                         (X >= self._q).astype(np.int32),
                                         axis=1))[:, 0, :]
         s = np.sum(diff == 1, axis=-1)
@@ -245,7 +245,7 @@ class MAX(FeatureSieve):
         for i in range(X.shape[0]):
             cut = self._cut
             if 0 < cut < 1:
-                cut = accelerated._coquantile(X[i, :], cut)
+                cut = _accelerated._coquantile(X[i, :], cut)
             elif cut < 0:
                 cut = X.shape[1]
             elif cut > X.shape[1] or cut == 0:
@@ -298,7 +298,7 @@ class MIN(FeatureSieve):
         for i in range(X.shape[0]):
             cut = self._cut
             if 0 < cut < 1:
-                cut = accelerated._coquantile(X[i, :], cut)
+                cut = _accelerated._coquantile(X[i, :], cut)
             elif cut < 0:
                 cut = X.shape[1]
             elif cut > X.shape[1] or cut == 0:
@@ -351,7 +351,7 @@ class END(FeatureSieve):
         for i in range(X.shape[0]):
             cut = self._cut
             if 0 < cut < 1:
-                cut = accelerated._coquantile(X[i, :], cut)
+                cut = _accelerated._coquantile(X[i, :], cut)
             elif cut < 0:
                 cut = X.shape[1]
             elif cut > X.shape[1]:

@@ -1,6 +1,6 @@
 import numpy as np
 
-from fruits import accelerated
+from fruits import _accelerated
 from fruits.iterators import SummationIterator, SimpleWord
 
 def ISS(Z: np.ndarray, iterators: list) -> np.ndarray:
@@ -56,7 +56,7 @@ def ISS(Z: np.ndarray, iterators: list) -> np.ndarray:
                 for k in range(len(fast_iterators_raw[i][j])):
                     fast_iterators_transformed[i,j,k] = \
                                                 fast_iterators_raw[i][j][k]
-        ISS_fast = accelerated._fast_ISS(Z, fast_iterators_transformed, scales)
+        ISS_fast = _accelerated._fast_ISS(Z, fast_iterators_transformed, scales)
 
     # get solution for SummationIterators that are not of type SimpleWord
     if slow_iterators:
