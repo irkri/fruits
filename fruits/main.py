@@ -384,6 +384,7 @@ class FruitBranch:
         branch.
         """
         self._sieves = []
+        self._sieves_extended = []
 
     def add(self, *objects):
         """Adds one or multiple object(s) to the branch.
@@ -393,7 +394,7 @@ class FruitBranch:
         - fruits.features.FeatureSieve
         
         :param objects: Object(s) to add to the branch
-        :type objects: Object of mentioned type(s) or iterable object
+        :type objects: Object(s) of mentioned type(s) or iterable object
             containing multiple objects of mentioned type(s)
         :raises: TypeError if one of the objects has an unknown type
         """
@@ -421,7 +422,7 @@ class FruitBranch:
         self.clear_preparateurs()
         self.clear_iterators()
         self.clear_sieves()
-        self._sieves_extended = []
+        self.clear_cache()
 
     def nfeatures(self) -> int:
         """Returns the total number of features the current
@@ -431,29 +432,6 @@ class FruitBranch:
         :rtype: int
         """
         return len(self._sieves) * len(self._iterators)
-
-    def fit(self, X: np.ndarray):
-        """Fits the branch to the given dataset. What this action
-        explicitly does depends on the added preparateurs, iterators
-        and sieves.
-        
-        :param X: (multidimensional) time series dataset;
-            If `X.ndims < 3` then the array will be expanded to contain
-            3 dimensions. This could lead to unwanted behaviour.
-        :type X: np.ndarray
-        :raises: ValueError if `X.ndims > 3`
-        """
-        self._sieves_extended = []
-        self._input_data = self._reshape_input(X)
-        for prep in self._preparateurs:
-            prep.fit(self._input_data)
-        self._prepared_data = self._prepare(self._input_data)
-        self._iterated_data = self._iterate(self._prepared_data)
-        for i in range(len(self._iterators)):
-            sieves_copy = [x.copy() for x in self._sieves]
-            for sieve in sieves_copy:
-                sieve.fit(self._iterated_data[:, i, :])
-            self._sieves_extended.append(sieves_copy)
 
     def _reshape_input(self, X: np.ndarray) -> np.ndarray:
         out = X.copy()
@@ -495,13 +473,36 @@ class FruitBranch:
                 k += 1
         return sieved_data
 
+    def fit(self, X: np.ndarray):
+        """Fits the branch to the given dataset. What this action
+        explicitly does depends on the added preparateurs, iterators
+        and sieves.
+        
+        :param X: (multidimensional) time series dataset;
+            If `X.ndims < 3` then the array will be expanded to contain
+            3 dimensions. This could lead to unwanted behaviour.
+        :type X: np.ndarray
+        :raises: ValueError if `X.ndims > 3`
+        """
+        self._sieves_extended = []
+        self._input_data = self._reshape_input(X)
+        for prep in self._preparateurs:
+            prep.fit(self._input_data)
+        self._prepared_data = self._prepare(self._input_data)
+        self._iterated_data = self._iterate(self._prepared_data)
+        for i in range(len(self._iterators)):
+            sieves_copy = [x.copy() for x in self._sieves]
+            for sieve in sieves_copy:
+                sieve.fit(self._iterated_data[:, i, :])
+            self._sieves_extended.append(sieves_copy)
+
     def transform(self, X: np.ndarray = None) -> np.ndarray:
         """Transforms the given time series dataset. The results are
         the calculated features for the different time series.
         
         :param X: (multidimensional) time series dataset
             If nothing is supplied, X will be set to the dataset
-            specified in the last FruitBranch.fit call.,
+            specified in the last call of `FruitBranch.fit`.,
             defaults to None
         :type X: np.ndarray, optional
         :returns: Features for all time series in X
