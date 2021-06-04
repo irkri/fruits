@@ -139,7 +139,7 @@ class PPV(FeatureSieve):
         """
         if self._q is None:
             raise RuntimeError("Missing call of PPV.fit()")
-        return accelerated._fast_ppv(X, self._q)
+        return np.sum((X >= self._q), axis=1) / X.shape[1]
 
     def copy(self):
         """Returns a copy of this object.
@@ -241,7 +241,17 @@ class MAX(FeatureSieve):
         :returns: feature array (one feature for each time series)
         :rtype: np.ndarray
         """
-        return accelerated._max(X, self._cut)
+        result = np.zeros(X.shape[0])
+        for i in range(X.shape[0]):
+            cut = self._cut
+            if 0 < cut < 1:
+                cut = accelerated._coquantile(X[i, :], cut)
+            elif cut < 0:
+                cut = X.shape[1]
+            elif cut > X.shape[1] or cut == 0:
+                raise IndexError("Cutting index out of range")
+            result[i] = np.max(X[i, :cut])
+        return result
 
     def copy(self):
         """Returns a copy of this object.
@@ -284,7 +294,17 @@ class MIN(FeatureSieve):
         :returns: feature array (one feature for each time series)
         :rtype: np.ndarray
         """
-        return accelerated._min(X, self._cut)
+        result = np.zeros(X.shape[0])
+        for i in range(X.shape[0]):
+            cut = self._cut
+            if 0 < cut < 1:
+                cut = accelerated._coquantile(X[i, :], cut)
+            elif cut < 0:
+                cut = X.shape[1]
+            elif cut > X.shape[1] or cut == 0:
+                raise IndexError("Cutting index out of range")
+            result[i] = np.min(X[i, :cut])
+        return result
 
     def copy(self):
         """Returns a copy of this object.

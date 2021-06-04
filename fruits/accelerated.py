@@ -22,60 +22,7 @@ def _fast_ISS(Z: np.ndarray,
                 result[i, j, :] /= Z.shape[2]**scales[j]
     return result
 
-@numba.njit(parallel=True, fastmath=True)
-def _fast_ppv(X: np.ndarray, ref_value: float) -> np.ndarray:
-    # accelerated function for fruits.features.PPV
-    result = np.zeros(len(X))
-    for i in numba.prange(len(X)):
-        c = 0
-        for j in range(len(X[i])):
-            if X[i][j] >= ref_value:
-                c += 1
-        if len(X[i]) == 0:
-            result[i] = 0
-        else:
-            result[i] = c / len(X[i])
-    return result
-
-@numba.njit(parallel=True)
-def _max(X: np.ndarray, cut: float):
-    # accelerated function for fruits.features.MAX
-    result = np.zeros(X.shape[0])
-    for i in numba.prange(X.shape[0]):
-        this_cut = cut
-        if 0 < this_cut < 1:
-            this_cut = _coquantile(X[i, :], this_cut)
-        elif this_cut < 0:
-            this_cut = X.shape[1]
-        elif this_cut > X.shape[1]:
-            raise IndexError("Cutting index out of range")
-        maximum = X[i][0]
-        for j in range(this_cut):
-            if X[i][j] > maximum:
-                maximum = X[i][j]
-        result[i] = maximum
-    return result
-
-@numba.njit(parallel=True)
-def _min(X: np.ndarray, cut: float):
-    # accelerated function for fruits.features.MIN
-    result = np.zeros(X.shape[0])
-    for i in numba.prange(X.shape[0]):
-        this_cut = cut
-        if 0 < this_cut < 1:
-            this_cut = _coquantile(X[i, :], this_cut)
-        elif this_cut < 0:
-            this_cut = X.shape[1]
-        elif this_cut > X.shape[1]:
-            raise IndexError("Cutting index out of range")
-        minimum = X[i][0]
-        for j in range(this_cut):
-            if X[i][j] < minimum:
-                minimum = X[i][j]
-        result[i] = minimum
-    return result
-
-@numba.njit
+@numba.njit(fastmath=True)
 def _increments(X: np.ndarray):
     # accelerated function that calculates increments of every
     # time series in X, the first value is the first value of the
