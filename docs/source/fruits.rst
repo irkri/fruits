@@ -1,11 +1,3 @@
-fruits.accelerated
--------------------------
-
-.. automodule:: fruits.accelerated
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 fruits.core
 ------------------
 
