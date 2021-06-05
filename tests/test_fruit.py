@@ -20,14 +20,16 @@ def test_n_features():
     featex.add(fruits.features.PPV(quantile=0, constant=True))
     featex.add(fruits.features.PPV(quantile=0.2, constant=False, 
                                    sample_size=1))
-    featex.add(fruits.features.MAX)
-    featex.add(fruits.features.MIN)
+    featex.add(fruits.features.PPV(quantile=[0.2,5], constant=[False,True], 
+                                   sample_size=1, segments=True))
+    featex.add(fruits.features.MAX(cut=[0.1,0.5,0.9], segments=True))
+    featex.add(fruits.features.MIN(cut=[0.1,0.5,0.9], segments=False))
 
-    assert featex.nfeatures() == 1500
+    assert featex.nfeatures() == 3000
 
-    featex_copy = featex.copy()
+    featex_copy = featex.deepcopy()
 
-    assert featex_copy.nfeatures() == 1500
+    assert featex_copy.nfeatures() == 3000
 
     del featex
 

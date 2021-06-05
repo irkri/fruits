@@ -9,8 +9,11 @@ class FeatureSieve(ABC):
     
     A FeatureSieve object is used to transforms a twodimensional numpy
     array into a onedimensional numpy array.
+    The length of the resulting array can be determined by calling
+    `FeatureSieve.nfeatures`.
+
     Each class that inherits FeatureSieve must override the methods
-    `FeatureSieve.sieve`.
+    `FeatureSieve.sieve` and `FeatureSieve.nfeatures`.
     """
     def __init__(self, name: str = ""):
         super().__init__()
@@ -19,7 +22,7 @@ class FeatureSieve(ABC):
     @property
     def name(self) -> str:
         """Simple identifier for a FeatureSieve object without any
-        computational meaninng.
+        computational meaning.
         """
         return self._name
 
@@ -27,21 +30,9 @@ class FeatureSieve(ABC):
     def name(self, name: str):
         self._name = name
 
-    def __repr__(self) -> str:
-        out = "FeatureSieve('" + self._name + "')"
-        return out
-
     @abstractmethod
-    def copy(self):
-        """Returns a copy of this FeatureSieve object.
-
-        :returns: Copy of this object
-        :rtype: FeatureSieve
-        """
+    def nfeatures(self) -> int:
         pass
-
-    def __copy__(self):
-        return self.copy()
 
     def fit(self, X: np.ndarray):
         """Fits the FeatureSieve to the dataset. This method may do
@@ -68,6 +59,22 @@ class FeatureSieve(ABC):
         self.fit(X)
         return self.sieve(X)
 
+    @abstractmethod
+    def copy(self):
+        """Returns a copy of this FeatureSieve object.
+
+        :returns: Copy of this object
+        :rtype: FeatureSieve
+        """
+        pass
+
+    def __copy__(self):
+        return self.copy()
+
+    def __repr__(self) -> str:
+        out = "FeatureSieve('" + self._name + "')"
+        return out
+
 
 class PPV(FeatureSieve):
     """FeatureSieve: Proportion of positive values
@@ -76,18 +83,39 @@ class PPV(FeatureSieve):
     calculates the proportion of values in a time series that is greater
     than the calculated quantile.
 
-    :param quantile: Quantile as actual value or probability for
-        quantile calculation (e.g. 0.5 for the 0.5-quantile),
-        defaults to 0.5
-    :type quantile: float, optional
-    :param constant: if `True`, the argument `quantile` is interpreted
-        as the actual value for the quantile, defaults to False
-    :type constant: bool, optional
+    :param quantile: Quantile `q` or list of quantiles `[q_1, ..., q_n]`
+        as actual value(s) or probability for quantile calculation
+        (e.g. 0.5 for the 0.5-quantile)., defaults to 0.5
+    :type quantile: float or list of floats, optional
+    :param constant: If `True`, the argument `quantile` is interpreted
+        as the actual value for the quantile. If `quantile` is a list,
+        then `constant` can be a list of booleans `[b_1, ..., b_n]` 
+        where `b_i` explains the behaviour/interpretation of `q_i` or a
+        single boolean that explains what every single `q_i` is (value
+        or probability)., defaults to False
+    :type constant: bool or list of bools, optional
     :param sample_size: Sample size to use for quantile calculation.
-        This option can be ignored if `constant` is set to `True`,
+        This option can be ignored if `constant` is set to `True`.,
         defaults to 0.05
     :type sample_size: float, optional
-    :param name: Name for the object,
+    :param segments: If `True`, then the proportion of values within
+        each two quantiles will be calculated. If `quantile` is a list,
+        then this list will be sorted and the corresponding features
+        will be
+
+        .. code-block::python
+            np.array([np.sum(q_{i-1} <= X[k] < q_i)]) / len(X[k])])
+
+        where `k` is the index of the time series and `i` ranges from
+        1 to n.
+        If set to `False`, then the features will be
+
+        .. code-block::python
+            np.array([np.sum(X[k] <= q_i)]) / len(X[k])])
+
+        with the same index rules., defaults to False
+    :type segments: bool, optional
+    :param name: Name for the object.,
         defaults to "Proportion of positive values"
     :type name: str, optional
     """
@@ -95,51 +123,99 @@ class PPV(FeatureSieve):
                  quantile: float = 0.5,
                  constant: bool = False,
                  sample_size: float = 0.05,
+                 segments: bool = False,
                  name: str = "Proportion of positive values"):
         super().__init__(name)
-        self._q_input = quantile
+        if isinstance(quantile, list):
+            if not isinstance(constant, list):
+                constant = [constant for i in range(len(quantile))]
+            elif len(quantile) != len(constant):
+                raise ValueError("If 'quantile' is a list, then 'constant'"+
+                                 " also has to be a list of same length or"+
+                                 " a single boolean.") 
+            for q, c in zip(quantile, constant):
+                if not c and not (0 < q < 1):
+                    raise ValueError("If 'constant' is set to False,"+
+                                     " 'quantile' has to be a value between"+
+                                     " 0 and 1")
+        else:
+            quantile = [quantile]
+            if isinstance(constant, list):
+                if len(constant) > 1:
+                    raise ValueError("'constant' has to be a single boolean"+
+                                     " if 'quantile' is a single float")
+            else:
+                constant = [constant]
+        self._q_c_input = list(zip(quantile,constant))
+        if segments:
+            self._q_c_input = sorted(self._q_c_input, key=lambda x: x[0])
         self._q = None
-        self._constant = constant
-        self._sample_size = sample_size
-        if not constant and not (0 < self._q_input < 1):
-            raise ValueError("If 'constant' is set to False, quantile "+
-                             "has to be a value between 0 and 1")
         if not 0 < sample_size <= 1:
-            raise ValueError("'sample_size' has to be a float between 0 and 1")
+            raise ValueError("'sample_size' has to be a float in (0, 1]")
+        self._sample_size = sample_size
+        if segments and len(quantile) == 1:
+            raise ValueError("If 'segments' is set to `True` then 'quantile'"+
+                             " has to be a list of length >= 2.")
+        self._segments = segments
+
+    def nfeatures(self) -> int:
+        """Returns the number of features this FeatureSieve produces.
+        
+        :returns: number of features per time series
+        :rtype: int
+        """
+        if self._segments:
+            return len(self._q_c_input) - 1
+        else:
+            return len(self._q_c_input)
 
     def fit(self, X: np.ndarray):
-        """Calculates and remembers the quantile of the time series
-        data.
-        
+        """Calculates and remembers the quantile(s) of the input data.
+
         :param X: (onedimensional) time series dataset
         :type X: np.ndarray
         """
-        self._q = self._q_input
-        if not self._constant:
-            sample_size = int(self._sample_size * len(X))
-            if sample_size < 1:
-                sample_size = 1
-            selection = np.random.choice(np.arange(len(X)),
-                                         size=sample_size,
-                                         replace=False)
-            self._q = np.quantile(np.array(
-                                    [X[i] for i in selection]
-                                  ).flatten(),
-                                  self._q_input)
+        self._q = [x[0] for x in self._q_c_input]
+        for i in range(len(self._q)):
+            if not self._q_c_input[i][1]:
+                sample_size = int(self._sample_size * len(X))
+                if sample_size < 1:
+                    sample_size = 1
+                selection = np.random.choice(np.arange(len(X)),
+                                             size=sample_size,
+                                             replace=False)
+                self._q[i] = np.quantile(np.array(
+                                            [X[i] for i in selection]
+                                         ).flatten(),
+                                         self._q[i])
 
     def sieve(self, X: np.ndarray) -> np.ndarray:
-        """Returns `sum(X>=q)/len(X)` if q denotes the quantile
-        calculated with `self.fit`.
+        """Returns the transformed data. See the class definition for
+        detailed information.
         
         :param X: (onedimensional) time series dataset
         :type X: np.ndarray
-        :returns: array of features (one for each time series)
+        :returns: array of features
         :rtype: np.ndarray
         :raises: RuntimeError if `self.fit` wasn't called
         """
         if self._q is None:
             raise RuntimeError("Missing call of PPV.fit()")
-        return np.sum((X >= self._q), axis=1) / X.shape[1]
+        result = np.zeros((X.shape[0], self.nfeatures()))
+        for i in range(X.shape[0]):
+            if self._segments:
+                for j in range(1, len(self._q)):
+                    result[i, j-1] = np.sum(np.logical_and(
+                                                self._q[j-1] <= X[i],
+                                                X[i] < self._q[j]))
+                    result[i, j-1] /= X.shape[1]
+            else:
+                for j in range(len(self._q)):
+                    result[i, j] = np.sum((X[i] >= self._q[j]))
+                    result[i, j] /= X.shape[1]
+        if self.nfeatures() == 1:
+            return result[:, 0]
+        return result
 
     def copy(self):
         """Returns a copy of this object.
@@ -147,9 +223,10 @@ class PPV(FeatureSieve):
         :returns: Copy of this object
         :rtype: PPV
         """
-        fs = PPV(self._q_input,
-                 self._constant,
+        fs = PPV([x[0] for x in self._q_c_input],
+                 [x[1] for x in self._q_c_input],
                  self._sample_size,
+                 self._segments,
                  self.name)
         return fs
 
@@ -188,7 +265,16 @@ class PPVC(PPV):
         super().__init__(quantile,
                          constant,
                          sample_size,
+                         False,
                          name)
+
+    def nfeatures(self) -> int:
+        """Returns the number of features this FeatureSieve produces.
+        
+        :returns: number of features per time series
+        :rtype: int
+        """
+        return 1
 
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the number of consecutive strips of 1's in `(X>=q)`
@@ -213,44 +299,83 @@ class PPVC(PPV):
 class MAX(FeatureSieve):
     """FeatureSieve: Maximal value
     
-    This FeatureSieve returns the maximal value for each time series in
-    a given dataset.
+    This FeatureSieve returns the maximal value for each slice of a time
+    series in a given dataset. The slices are determined by the option
+    'cut'.
 
     :param cut: If cut is an index of the time series array, the time
         series will be cut at this point before calculating the maximum.
         If it is a real number in (0,1), the corresponding coquantile
         will be calculated first and the result will be treated as the
-        cutting index., defaults to -1
-    :type cut: int, optional
+        cutting index.
+        'cut' can also be a list of floats or integers which will be
+        treated in the same way., defaults to -1
+    :type cut: int or list of integers, optional
+    :param segments: If set to `True`, then the cutting indices will be
+        sorted and treated as interval borders and the maximum in each
+        interval will be sieved. The left interval border is reduced by
+        1 before slicing. This means that an input of `cut=[1,5,10]`
+        results in two features `max(X[k, 0:5])` and `max(X[k, 4:10])`
+        for every time series `X[k]`.
+        If set to `False`, then the left interval border is always 0.
+        This results in one more feature., defaults to `False`
+    :type segments: bool, optional
     :param name: Name of the object, defaults to "Maximal value"
     :type name: str, optional
     """
     def __init__(self,
                  cut: int = -1,
+                 segments: bool = False,
                  name: str = "Maximal value"):
         super().__init__(name)
-        self._cut = cut
+        self._cut = cut if isinstance(cut, list) else [cut]
+        if segments and len(self._cut) == 1:
+            raise ValueError("If 'segments' is set to False, then 'cut'"+
+                             " has to be a list length >= 2.")
+        self._segments = segments
+
+    def nfeatures(self) -> int:
+        """Returns the number of features this FeatureSieve produces.
+        
+        :returns: number of features per time series
+        :rtype: int
+        """
+        if self._segments:
+            return len(self._cut) - 1
+        else:
+            return len(self._cut)
 
     def sieve(self, X: np.ndarray) -> np.ndarray:
-        """Returns `np.array([max(X[i,:c]) for i in range(len(X))])`.
-        Here `c` is a cutting index that will be calculated based on
-        `cut`.
+        """Returns the transformed data. See the class definition for
+        detailed information.
 
         :param X: (onedimensional) time series dataset
         :type X: np.ndarray
-        :returns: feature array (one feature for each time series)
+        :returns: feature array (two dimensional if there are more than
+            one features per time series)
         :rtype: np.ndarray
         """
-        result = np.zeros(X.shape[0])
+        result = np.zeros((X.shape[0],self.nfeatures()))
         for i in range(X.shape[0]):
-            cut = self._cut
-            if 0 < cut < 1:
-                cut = _accelerated._coquantile(X[i, :], cut)
-            elif cut < 0:
-                cut = X.shape[1]
-            elif cut > X.shape[1] or cut == 0:
-                raise IndexError("Cutting index out of range")
-            result[i] = np.max(X[i, :cut])
+            new_cuts = []
+            for j in range(len(self._cut)):
+                cut = self._cut[j]
+                if 0 < cut < 1:
+                    cut = _accelerated._coquantile(X[i, :], cut)
+                elif cut < 0:
+                    cut = X.shape[1]
+                elif cut > X.shape[1] or cut==0:
+                    raise IndexError("Cutting index out of range")
+                new_cuts.append(cut)
+            if self._segments:
+                new_cuts = sorted(new_cuts)
+                for j in range(1, len(new_cuts)):
+                    result[i, j-1] = np.max(X[i, new_cuts[j-1]-1:new_cuts[j]])
+            else:
+                for j in range(len(new_cuts)):
+                    result[i, j] = np.max(X[i, :new_cuts[j]])
+        if self.nfeatures() == 1:
+            return result[:, 0]
         return result
 
     def copy(self):
@@ -259,51 +384,90 @@ class MAX(FeatureSieve):
         :returns: Copy of this object
         :rtype: MAX
         """
-        fs = MAX(self._cut, self.name)
+        fs = MAX(self._cut, self._segments, self.name)
         return fs
 
 
 class MIN(FeatureSieve):
-    """FeatureSieve: Minimal value
+    """FeatureSieve: Minimum value
     
-    This FeatureSieve returns the minimal value for each time series in
-    a given dataset.
-    
+    This FeatureSieve returns the maximal value for each slice of a time
+    series in a given dataset. The slices are determined by the option
+    'cut'.
+
     :param cut: If cut is an index of the time series array, the time
         series will be cut at this point before calculating the minimum.
         If it is a real number in (0,1), the corresponding coquantile
         will be calculated first and the result will be treated as the
-        cutting index., defaults to -1
-    :type cut: int, optional
-    :param name: Name of the object, defaults to "Minimal value"
+        cutting index.
+        'cut' can also be a list of floats or integers which will be
+        treated in the same way., defaults to -1
+    :type cut: int or list of integers, optional
+    :param segments: If set to `True`, then the cutting indices will be
+        sorted and treated as interval borders and the minimum in each
+        interval will be sieved. The left interval border is reduced by
+        1 before slicing. This means that an input of `cut=[1,5,10]`
+        results in two features `min(X[k, 0:5])` and `min(X[k, 4:10])`
+        for every time series `X[k]`.
+        If set to `False`, then the left interval border is always 0.
+        This results in one more feature., defaults to `False`
+    :type segments: bool, optional
+    :param name: Name of the object, defaults to "Minimum value"
     :type name: str, optional
     """
     def __init__(self,
                  cut: int = -1,
-                 name: str = "Minimal value"):
+                 segments: bool = False,
+                 name: str = "Minimum value"):
         super().__init__(name)
-        self._cut = cut
+        self._cut = cut if isinstance(cut, list) else [cut]
+        if segments and len(self._cut) == 1:
+            raise ValueError("If 'segments' is set to False, then 'cut'"+
+                             " has to be a list length >= 2.")
+        self._segments = segments
 
-    def sieve(self, X: np.ndarray):
-        """Returns `np.array([min(X[i,:c]) for i in range(len(X))])`.
-        Here `c` is a cutting index that will be calculated based on
-        `cut`.
+    def nfeatures(self) -> int:
+        """Returns the number of features this FeatureSieve produces.
+        
+        :returns: number of features per time series
+        :rtype: int
+        """
+        if self._segments:
+            return len(self._cut) - 1
+        else:
+            return len(self._cut)
+
+    def sieve(self, X: np.ndarray) -> np.ndarray:
+        """Returns the transformed data. See the class definition for
+        detailed information.
 
         :param X: (onedimensional) time series dataset
         :type X: np.ndarray
-        :returns: feature array (one feature for each time series)
+        :returns: feature array (two dimensional if there are more than
+            one features per time series)
         :rtype: np.ndarray
         """
-        result = np.zeros(X.shape[0])
+        result = np.zeros((X.shape[0],self.nfeatures()))
         for i in range(X.shape[0]):
-            cut = self._cut
-            if 0 < cut < 1:
-                cut = _accelerated._coquantile(X[i, :], cut)
-            elif cut < 0:
-                cut = X.shape[1]
-            elif cut > X.shape[1] or cut == 0:
-                raise IndexError("Cutting index out of range")
-            result[i] = np.min(X[i, :cut])
+            new_cuts = []
+            for j in range(len(self._cut)):
+                cut = self._cut[j]
+                if 0 < cut < 1:
+                    cut = _accelerated._coquantile(X[i, :], cut)
+                elif cut < 0:
+                    cut = X.shape[1]
+                elif cut > X.shape[1] or cut==0:
+                    raise IndexError("Cutting index out of range")
+                new_cuts.append(cut)
+            if self._segments:
+                new_cuts = sorted(new_cuts)
+                for j in range(1, len(new_cuts)):
+                    result[i, j-1] = np.min(X[i, new_cuts[j-1]-1:new_cuts[j]])
+            else:
+                for j in range(len(new_cuts)):
+                    result[i, j] = np.min(X[i, :new_cuts[j]])
+        if self.nfeatures() == 1:
+            return result[:, 0]
         return result
 
     def copy(self):
@@ -312,7 +476,7 @@ class MIN(FeatureSieve):
         :returns: Copy of this object
         :rtype: MIN
         """
-        fs = MIN(self._cut, self.name)
+        fs = MIN(self._cut, self._segments, self.name)
         return fs
 
 
@@ -326,17 +490,27 @@ class END(FeatureSieve):
         will extract the value of the time series at this position. If
         it is a real number in (0,1), the corresponding coquantile will
         be calculated first and the result will be treated as the value
-        index., defaults to -1
+        index.
+        It is also possible to pass a list of integers to this argument.
+        This will return the values at these positions(-1).,
+        defaults to -1
     :type cut: int, optional
     :param name: Name of the object, defaults to "Last value"
     :type name: str, optional
-
     """
     def __init__(self,
                  cut: int = -1,
                  name: str = "Last value"):
         super().__init__(name)
-        self._cut = cut        
+        self._cut = cut if isinstance(cut, list) else [cut]
+
+    def nfeatures(self) -> int:
+        """Returns the number of features this FeatureSieve produces.
+        
+        :returns: number of features per time series
+        :rtype: int
+        """
+        return len(self._cut)
 
     def sieve(self, X: np.ndarray):
         """Returns `np.array([X[i, c] for i in range(len(X))])`, where
@@ -347,17 +521,20 @@ class END(FeatureSieve):
         :returns: feature array (one feature for each time series)
         :rtype: np.ndarray
         """
-        last = np.zeros(X.shape[0])
+        result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
-            cut = self._cut
-            if 0 < cut < 1:
-                cut = _accelerated._coquantile(X[i, :], cut)
-            elif cut < 0:
-                cut = X.shape[1]
-            elif cut > X.shape[1]:
-                raise IndexError("Cutting index out of range")
-            last[i] = X[i, cut-1]
-        return last
+            for j in range(len(self._cut)):
+                cut = self._cut[j]
+                if 0 < cut < 1:
+                    cut = _accelerated._coquantile(X[i, :], cut)
+                elif cut < 0:
+                    cut = X.shape[1]
+                elif cut > X.shape[1]:
+                    raise IndexError("Cutting index out of range")
+                result[i, j] = X[i, cut-1]
+        if self.nfeatures() == 1:
+            return result[:, 0]
+        return result
 
     def copy(self):
         """Returns a copy of this object.
@@ -367,31 +544,3 @@ class END(FeatureSieve):
         """
         fs = END(self._cut, self.name)
         return fs
-
-
-def get_ppv(n: int = 1,
-            a: float = 0,
-            b: float = 1, 
-            constant: bool = False,
-            sample_size: float = 0.05) -> list:
-    """Returns a list of PPV feature sieves.
-    
-    :param n: Number of sieves (quantiles will be evenly spaced numbers
-        between `a` and `b`), defaults to 1
-    :type n: int, optional
-    :param a: Left interval border where the quantiles will be drawn
-        from, defaults to 0
-    :type a: float, optional
-    :param b: Left interval border where the quantiles will be drawn
-        from, defaults to 1
-    :type b: float, optional
-    :param constant: if `True`, the quantiles will be interpreted as
-        actual numbers, not percentiles, defaults to False
-    :type constant: bool, optional
-    :param sample_size: The quantiles will be calculated on this 
-        proportion of the input data, Only matters if `constant` is set
-        to `False`, defaults to 0.05
-    :type sample_size: float, optional
-    """
-    return [PPV(q, constant=constant, sample_size=sample_size)
-            for q in np.linspace(a, b, num=n)]

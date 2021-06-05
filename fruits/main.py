@@ -244,8 +244,8 @@ class Fruit:
             branch.clear_cache()
 
     def copy(self):
-        """Creates a copy of this Fruit object.
-        This also creates copies of all branches in this object.
+        """Creates a shallow copy of this Fruit object.
+        This also creates shallow copies of all branches in this object.
         
         :returns: Copy of this Fruit object
         :rtype: Fruit
@@ -255,11 +255,29 @@ class Fruit:
         copy_._current_branch = copy_._branches[0]
         for i in range(len(self._branches)):
             if i != self._current_branch_index:
-                copy_.add_branch(self._branches[i])
+                copy_.add_branch(self._branches[i].copy())
+        return copy_
+
+    def deepcopy(self):
+        """Creates a deep copy of this Fruit object.
+        This also creates deep copies of all branches in this object.
+        
+        :returns: Deepcopy of this Fruit object
+        :rtype: Fruit
+        """
+        copy_ = Fruit(self.name+" (Copy)")
+        copy_._branches = [self._current_branch.deepcopy()]
+        copy_._current_branch = copy_._branches[0]
+        for i in range(len(self._branches)):
+            if i != self._current_branch_index:
+                copy_.add_branch(self._branches[i].deepcopy())
         return copy_
 
     def __copy__(self):
         return self.copy()
+
+    def __deepcopy__(self):
+        return self.deepcopy()
 
 
 class FruitBranch:
@@ -431,7 +449,7 @@ class FruitBranch:
         :returns: number of features
         :rtype: int
         """
-        return len(self._sieves) * len(self._iterators)
+        return sum([s.nfeatures() for s in self._sieves])*len(self._iterators)
 
     def _reshape_input(self, X: np.ndarray) -> np.ndarray:
         out = X.copy()
@@ -469,8 +487,13 @@ class FruitBranch:
         X_copy = X.copy()
         for i in range(len(self._iterators)):
             for sieve in self._sieves_extended[i]:
-                sieved_data[:, k] = sieve.sieve(X_copy[:, i, :])
-                k += 1
+                new_features = sieve.nfeatures()
+                if new_features == 1:
+                    sieved_data[:, k] = sieve.sieve(X_copy[:, i, :])
+                else:
+                    sieved_data[:, k:k+new_features] = \
+                        sieve.sieve(X_copy[:, i, :])
+                k += new_features
         return sieved_data
 
     def fit(self, X: np.ndarray):
@@ -541,7 +564,7 @@ class FruitBranch:
         self._sieves_extended = []
 
     def copy(self):
-        """Returns a copy of this FruitBranch object.
+        """Returns a shallow copy of this FruitBranch object.
         
         :returns: Copy of the branch with same settings but all
             calculations done erased.
@@ -556,8 +579,27 @@ class FruitBranch:
             copy_.add(sieve)
         return copy_
 
+    def deepcopy(self):
+        """Returns a deep copy of this FruitBranch object.
+        
+        :returns: Deepcopy of the branch with same settings but all
+            calculations done erased.
+        :rtype: FruitBranch
+        """
+        copy_ = FruitBranch()
+        for preparateur in self.get_preparateurs():
+            copy_.add(preparateur.copy())
+        for iterator in self.get_iterators():
+            copy_.add(iterator.copy())
+        for sieve in self.get_sieves():
+            copy_.add(sieve.copy())
+        return copy_
+
     def __call__(self, X: np.ndarray) -> np.ndarray:
         return self.transform(X)
 
     def __copy__(self):
         return self.copy()
+
+    def __deepcopy__(self):
+        return self.deepcopy()
