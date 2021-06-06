@@ -114,25 +114,10 @@ class STD(DataPreparateur):
         self._means = None
         self._stds = None
 
-    def fit(self, X: np.ndarray):
-        """Fits the dataset X to the DataPreparateur by calculating
-        the mean and standard deviation of all time series in X 
-        (seperately for each dimension) and stores the calculations for
-        later usage in self.prepare().
-        
-        :param X: (multidimensional) time series dataset
-        :type X: np.ndarray
-        """
-        self._means = np.zeros(X.shape[1:])
-        self._stds = np.zeros(X.shape[1:])
-        for i in range(X.shape[1]):
-            for j in range(X.shape[2]):
-                self._means[i, j] = np.mean(X[:, i, j])
-                self._stds[i, j] = np.std(X[:, i, j])
-
     def prepare(self, X: np.ndarray) -> np.ndarray:
-        """Returns (X-mu)/v where mu is the calculated mean and v is
-        the standard deviation in self.fit().
+        """Returns (X_ij-mu)/v for each time series i and all of its
+        dimensions j where mu is the calculated mean and v is the
+        standard deviation of this dimension.
         
         :param X: (multidimensional) time series dataset
         :type X: np.ndarray
@@ -140,13 +125,13 @@ class STD(DataPreparateur):
         :rtype: np.ndarray
         :raises: RuntimeError if self.fit() wasn't called
         """
-        if self._means is None or self._stds is None:
-            raise RuntimeError("Missing call of STD.fit")
+        self._means = np.mean(X, axis=2)
+        self._stds = np.std(X, axis=2)
         out = X.copy()
-        for i in range(X.shape[1]):
-            for j in range(X.shape[2]):
-                out[:, i, j] -= self._means[i, j]
-                out[:, i, j] /= self._stds[i, j]
+        for i in range(X.shape[0]):
+            for j in range(X.shape[1]):
+                out[i, j, :] -= self._means[i, j]
+                out[i, j, :] /= self._stds[i, j]
         return out
 
     def copy(self):
