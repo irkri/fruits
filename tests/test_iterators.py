@@ -19,9 +19,11 @@ def test_fast_slow_iss():
              [lambda X: X[1, :]**3, lambda X: X[0, :]]]
 
     it1 = fruits.iterators.SummationIterator("word 1")
-    it1.append(*word1)
+    for monomial in word1:
+        it1.multiply(monomial)
     it2 = fruits.iterators.SummationIterator("word 2")
-    it2.append(*word2)
+    for monomial in word2:
+        it2.multiply(monomial)
 
     sit1 = fruits.iterators.SimpleWord("[11122][122222][11]")
     sit2 = fruits.iterators.SimpleWord("[22][112][2221]")
@@ -86,8 +88,9 @@ def test_simpleword_iss():
 def test_complex_words():
     # word: [relu(0)][relu(1)]
     relu_iterator = fruits.iterators.SummationIterator("relu collection")
-    relu_iterator.append([lambda X: X[0, :] * (X[0, :]>0)], 
-                         [lambda X: X[1, :] * (X[1, :]>0)])
+    relu_iterator.multiply([lambda X: X[0, :] * (X[0, :]>0)])
+    relu_iterator.multiply([lambda X: X[1, :] * (X[1, :]>0)])
+                                   
     mix = [relu_iterator, fruits.iterators.SimpleWord("[111]")]
 
     mix_result = fruits.core.ISS(X_1, mix)

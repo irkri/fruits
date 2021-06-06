@@ -1,204 +1,285 @@
+"""This python file defines some fruits configurations (fruits.Fruit
+objects).
+Each configuration aims to answer a part of the big question:
+
+Which configuration is the best one for the classification of time
+series data?
+"""
 import numpy as np
 
 from context import fruits
+from complex_words import (
+    sigmoid,
+    leaky_relu,
+    id_,
+    tanh,
+    generate_complex_words,
+    generate_random_complex_words,
+    generate_rotated_complex_words,
+)
 
-# function definitions for more complicated words
-def SIGMOID(i):
-    def sigmoid(X):
-        return 1 / (1+np.exp(-X[i, :]))
-    return sigmoid
-def RELU(i):
-    def relu(X):
-        return X[i, :] * (X[i, :]>0)
-    return relu
-def leakyRELU(i, alpha=0.01):
-    def leakyrelu(X):
-        out = X[i, :] * (X[i, :]>0)
-        out += ((X[i, :]<=0) * X[i, :] * alpha)
-        return out
-    return leakyrelu
-def SINE(i):
-    def sin(X):
-        return np.sin(X[i, :])
-    return sin
-def IEXP(i):
-    def iexp(X):
-        return np.exp(X[i, :])
-    return iexp
-def TANH(i):
-    def tanh(X):
-        pos = np.exp(X[i, :])
-        neg = np.exp(-X[i, :])
-        return (pos-neg) / (pos+neg)
-    return tanh
+np.random.seed(62)
 
-def generate_complex_words(simple_words, FUNCTION, scale=0):
-    complex_words = []
-    for simple_word in simple_words:
-        complex_words.append(fruits.iterators.SummationIterator(
-                                                str(simple_word)[11:-1]))
-        for monomial in simple_word.monomials():
-            mon = []
-            for i, letter in enumerate(monomial):
-                for l in range(letter):
-                    mon.append(FUNCTION(i))
-        complex_words[-1].append(mon)
-        complex_words[-1].scale = scale
-    return complex_words
-
+simple_words_degree_2 = fruits.iterators.generate_words(1, 2, 2)
 simple_words_degree_3 = fruits.iterators.generate_words(1, 3, 3)
-simple_words_degree_4 = fruits.iterators.generate_words(1, 4, 4)
+simple_words_long = simple_words_degree_3[11:36]
 
-# configuration 1
-apple = fruits.Fruit("Apple")
-apple.add(fruits.preparateurs.INC)
+# Configurations
 
-apple.add(simple_words_degree_4)
+# Apple
+# Q: What Preparateurs to use?
+# A: Probably a mix of ID (nothing) and INC is a good choice.
 
-apple.add(fruits.features.PPV(quantile=0.5, sample_size=1))
-apple.add(fruits.features.MAX)
-apple.add(fruits.features.MIN)
+apple01 = fruits.Fruit("Apple [ID]")
+apple01.add(simple_words_degree_3)
+apple01.add(fruits.features.PPV(quantile=0.5, sample_size=1))
+apple01.add(fruits.features.MAX)
+apple01.add(fruits.features.MIN)
+apple01.add(fruits.features.END)
 
-# configuration 1.1
-apple_c = fruits.Fruit("Apple (connected)")
-apple_c.add(fruits.preparateurs.INC)
+apple02 = apple01.deepcopy()
+apple02.name = "Apple [STD]"
+apple02.add(fruits.preparateurs.STD)
 
-apple_c.add(simple_words_degree_4)
+apple03 = apple01.deepcopy()
+apple03.name = "Apple [INC]"
+apple03.add(fruits.preparateurs.INC)
 
-apple_c.add(fruits.features.PPV_connected(quantile=0.5, sample_size=1))
-apple_c.add(fruits.features.MAX)
-apple_c.add(fruits.features.MIN)
+apple04 = apple01.deepcopy()
+apple04.name = "Apple [ID + INC]"
+apple04.add_branch(apple03.current_branch().deepcopy())
 
-# configuration 2
-banana = fruits.Fruit("Banana")
-banana.add(fruits.preparateurs.STD)
+# Banana
+# Q: MAX/MIN with 'segments' True or False
+# A: Mean accuracy with segments is better but the more important,
+#    bigger datasets classify better with 'segments' disabled.
+#    BUT: segments=True also produces less features
+#    (1 per sieve and iterator)
 
-banana.add(simple_words_degree_4)
+banana01 = fruits.Fruit("Banana")
+banana01.add(simple_words_degree_2)
+banana01.add(fruits.features.MAX(cut=[1,0.2,0.4,0.6,0.8,-1], segments=False))
+banana01.add(fruits.features.MIN(cut=[1,0.2,0.4,0.6,0.8,-1], segments=False))
+banana01.start_new_branch()
+banana01.add(fruits.preparateurs.INC)
+banana01.add(simple_words_degree_2)
+banana01.add(fruits.features.MAX(cut=[1,0.2,0.4,0.6,0.8,-1], segments=False))
+banana01.add(fruits.features.MIN(cut=[1,0.2,0.4,0.6,0.8,-1], segments=False))
 
-banana.add(fruits.features.PPV(quantile=0.5, sample_size=1))
-banana.add(fruits.features.MAX)
-banana.add(fruits.features.MIN)
+banana02 = fruits.Fruit("Banana [Segments]")
+banana02.add(simple_words_degree_2)
+banana02.add(fruits.features.MAX(cut=[1,0.2,0.4,0.6,0.8,-1], segments=True))
+banana02.add(fruits.features.MIN(cut=[1,0.2,0.4,0.6,0.8,-1], segments=True))
+banana02.start_new_branch()
+banana02.add(fruits.preparateurs.INC)
+banana02.add(simple_words_degree_2)
+banana02.add(fruits.features.MAX(cut=[1,0.2,0.4,0.6,0.8,-1], segments=True))
+banana02.add(fruits.features.MIN(cut=[1,0.2,0.4,0.6,0.8,-1], segments=True))
 
-# configuration 3
-orange = fruits.Fruit("Orange")
-orange.add(fruits.preparateurs.INC)
+# Kiwi
+# Q: PPV with or without 'segments' option enabled
+# A: segments=False seems to work better
 
-orange.add(simple_words_degree_4)
+kiwi01 = fruits.Fruit("Kiwi")
+kiwi01.add(simple_words_degree_2)
+kiwi01.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                               constant=False,
+                               sample_size=1,
+                               segments=False))
+kiwi01.start_new_branch()
+kiwi01.add(fruits.preparateurs.INC)
+kiwi01.add(simple_words_degree_2)
+kiwi01.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                               constant=False,
+                               sample_size=1,
+                               segments=False))
 
-orange.add(fruits.features.PPV(quantile=0.5, sample_size=1))
-orange.add(fruits.features.MAX)
-orange.add(fruits.features.MIN)
-orange.add(fruits.features.END)
+kiwi02 = fruits.Fruit("Kiwi [Segments]")
+kiwi02.add(simple_words_degree_2)
+kiwi02.add(fruits.features.PPV([0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+                               constant=False,
+                               sample_size=1,
+                               segments=True))
+kiwi02.start_new_branch()
+kiwi02.add(fruits.preparateurs.INC)
+kiwi02.add(simple_words_degree_2)
+kiwi02.add(fruits.features.PPV([0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+                               constant=False,
+                               sample_size=1,
+                               segments=True))
 
-# configuration 4
-peach = fruits.Fruit("Peach")
+# Orange
+# Q: Which function to choose for complex words, where each letter is
+#    the same word?
+# A: The pure SimpleWords seem to work best.
 
-peach.add(simple_words_degree_4)
+orange01 = fruits.Fruit("Orange [id]")
+orange01.add(fruits.preparateurs.INC)
+orange01.add(simple_words_degree_2)
+orange01.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+orange01.add(fruits.features.MAX)
+orange01.add(fruits.features.MIN)
+orange01.add(fruits.features.END)
+orange01.start_new_branch()
+orange01.add(simple_words_degree_2)
+orange01.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+orange01.add(fruits.features.MAX)
+orange01.add(fruits.features.MIN)
+orange01.add(fruits.features.END)
 
-peach.add(fruits.features.PPV(quantile=0.5, sample_size=1))
-peach.add(fruits.features.MAX)
-peach.add(fruits.features.MIN)
-peach.add(fruits.features.END)
+orange02 = fruits.Fruit("Orange [leaky_relu]")
+orange02.add(fruits.preparateurs.INC)
+orange02.add(generate_complex_words(simple_words_degree_2, leaky_relu))
+orange02.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+orange02.add(fruits.features.MAX)
+orange02.add(fruits.features.MIN)
+orange02.add(fruits.features.END)
+orange02.start_new_branch()
+orange02.add(generate_complex_words(simple_words_degree_2, leaky_relu))
+orange02.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+orange02.add(fruits.features.MAX)
+orange02.add(fruits.features.MIN)
+orange02.add(fruits.features.END)
 
-#configuration 5
-watermelon = fruits.Fruit("Watermelon")
+orange03 = fruits.Fruit("Orange [tanh]")
+orange03.add(fruits.preparateurs.INC)
+orange03.add(generate_complex_words(simple_words_degree_2, tanh))
+orange03.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+orange03.add(fruits.features.MAX)
+orange03.add(fruits.features.MIN)
+orange03.add(fruits.features.END)
+orange03.start_new_branch()
+orange03.add(generate_complex_words(simple_words_degree_2, tanh))
+orange03.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+orange03.add(fruits.features.MAX)
+orange03.add(fruits.features.MIN)
+orange03.add(fruits.features.END)
 
-watermelon.add(generate_complex_words(simple_words_degree_4, TANH))
+orange04 = fruits.Fruit("Orange [sigmoid]")
+orange04.add(fruits.preparateurs.INC)
+orange04.add(generate_complex_words(simple_words_degree_2, sigmoid))
+orange04.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+orange04.add(fruits.features.MAX)
+orange04.add(fruits.features.MIN)
+orange04.add(fruits.features.END)
+orange04.start_new_branch()
+orange04.add(generate_complex_words(simple_words_degree_2, sigmoid))
+orange04.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+orange04.add(fruits.features.MAX)
+orange04.add(fruits.features.MIN)
+orange04.add(fruits.features.END)
 
-watermelon.add(fruits.features.PPV(quantile=0.2, sample_size=1))
-watermelon.add(fruits.features.PPV(quantile=0.5, sample_size=1))
-watermelon.add(fruits.features.PPV(quantile=0.8, sample_size=1))
-watermelon.add(fruits.features.MAX)
-watermelon.add(fruits.features.MIN)
-watermelon.add(fruits.features.END)
+# Peach
+# Q: Are 'rotated' complex words useful? Which functions should we use?
+# A: Rotated complex words are useful! Especially if they are created
+#    on longer SimpleWords.
 
-# configuration 6
-strawberry = fruits.Fruit("Strawberry")
+peach01 = fruits.Fruit("Peach [id, tanh, sigmoid, leaky_relu]")
+peach01.add(fruits.preparateurs.INC)
+peach01.add(generate_rotated_complex_words(simple_words_long,
+                                           [id_,
+                                            tanh,
+                                            sigmoid,
+                                            leaky_relu]))
+peach01.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+peach01.add(fruits.features.MAX)
+peach01.add(fruits.features.MIN)
+peach01.add(fruits.features.END)
+peach01.start_new_branch()
+peach01.add(generate_rotated_complex_words(simple_words_long,
+                                           [id_,
+                                            tanh,
+                                            sigmoid,
+                                            leaky_relu]))
+peach01.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+peach01.add(fruits.features.MAX)
+peach01.add(fruits.features.MIN)
+peach01.add(fruits.features.END)
 
-strawberry.add(generate_complex_words(simple_words_degree_4, leakyRELU))
+peach02 = fruits.Fruit("Peach [tanh, sigmoid, leaky_relu]")
+peach02.add(fruits.preparateurs.INC)
+peach02.add(generate_rotated_complex_words(simple_words_long,
+                                           [tanh,
+                                            sigmoid,
+                                            leaky_relu]))
+peach02.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+peach02.add(fruits.features.MAX)
+peach02.add(fruits.features.MIN)
+peach02.add(fruits.features.END)
+peach02.start_new_branch()
+peach02.add(generate_rotated_complex_words(simple_words_long,
+                                           [tanh,
+                                            sigmoid,
+                                            leaky_relu]))
+peach02.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+peach02.add(fruits.features.MAX)
+peach02.add(fruits.features.MIN)
+peach02.add(fruits.features.END)
 
-strawberry.add(fruits.features.PPV(quantile=0.5, sample_size=1))
-strawberry.add(fruits.features.MAX)
-strawberry.add(fruits.features.MIN)
-strawberry.add(fruits.features.END)
-
-# configuration 7
-pineapple = fruits.Fruit("Pineapple")
-
-pineapple.add(generate_complex_words(simple_words_degree_3, RELU))
-pineapple.add(generate_complex_words(simple_words_degree_3, SIGMOID))
-pineapple.add(simple_words_degree_3)
-
-pineapple.add(fruits.features.PPV(quantile=0.5, sample_size=1))
-pineapple.add(fruits.features.MAX)
-pineapple.add(fruits.features.MIN)
-pineapple.add(fruits.features.END)
-
-# configuration 8
-cranberry = fruits.Fruit("Cranberry")
-cranberry.add(fruits.preparateurs.INC)
-
-cranberry.add(generate_complex_words(simple_words_degree_3, IEXP, scale=3))
-cranberry.add(simple_words_degree_3)
-
-cranberry.add(fruits.features.MAX)
-cranberry.add(fruits.features.MIN)
-
-# configuration 9
-blackberry = fruits.Fruit("Blackberry")
-blackberry.add(fruits.preparateurs.INC)
-
-blackberry.add(generate_complex_words(simple_words_degree_3, RELU))
-blackberry.add(generate_complex_words(simple_words_degree_3, SIGMOID))
-blackberry.add(fruits.iterators.generate_words(1, 5, 3))
-
-blackberry.add(fruits.features.PPV(quantile=0.1, sample_size=1))
-blackberry.add(fruits.features.PPV(quantile=0.5, sample_size=1))
-blackberry.add(fruits.features.PPV(quantile=0.9, sample_size=1))
-blackberry.add(fruits.features.MAX)
-blackberry.add(fruits.features.MIN)
-blackberry.add(fruits.features.END)
-
-# configuration 10
-starfruit = fruits.Fruit("Starfruit")
-starfruit.add(fruits.preparateurs.INC)
-starfruit.add(simple_words_degree_3)
-starfruit.add(fruits.features.PPV(quantile=0.2, sample_size=1))
-starfruit.add(fruits.features.PPV(quantile=0.5, sample_size=1))
-starfruit.add(fruits.features.PPV(quantile=0.8, sample_size=1))
-starfruit.add(fruits.features.MAX)
-starfruit.add(fruits.features.MIN)
-starfruit.add(fruits.features.END)
-
-starfruit.start_new_branch()
-starfruit.add(simple_words_degree_3)
-starfruit.add(fruits.features.PPV(quantile=0.2, sample_size=1))
-starfruit.add(fruits.features.PPV(quantile=0.5, sample_size=1))
-starfruit.add(fruits.features.PPV(quantile=0.8, sample_size=1))
-starfruit.add(fruits.features.MAX)
-starfruit.add(fruits.features.MIN)
-starfruit.add(fruits.features.END)
-
-starfruit.start_new_branch()
-starfruit.add(generate_complex_words(simple_words_degree_3, leakyRELU))
-starfruit.add(fruits.features.PPV(quantile=0.2, sample_size=1))
-starfruit.add(fruits.features.PPV(quantile=0.5, sample_size=1))
-starfruit.add(fruits.features.PPV(quantile=0.8, sample_size=1))
-starfruit.add(fruits.features.MAX)
-starfruit.add(fruits.features.MIN)
-starfruit.add(fruits.features.END)
+peach03 = fruits.Fruit("Peach [id, leaky_relu]")
+peach03.add(fruits.preparateurs.INC)
+peach03.add(generate_rotated_complex_words(simple_words_long,
+                                           [id_,
+                                            leaky_relu]))
+peach03.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+peach03.add(fruits.features.MAX)
+peach03.add(fruits.features.MIN)
+peach03.add(fruits.features.END)
+peach03.start_new_branch()
+peach03.add(generate_rotated_complex_words(simple_words_long,
+                                           [id_,
+                                            leaky_relu]))
+peach03.add(fruits.features.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                                 constant=False,
+                                 sample_size=1,
+                                 segments=False))
+peach03.add(fruits.features.MAX)
+peach03.add(fruits.features.MIN)
+peach03.add(fruits.features.END)
 
 CONFIGURATIONS = [
-    apple,
-    apple_c,
-    banana,
-    orange,
-    peach,
-    watermelon,
-    strawberry,
-    pineapple,
-    cranberry,
-    # blackberry, # way too much features and sigmoid turns out to not
-    # work very well
-    starfruit,
-    ]
+    apple01, apple02, apple03, apple04,
+    kiwi01, kiwi02,
+    banana01, banana02,
+    orange01, orange02, orange03, orange04,
+    peach01, peach02, peach03,
+]

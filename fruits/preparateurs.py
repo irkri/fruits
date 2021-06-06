@@ -1,91 +1,144 @@
+from abc import ABC, abstractmethod
+
 import numpy as np
 
-class DataPreparateur:
-    """Class DataPreperateur
+from fruits import _accelerated
+
+class DataPreparateur(ABC):
+    """Abstract class DataPreperateur
     
-    A DataPreparateur object can be called on a three dimensional numpy 
-    array. The output should be a numpy array that matches the shape of 
-    the input array.
+    A DataPreparateur object can be fitted on a three dimensional numpy 
+    array. The output of DataPreparateur.prepare is a numpy array that
+    matches the shape of the input array.
     """
     def __init__(self, name: str = ""):
-        self._name = name
-        self._args = ()
-        self._kwargs = {}
-        self._func = None
-
-    def set_function(self, f):
-        if not callable(f):
-            raise TypeError("Cannot set non-callable object as function")
-        self._func = f
+        super().__init__()
+        self.name = name
 
     @property
     def name(self) -> str:
+        """Simple identifier for this object."""
         return self._name
 
     @name.setter
     def name(self, name: str):
         self._name = name
 
-    def __repr__(self) -> str:
-        return "DataPreparateur('" + self._name + "')"
-
-    def __call__(self, *args, **kwargs):
-        self._args = args
-        self._kwargs = kwargs
-        return self.copy()
-
     def copy(self):
+        """Returns a copy of the DataPreparateur object.
+        
+        :returns: Copy of this object
+        :rtype: DataPreparateur
+        """
         dp = DataPreparateur(self.name)
-        dp._args = self._args
-        dp._kwargs = self._kwargs
-        self._args = ()
-        self._kwargs = {}
-        dp.set_function(self._func)
         return dp
+
+    def fit(self, X: np.ndarray):
+        """Fits the DataPreparateur to the given dataset.
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        """
+        pass
+
+    @abstractmethod
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        pass
+
+    def fit_prepare(self, X: np.ndarray) -> np.ndarray:
+        """Fits the given dataset to the DataPreparateur and returns
+        the preparated results.
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        """
+        self.fit(X)
+        return self.prepare(X)
 
     def __copy__(self):
         return self.copy()
 
-    def prepare(self, X: np.ndarray):
-        if self._func is None:
-            raise RuntimeError("No function specified")
-        X = np.atleast_3d(X)
-        return self._func(X, *self._args, **self._kwargs)
+    def __repr__(self) -> str:
+        return "DataPreparateur('" + self._name + "')"
 
-def _inc(X: np.ndarray, zero_padding: bool = True) -> np.ndarray:
-    if zero_padding:
-        out = np.delete((np.roll(X, -1, axis=2) - X), -1, axis=2)
-        pad_widths = [(0,0) for dim in range(3)]
-        pad_widths[2] = (1,0)
-        out = np.pad(out, pad_width=pad_widths, mode="constant")
-    else:
-        out = np.zeros(X.shape)
-        out[:, :, 1:] = np.delete((np.roll(X, -1, axis=2) - X), -1, axis=2)
-        out[:, :, 0] = X[:, :, 0]
-    return out
 
-INC = DataPreparateur("increments")
-INC.set_function(_inc)
+class INC(DataPreparateur):
+    """DataPreparateur: Increments
+    
+    For a time series 
+    `X = [x_1, x_2, ..., x_n]`
+    this class produces the output
+    `X_inc = [0, x_2-x_1, x_3-x_2, ..., x_n-x_{n-1}]`.
+    If `zero_padding` is set to `False`, then the 0 above will be
+    replaced by `x_1`.
+    """
+    def __init__(self,
+                 zero_padding: bool = True,
+                 name: str = "Increments"):
+        super().__init__(name)
+        self._zero_padding = zero_padding
 
-def _std(X: np.ndarray) -> np.ndarray:
-    out = np.zeros(X.shape)
-    for i in range(X.shape[0]):
-        for j in range(X.shape[1]):
-            out[i, j, :] = X[i, j, :] - np.mean(X[i, j, :])
-            out[i, j, :] /= np.std(X[i, j, :])
-    return out
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        """Returns the increments of all time series in X.
+        This is the equivalent of the convolution of X and [-1,1].
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        :returns: stepwise slopes of each time series in X
+        :rtype: np.ndarray
+        """
+        out = _accelerated._increments(X)
+        if self._zero_padding:
+            out[:, :, 0] = 0
+        return out
 
-STD = DataPreparateur("standardization")
-STD.set_function(_std)
+    def copy(self):
+        """Returns a copy of the DataPreparateur object.
+        
+        :returns: Copy of this object
+        :rtype: INC
+        """
+        dp = INC(self._zero_padding, self.name)
+        return dp
 
-def _nrm(X: np.ndarray) -> np.ndarray:
-    out = np.zeros(X.shape)
-    for i in range(X.shape[0]):
-        for j in range(X.shape[1]):
-            mini = np.min(X[i, j, :])
-            maxi = np.max(X[i, j, :])
-            out[i, j, :] = (X[i, j, :]-mini) / (maxi-mini)
-    return out
 
-NRM = DataPreparateur("normalization")
-NRM.set_function(_nrm)
+class STD(DataPreparateur):
+    """DataPreparateur: Standardization
+    
+    For a time series `X` this class produces the output
+    `X_std = (X-mean(X))/std(X)`.
+    """
+    def __init__(self,
+                 name: str = "Standardization"):
+        super().__init__(name)
+        self._means = None
+        self._stds = None
+
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        """Returns (X_ij-mu)/v for each time series i and all of its
+        dimensions j where mu is the calculated mean and v is the
+        standard deviation of this dimension.
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        :returns: (standardized) dataset
+        :rtype: np.ndarray
+        :raises: RuntimeError if self.fit() wasn't called
+        """
+        self._means = np.mean(X, axis=2)
+        self._stds = np.std(X, axis=2)
+        out = X.copy()
+        for i in range(X.shape[0]):
+            for j in range(X.shape[1]):
+                out[i, j, :] -= self._means[i, j]
+                out[i, j, :] /= self._stds[i, j]
+        return out
+
+    def copy(self):
+        """Returns a copy of the DataPreparateur object.
+        
+        :returns: Copy of this object
+        :rtype: STD
+        """
+        dp = STD(self.name)
+        return dp

@@ -7,8 +7,16 @@ This package can be installed on your local machine by executing the file [setup
   $ python setup.py install
 ```
 
+## Documentation
+The documentation of __FRUITS__ can be created by calling `make html` in the [docs](docs) folder. This will need a few dependencies to work. Please install the following packages using `pip` before executing the `make` command.
+- sphinx
+- sphinx_rtd_theme
+- m2r2
+
+This should create a local directory `docs/build`. Open the file `docs/build/index.html` in a browser to access the documentation.
+
 ## Pipeline
-The `fruits` package works as a pipeline that extracts features from multidimensional time series data.<br>
+The __FRUITS__ package works as a pipeline that extracts features from multidimensional time series data.<br>
 To initialize the data one has to create a `fruits.Fruit` object. This object can now be customized by the user in three different ways. There are standard configurations and objects for each of the following steps in `fruits` available to choose from.
 - Data Preparation: `DataPreparateur` objects are used to preprocess the data. This is an optional step.
 - Calculation of Iterated Sums: `SummationIterator` objects specify which Iterated Sums should be calculated<br>
@@ -19,7 +27,8 @@ To initialize the data one has to create a `fruits.Fruit` object. This object ca
 ## Example
 A simple example could look like this:
 ```python
-X = numpy.array([...]) # think of a 3 dimensional time series dataset
+# think of a 3 dimensional time series dataset
+X_train, y_train, X_test, y_test = ...
 
 # create a Fruit object
 myfruit = fruits.Fruit("myfruit - Fruit class example")
@@ -42,16 +51,22 @@ myfruit.add(simple_words)
 myfruit.add(fruits.features.PPV(quantile=0.5, constant=False))
 myfruit.add(fruits.features.MAX)
 
-# 2*9 = 20 features for each time series
-extracted_features = myfruit(X)
+# fit the object to the data
+myfruit.fit(X_train)
+# get features for the training data
+X_train_features = myfruit.transform(X_train)
+# get features for the testing data
+X_test_features = myfruit.transform(X_test)
 ```
 
 ## UCR-Experiments
-We test the pipeline for accuracy by doing classification experiments of some UCR-datasets. You can [download](https://www.timeseriesclassification.com/Downloads/Archives/Univariate2018_arff.zip) them from [timeseriesclassification.com](https://timeseriesclassification.com) and execute the script [configurations_on_ucr.py](experiments/configurations_on_ucr.py) after configuring the self-explaining global variables in the script. This will produce an output file that contains the classification-accuracy results.
+We test the pipeline for accuracy by doing classification experiments of some UCR-datasets for different `fruits.Fruit` objects. You can [download](https://www.timeseriesclassification.com/Downloads/Archives/Univariate2018_arff.zip) the datasets from [timeseriesclassification.com](https://timeseriesclassification.com).
+
+For detailed instructions on how to perform some of these experiments, have a look at the file [configurations_on_ucr.py](experiments/configurations_on_ucr.py). This python script can be executed in a terminal/command line.
 
 ## Unit tests
-There are a bunch of tests for __fruits__ available to execute. To do this, enter the command
+There are a bunch of [tests](tests) for __FRUITS__ available to execute. To do this, enter the command
 ```
   $ python -m pytest tests
 ```
-in a console from the main directory of this repository.
+in a terminal/command line from the main directory of this repository.
