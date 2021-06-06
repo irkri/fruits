@@ -134,10 +134,9 @@ class PPV(FeatureSieve):
                                  " also has to be a list of same length or"+
                                  " a single boolean.") 
             for q, c in zip(quantile, constant):
-                if not c and not (0 < q < 1):
+                if not c and not (0 <= q <= 1):
                     raise ValueError("If 'constant' is set to False,"+
-                                     " 'quantile' has to be a value between"+
-                                     " 0 and 1")
+                                     " 'quantile' has to be a value in [0,1]")
         else:
             quantile = [quantile]
             if isinstance(constant, list):
