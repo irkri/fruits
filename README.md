@@ -8,7 +8,7 @@ This package can be installed on your local machine by executing the file [setup
 ```
 
 ## Documentation
-The documentation of __FRUITS__ can be created by calling `make html` in the [docs](https://github.com/alienkrieg/tsclassification/tree/fit_transform/docs) folder. This will need a few dependencies to work. Please install the following packages using `pip` before executing the `make` command.
+The documentation of __FRUITS__ can be created by calling `make html` in the [docs](docs) folder. This will need a few dependencies to work. Please install the following packages using `pip` before executing the `make` command.
 - sphinx
 - sphinx_rtd_theme
 - m2r2
@@ -60,11 +60,13 @@ X_test_features = myfruit.transform(X_test)
 ```
 
 ## UCR-Experiments
-We test the pipeline for accuracy by doing classification experiments of some UCR-datasets. You can [download](https://www.timeseriesclassification.com/Downloads/Archives/Univariate2018_arff.zip) them from [timeseriesclassification.com](https://timeseriesclassification.com) and execute the script [configurations_on_ucr.py](experiments/configurations_on_ucr.py) after configuring the self-explaining global variables in the script. This will produce an output file that contains the classification-accuracy results.
+We test the pipeline for accuracy by doing classification experiments of some UCR-datasets for different `fruits.Fruit` objects. You can [download](https://www.timeseriesclassification.com/Downloads/Archives/Univariate2018_arff.zip) the datasets from [timeseriesclassification.com](https://timeseriesclassification.com).
+
+For detailed instructions on how to perform some of these experiments, have a look at the file [configurations_on_ucr.py](experiments/configurations_on_ucr.py). This python script can be executed in a terminal/command line.
 
 ## Unit tests
-There are a bunch of tests for __FRUITS__ available to execute. To do this, enter the command
+There are a bunch of [tests](tests) for __FRUITS__ available to execute. To do this, enter the command
 ```
   $ python -m pytest tests
 ```
-in a console from the main directory of this repository.
+in a terminal/command line from the main directory of this repository.
