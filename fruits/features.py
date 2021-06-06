@@ -146,9 +146,11 @@ class PPV(FeatureSieve):
                                      " if 'quantile' is a single float")
             else:
                 constant = [constant]
-        self._q_c_input = list(zip(quantile,constant))
         if segments:
+            self._q_c_input = list(zip(list(set(quantile)),constant))
             self._q_c_input = sorted(self._q_c_input, key=lambda x: x[0])
+        else:
+            self._q_c_input = list(zip(quantile,constant))
         self._q = None
         if not 0 < sample_size <= 1:
             raise ValueError("'sample_size' has to be a float in (0, 1]")
@@ -362,13 +364,15 @@ class MAX(FeatureSieve):
                 cut = self._cut[j]
                 if 0 < cut < 1:
                     cut = _accelerated._coquantile(X[i, :], cut)
+                    if cut == 0:
+                        cut = 1
                 elif cut < 0:
                     cut = X.shape[1]
                 elif cut > X.shape[1] or cut==0:
                     raise IndexError("Cutting index out of range")
                 new_cuts.append(cut)
             if self._segments:
-                new_cuts = sorted(new_cuts)
+                new_cuts = sorted(list(set(new_cuts)))
                 for j in range(1, len(new_cuts)):
                     result[i, j-1] = np.max(X[i, new_cuts[j-1]-1:new_cuts[j]])
             else:
@@ -454,13 +458,15 @@ class MIN(FeatureSieve):
                 cut = self._cut[j]
                 if 0 < cut < 1:
                     cut = _accelerated._coquantile(X[i, :], cut)
+                    if cut == 0:
+                        cut = 1
                 elif cut < 0:
                     cut = X.shape[1]
                 elif cut > X.shape[1] or cut==0:
                     raise IndexError("Cutting index out of range")
                 new_cuts.append(cut)
             if self._segments:
-                new_cuts = sorted(new_cuts)
+                new_cuts = sorted(list(set(new_cuts)))
                 for j in range(1, len(new_cuts)):
                     result[i, j-1] = np.min(X[i, new_cuts[j-1]-1:new_cuts[j]])
             else:
