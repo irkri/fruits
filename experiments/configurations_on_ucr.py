@@ -1,3 +1,30 @@
+"""This python module contains a class ClassificationPipeline, that
+is able to perform a classification task for time series data from
+timeseriesclassification.com.
+
+The datasets should be available in a .txt file and readable with
+numpy.
+
+A ClassificationPipeline object can be used via import in another
+python script or in a terminal/console by using this file as an
+executable script.
+
+Usage:
+    $ python configurations_on_ucr.py -d [directory of datasets]
+
+Optional arguments:
+    -u : Path to a txt file with names of datasets. Only these datasets
+         will then be loaded from the dataset directory.
+    -o : Output file path.,
+         defaults to "./ucr_configuration_results.txt"
+    -r : File with the accuracy results from rocket.,
+         defaults to "./rocket_results_ucr.csv"
+
+The fruits configurations to use for feature calculation are defined
+in the file configurations.py which should be located in the same
+directory as this file.
+"""
+
 import os
 import logging
 import argparse
@@ -12,21 +39,18 @@ from configurations import CONFIGURATIONS
 class ClassificationPipeline:
     """Class that manages a time series classification with fruits and a
     RidgeClassifierCV in sklearn.
-    To compare the classifications with the results from ROCKET, specify
-    the argument 'compare_to_rocket'.
+    The classification results will be compared with those from ROCKET.
     The results will be flushed in real-time to an output file.
 
+    :param output_file: Path of the file to write the log to. This file
+        will be cleared at the start of the classifications.
+    :type output_file: str
     :param rocket_results: String of the path to a csv file with
-        the classification results from ROCKET.,
-        defaults to "./rocket_results_ucr.csv"
-    :type rocket_results: str, optional
+        the classification results from ROCKET.
+    :type rocket_results: str
     :param verbose: If `True`, print status of classfication to the
         console., defaults to `True`
     :type verbose: bool, optional
-    :param output_file: Path of the file to write the log to. This file
-        will be cleared at the start of the classifications.,
-        defaults to "./ucr_configuration_results.txt"
-    :type output_file: str, optional
     """
 
     table_header = "{:=^25}{:=^25}{:=^25}{:=^25}".format(
@@ -63,7 +87,7 @@ class ClassificationPipeline:
         
         :param path: Path of a directory that contains folders
             structured like the datasets you get from
-            timeseriesclassification.com
+            timeseriesclassification.com.
         :type path: str
         :param use_only: List of dataset names. Only the datasets in
             this list will be remembered. If `None`, then all datasets

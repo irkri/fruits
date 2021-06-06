@@ -1,3 +1,10 @@
+"""This python file defines some fruits configurations (fruits.Fruit
+objects).
+Each configuration aims to answer a part of the big question:
+
+Which configuration is the best one for the classification of time
+series data?
+"""
 import numpy as np
 
 from context import fruits
@@ -18,8 +25,6 @@ simple_words_degree_3 = fruits.iterators.generate_words(1, 3, 3)
 simple_words_long = simple_words_degree_3[11:36]
 
 # Configurations
-# Each configuration fruit aims to answer a part of the big question:
-# Which configuration is the best one for time series data?
 
 # Apple
 # Q: What Preparateurs to use?
