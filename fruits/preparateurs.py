@@ -101,6 +101,11 @@ class INC(DataPreparateur):
         dp = INC(self._zero_padding, self.name)
         return dp
 
+    def __str__(self) -> str:
+        string = "INC(" + \
+                f"zero_padding={self._zero_padding})"
+        return string
+
 
 class STD(DataPreparateur):
     """DataPreparateur: Standardization
@@ -142,3 +147,7 @@ class STD(DataPreparateur):
         """
         dp = STD(self.name)
         return dp
+
+    def __str__(self) -> str:
+        string = "STD"
+        return string

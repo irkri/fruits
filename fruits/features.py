@@ -231,6 +231,14 @@ class PPV(FeatureSieve):
                  self.name)
         return fs
 
+    def __str__(self) -> str:
+        string = "PPV(" + \
+                f"quantile={[x[0] for x in self._q_c_input]}, " + \
+                f"constant={[x[1] for x in self._q_c_input]}, " + \
+                f"sample_size={self._sample_size}, " + \
+                f"segments={self._segments})"
+        return string
+
 
 class PPVC(PPV):
     """FeatureSieve: Proportion of connected components of positive
@@ -295,6 +303,14 @@ class PPVC(PPV):
         s = np.sum(diff == 1, axis=-1)
         # At most X.shape[1]/2 connected components are possible.
         return 2*s / X.shape[1]
+
+    def __str__(self) -> str:
+        string = "PPVC(" + \
+                f"quantile={[x[0] for x in self._q_c_input]}, " + \
+                f"constant={[x[1] for x in self._q_c_input]}, " + \
+                f"sample_size={self._sample_size}, " + \
+                f"segments={self._segments})"
+        return string
 
 
 class MAX(FeatureSieve):
@@ -390,6 +406,12 @@ class MAX(FeatureSieve):
         fs = MAX(self._cut, self._segments, self.name)
         return fs
 
+    def __str__(self) -> str:
+        string = "MAX(" + \
+                f"cut={self._cut}, " + \
+                f"segments={self._segments})"
+        return string
+
 
 class MIN(FeatureSieve):
     """FeatureSieve: Minimum value
@@ -484,6 +506,12 @@ class MIN(FeatureSieve):
         fs = MIN(self._cut, self._segments, self.name)
         return fs
 
+    def __str__(self) -> str:
+        string = "MIN(" + \
+                f"cut={self._cut}, " + \
+                f"segments={self._segments})"
+        return string
+
 
 class END(FeatureSieve):
     """FeatureSieve: Last value
@@ -549,3 +577,8 @@ class END(FeatureSieve):
         """
         fs = END(self._cut, self.name)
         return fs
+
+    def __str__(self) -> str:
+        string = "END(" + \
+                f"cut={self._cut})"
+        return string

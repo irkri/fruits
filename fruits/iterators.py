@@ -100,6 +100,9 @@ class SummationIterator:
     def __copy__(self):
         return self.copy()
 
+    def __str__(self) -> str:
+        return self.name
+
     def __repr__(self) -> str:
         return "SummationIterator('" + self.name + "')"
 

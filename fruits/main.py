@@ -243,6 +243,21 @@ class Fruit:
         for branch in self._branches:
             branch.clear_cache()
 
+    def summary(self) -> str:
+        """Returns a summary of this object. The summary contains a
+        summary for each FruitBranch in this Fruit object.
+
+        :returns: Summary as string
+        :rtype: str
+        """
+        summary = "{:=^80}".format(f"Summary of fruits.Fruit: '{self.name}'")
+        summary += f"\nBranches: {len(self.branches())}"
+        summary += f"\nFeatures: {self.nfeatures()}"
+        for branch in self.branches():
+            summary += "\n\n"+branch.summary()
+        summary += "\n{:=^80}".format(f"End of Summary")
+        return summary
+
     def copy(self):
         """Creates a shallow copy of this Fruit object.
         This also creates shallow copies of all branches in this object.
@@ -562,6 +577,36 @@ class FruitBranch:
         self._prepared_data = None
         self._iterated_data = None
         self._sieves_extended = []
+
+    def summary(self) -> str:
+        """Returns a summary of this object. The summary contains all
+        added DataPreparateur, SummationIterator and FeatureSieve
+        objects.
+
+        :returns: Summary as string
+        :rtype: str
+        """
+        summary = "{:-^80}".format("fruits.FruitBranch")
+        summary += f"\nNumber of features: {self.nfeatures()}"
+        summary += f"\n\nPreparateurs ({len(self._preparateurs)}): "
+        if len(self._preparateurs) == 0:
+            summary += "-" 
+        else: 
+            summary += "\n\t+ " + \
+                       "\n\t+ ".join([str(x) for x in self._preparateurs])
+        summary += f"\nIterators ({len(self._iterators)}): "
+        if len(self._iterators) == 0:
+            summary += "-" 
+        else: 
+            summary += "\n\t+ " + \
+                       "\n\t+ ".join([str(x) for x in self._iterators])
+        summary += f"\nSieves ({len(self._sieves)}): "
+        if len(self._sieves) == 0:
+            summary += "-" 
+        else: 
+            summary += "\n\t+ " + \
+                       "\n\t+ ".join([str(x) for x in self._sieves])
+        return summary
 
     def copy(self):
         """Returns a shallow copy of this FruitBranch object.
