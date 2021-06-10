@@ -277,14 +277,6 @@ class PPVC(PPV):
                          False,
                          name)
 
-    def nfeatures(self) -> int:
-        """Returns the number of features this FeatureSieve produces.
-        
-        :returns: number of features per time series
-        :rtype: int
-        """
-        return 1
-
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the number of consecutive strips of 1's in `(X>=q)`
         if q denotes the quantile calculated with `self.fit`.
@@ -297,12 +289,28 @@ class PPVC(PPV):
         """
         if self._q is None:
             raise RuntimeError("Missing call of PPV.fit()")
-        diff = _accelerated._increments(np.expand_dims(
-                                        (X >= self._q).astype(np.int32),
-                                        axis=1))[:, 0, :]
-        s = np.sum(diff == 1, axis=-1)
-        # At most X.shape[1]/2 connected components are possible.
-        return 2*s / X.shape[1]
+        result = np.zeros((X.shape[0], self.nfeatures()))
+        for i in range(len(self._q)):
+            diff = _accelerated._increments(np.expand_dims(
+                                            (X >= self._q[i]).astype(np.int32),
+                                            axis=1))[:, 0, :]
+            # At most X.shape[1]/2 connected components are possible.
+            result[:, i] = 2*np.sum(diff == 1, axis=-1) / X.shape[1]
+        if self.nfeatures() == 1:
+            return result[:, 0]
+        return result
+
+    def copy(self):
+        """Returns a copy of this object.
+        
+        :returns: Copy of this object
+        :rtype: PPV
+        """
+        fs = PPVC([x[0] for x in self._q_c_input],
+                  [x[1] for x in self._q_c_input],
+                  self._sample_size,
+                  self.name)
+        return fs
 
     def __str__(self) -> str:
         string = "PPVC(" + \
