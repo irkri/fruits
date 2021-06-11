@@ -116,13 +116,22 @@ class STD(DataPreparateur):
     def __init__(self,
                  name: str = "Standardization"):
         super().__init__(name)
-        self._means = None
-        self._stds = None
+        self._mean = None
+        self._std = None
+
+    def fit(self, X: np.ndarray):
+        """Fits the STD object to the given dataset by calculating the
+        mean and standard deviation of the flattened dataset.
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        """
+        self._mean = np.mean(X)
+        self._std = np.std(X)
 
     def prepare(self, X: np.ndarray) -> np.ndarray:
-        """Returns (X_ij-mu)/v for each time series i and all of its
-        dimensions j where mu is the calculated mean and v is the
-        standard deviation of this dimension.
+        """Returns the standardized dataset (X-mu)/std where mu and std
+        are the parameters calculated in :meth:`STD.fit`.
         
         :param X: (multidimensional) time series dataset
         :type X: np.ndarray
@@ -130,13 +139,9 @@ class STD(DataPreparateur):
         :rtype: np.ndarray
         :raises: RuntimeError if self.fit() wasn't called
         """
-        self._means = np.mean(X, axis=2)
-        self._stds = np.std(X, axis=2)
-        out = X.copy()
-        for i in range(X.shape[0]):
-            for j in range(X.shape[1]):
-                out[i, j, :] -= self._means[i, j]
-                out[i, j, :] /= self._stds[i, j]
+        if self._mean is None or self._std is None:
+            raise RuntimeError("Missing call of fit method")
+        out = (X - self._mean) / self._std
         return out
 
     def copy(self):
