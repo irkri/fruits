@@ -477,7 +477,7 @@ class FruitBranch:
         return out
 
     def _prepare(self, X: np.ndarray) -> np.ndarray:
-        prepared_data = X.copy()
+        prepared_data = X
         for prep in self._preparateurs:
             prepared_data = prep.prepare(prepared_data)
         return prepared_data
@@ -489,7 +489,7 @@ class FruitBranch:
             raise RuntimeError("Data hasn't been preparated yet")
         iterated_data = np.zeros((X.shape[0], len(self._iterators), 
                                    X.shape[2]))
-        iterated_data = ISS(X.copy(), self._iterators)
+        iterated_data = ISS(X, self._iterators)
         return iterated_data
 
     def _sieve(self, X: np.ndarray) -> np.ndarray:
@@ -499,15 +499,14 @@ class FruitBranch:
             raise RuntimeError("Iterated sums aren't calculated yet")
         sieved_data = np.zeros((X.shape[0], self.nfeatures()))
         k = 0
-        X_copy = X.copy()
         for i in range(len(self._iterators)):
             for sieve in self._sieves_extended[i]:
                 new_features = sieve.nfeatures()
                 if new_features == 1:
-                    sieved_data[:, k] = sieve.sieve(X_copy[:, i, :])
+                    sieved_data[:, k] = sieve.sieve(X[:, i, :])
                 else:
                     sieved_data[:, k:k+new_features] = \
-                        sieve.sieve(X_copy[:, i, :])
+                        sieve.sieve(X[:, i, :])
                 k += new_features
         return sieved_data
 
