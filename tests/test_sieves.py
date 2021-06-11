@@ -26,7 +26,10 @@ def test_ppv():
     np.testing.assert_allclose([0.4,0.4], ppvc_1.fit_sieve(X_1[0]))
 
     with pytest.raises(ValueError):
-        fruits.features.PPV(quantile=[0.5,0.1,0], constant=[False,True,False])
+        fruits.features.PPV(quantile=[0.5,0.1,-1], constant=[False,True,False])
+
+    with pytest.raises(ValueError):
+        fruits.features.PPV(quantile=[0.5,2], constant=False)
 
     ppv_group_1 = fruits.features.PPV(quantile=[0.5,0.1,0.7],
                                       constant=False,
