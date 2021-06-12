@@ -270,13 +270,17 @@ class Fruitalyser:
         return self.X_train_prep
 
     def plot_iterated_data(self,
-                           iterator_indices: list,
+                           iterator_indices: list = None,
                            test_set: bool = True) -> tuple:
         """Plots the iterated sums calculated in the specified
         fruits.Fruit object with ``fruitalyser.msplot()``.
         This method can only be used if ``self.classify()`` was called
         before.
         
+        :param iterator_indices: Indices of the SummationIterator
+            objects that are used for plotting. If ``None``, all
+            iterators are used., defaults to None
+        :type iterator_indices: list, optional
         :param test_set: If True, the transformed results of the test
             set are used for plotting., defaults to True
         :type test_set: bool, optional
@@ -285,6 +289,8 @@ class Fruitalyser:
             plot(s).
         :rtype: tuple
         """
+        if iterator_indices is None:
+            iterator_indices = list(range(len(self.iterators)))
         plots = []
         for index in iterator_indices:
             if test_set:
@@ -303,6 +309,10 @@ class Fruitalyser:
         This method can only be used if ``self.classify()`` was called
         before.
         
+        :param iterator_indices: Indices of the SummationIterator
+            objects that are used. If ``None``, all iterators are used.,
+            defaults to None
+        :type iterator_indices: list, optional
         :param test_set: If True, the transformed results of the test
             set are returned., defaults to True
         :type test_set: bool, optional
@@ -468,7 +478,7 @@ class Fruitalyser:
         :rtype: tuple
         """
         iterator_index = index // self.nfeatures
-        sieve_index =  index - nfeatures*iterator_index
+        sieve_index =  index - self.nfeatures*iterator_index
         return (iterator_index, sieve_index)
 
     def get_feature_index(self, sieve_index: int, iterator_index: int) -> int:
