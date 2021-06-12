@@ -1,4 +1,4 @@
-"""This small python module is an appendix to the package fruits and
+"""This small python module is an appendix to the package FRUITS and
 allows the creation of more complex SummationIterator objects where
 the letters are arbitrary methods that work on multidimensional time
 series.
@@ -25,7 +25,7 @@ def complex_letter(name: str):
 
 @complex_letter(name="SIGMOID")
 def sigmoid(X: np.ndarray, i: int):
-    return 1 / (1 + np.exp(-X[i, :]))
+    return 1 / (1 + np.exp(-0.001*X[i, :]))
 
 @complex_letter(name="leakyRELU")
 def leaky_relu(X: np.ndarray, i: int):
