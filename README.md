@@ -11,7 +11,6 @@ This package can be installed on your local machine by executing the file [setup
 The documentation of __FRUITS__ can be created by calling `make html` in the [docs](docs) folder. This will need a few dependencies to work. Please install the following packages using `pip` before executing the `make` command.
 - sphinx
 - sphinx_rtd_theme
-- m2r2
 
 This should create a local directory `docs/build`. Open the file `docs/build/index.html` in a browser to access the documentation.
 
