@@ -395,7 +395,7 @@ class MAX(FeatureSieve):
                     raise IndexError("Cutting index out of range")
                 new_cuts.append(cut)
             if self._segments:
-                new_cuts = sorted(list(set(new_cuts)))
+                new_cuts = sorted(list(new_cuts))
                 for j in range(1, len(new_cuts)):
                     result[i, j-1] = np.max(X[i, new_cuts[j-1]-1:new_cuts[j]])
             else:
@@ -495,7 +495,7 @@ class MIN(FeatureSieve):
                     raise IndexError("Cutting index out of range")
                 new_cuts.append(cut)
             if self._segments:
-                new_cuts = sorted(list(set(new_cuts)))
+                new_cuts = sorted(list(new_cuts))
                 for j in range(1, len(new_cuts)):
                     result[i, j-1] = np.min(X[i, new_cuts[j-1]-1:new_cuts[j]])
             else:
