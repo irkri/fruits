@@ -77,7 +77,8 @@ def load_dataset(path: str) -> tuple:
         'name_TEST.txt' and 'name_TRAIN.txt' where 'name' is the name of
         the dataset.
     :type path: str
-    :returns: Tuple (X_train, y_train, X_test, y_test)
+    :returns: Tuple (X_train, y_train, X_test, y_test) where X_train
+        and X_test are 3-dimensional numpy arrays
     :rtype: tuple
     """
     dataset = path.split("/")[-1]
@@ -87,6 +88,10 @@ def load_dataset(path: str) -> tuple:
     y_train = train_raw[:, 0].astype(np.int32)
     X_test = test_raw[:, 1:]
     y_test =  test_raw[:, 0].astype(np.int32)
+
+    X_train = np.expand_dims(X_train, axis=1)
+    X_test = np.expand_dims(X_test, axis=1)
+
     return X_train, y_train, X_test, y_test
 
 class Fruitalyser:
@@ -222,9 +227,14 @@ class Fruitalyser:
         """
         print(self.fruit.summary())
 
-    def plot_input_data(self, test_set: bool = True) -> tuple:
+    def plot_input_data(self,
+                        dim: int = 0,
+                        test_set: bool = True) -> tuple:
         """Plots the input data with ``fruitalyser.msplot()``.
         
+        :param dim: Which dimension the 2d-plot should show.,
+            defaults to 0
+        :type dim: int, optional
         :param test_set: If True, the test set is used for plotting.,
             defaults to True
         :type test_set: bool, optional
@@ -234,14 +244,19 @@ class Fruitalyser:
         :rtype: tuple
         """
         if test_set:
-            return msplot(self.X_test, self.y_test)
-        return msplot(self.X_train, self.y_train)
+            return msplot(self.X_test[:, dim, :], self.y_test)
+        return msplot(self.X_train[:, dim, :], self.y_train)
 
-    def plot_prepared_data(self, test_set: bool = True) -> tuple:
+    def plot_prepared_data(self,
+                           dim: int = 0,
+                           test_set: bool = True) -> tuple:
         """Plots the prepared data of the specified fruits.Fruit object
         with ``fruitalyser.msplot()``. This method can only be used if
         ``self.classify()`` was called before.
         
+        :param dim: Which dimension the 2d-plot should show.,
+            defaults to 0
+        :type dim: int, optional
         :param test_set: If True, the transformed results of the test
             set are used for plotting., defaults to True
         :type test_set: bool, optional
@@ -251,8 +266,8 @@ class Fruitalyser:
         :rtype: tuple
         """
         if test_set:
-            return msplot(self.X_test_prep[:, 0, :], self.y_test)
-        return msplot(self.X_train_prep[:, 0, :], self.y_train)
+            return msplot(self.X_test_prep[:, dim, :], self.y_test)
+        return msplot(self.X_train_prep[:, dim, :], self.y_train)
 
     def get_prepared_data(self, test_set: bool = True) -> np.ndarray:
         """Returns the prepared data of the fruits.Fruit object.
