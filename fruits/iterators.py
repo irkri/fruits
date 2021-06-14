@@ -217,3 +217,53 @@ def generate_words(dim: int = 1,
         words[i] = SimpleWord(words[i])
 
     return words
+
+def generate_words_of_length(l: int,
+                             dim: int = 1) -> list:
+    """Returns a list of all possible and unique SimpleWords that have
+    exactly the given number of letters.
+    For ``l=2`` and ``dim=2`` this will return a list containing::
+
+        SimpleWord("[11]"), SimpleWord("[12]"), SimpleWord("[22]"),
+        SimpleWord("[1][1]"), SimpleWord("[1][2]"), SimpleWord("[2][2]")
+    
+    :param l: Number of letters the words should contain
+    :type l: int
+    :param dim: Highest dimension of a letter., defaults to 1
+    :type dim: int, optional
+    """
+    # generate all monomials that can occured in a word with exactly
+    # l letters
+    monomials = []
+    for length in range(1, l+1):
+        monomials.append([])
+        mons = itertools.combinations_with_replacement(
+                                list(range(1, dim+1)), length)
+        for mon in mons:
+            monomials[-1].append(list(mon))
+
+    # generate all possible combinations of the monomials created above 
+    # such that the combination is a word with l letters
+    # (next line is in O(2^l), maybe find a better option later)
+    choose_monomials = [t for i in range(1, l+1) for t in
+                        itertools.combinations_with_replacement(
+                            list(range(1, l+1)), i)
+                        if sum(t)==l]
+
+    # use the combinations above for generating all possible words with
+    # l letters by using the monomials from the beginning
+    words = []
+    for choice in choose_monomials:
+        selected_monomials = []
+        for perm in set(itertools.permutations(choice)):
+            selected_monomials.append(list(itertools.product(
+                *[monomials[i-1] for i in perm])))
+        for inner_words in [[str(list(x))[1:-1].replace(", ","")
+                             for x in mon] for mon in selected_monomials]:
+            for word in inner_words:
+                words.append(word)
+
+    for i in range(len(words)):
+        words[i] = SimpleWord(words[i])
+
+    return words

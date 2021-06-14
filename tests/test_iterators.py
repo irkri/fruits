@@ -102,3 +102,11 @@ def test_complex_words():
                                      [125,637,645,861,861]]
                                ]),
                                mix_result)
+
+def test_word_generation():
+    for n in range(1, 7):
+        assert len(fruits.iterators.generate_words_of_length(n, dim=1)) \
+                == 2**(n-1)
+
+    assert len(fruits.iterators.generate_words_of_length(4, dim=2)) == 82
+
