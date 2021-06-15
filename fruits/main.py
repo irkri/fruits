@@ -485,8 +485,6 @@ class FruitBranch:
     def _iterate(self, X: np.ndarray) -> np.ndarray:
         if not self._iterators:
             raise RuntimeError("No SummationIterator specified")
-        if self._prepared_data is None:
-            raise RuntimeError("Data hasn't been preparated yet")
         iterated_data = np.zeros((X.shape[0], len(self._iterators), 
                                    X.shape[2]))
         iterated_data = ISS(X, self._iterators)
@@ -495,8 +493,6 @@ class FruitBranch:
     def _sieve(self, X: np.ndarray) -> np.ndarray:
         if not self._sieves:
             raise RuntimeError("No FeatureSieve specified")
-        if self._iterated_data is None:
-            raise RuntimeError("Iterated sums aren't calculated yet")
         sieved_data = np.zeros((X.shape[0], self.nfeatures()))
         k = 0
         for i in range(len(self._iterators)):
