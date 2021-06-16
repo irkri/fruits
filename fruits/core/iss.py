@@ -1,91 +1,91 @@
 import numpy as np
 
 from fruits import _accelerated
-from fruits.iterators import SummationIterator, SimpleWord
+from fruits.core.wording import AbstractWord, SimpleWord
 
-def ISS(Z: np.ndarray, iterators: list) -> np.ndarray:
-    """Top level function that takes in a number of time series and a
-    list of SummationIterators and decides which function to use at each
-    iterator to get the best performance possible.
+def ISS(Z: np.ndarray, words: list) -> np.ndarray:
+    """Takes in a number of time series and a list of AbstractWord
+    objects and calculated the iterated sums for each time series in
+    ``Z``.
 
-    For each given time series Z, this function returns the iteratively
-    calulcated cummulative sums of the input data, which will be
-    stepwise transformed using the specified SummationIterator[s].
+    For each given time series ``Z``, this function returns the
+    iteratively calulcated cummulative sums of the input data, which
+    will be stepwise transformed using the specified AbstractWord[s].
 
-    :param Z: three dimensional array containing multidimensional 
-        time series data
+    :param Z: Three dimensional numpy array containing a
+        multidimensional time series dataset.
     :type Z: numpy.ndarray
-    :param iterators: list of objects of type SummationIterator
-    :type iterators: list
-    :returns: numpy array of shape (Z.shape[0], len(iterators), 
-        Z.shape[2])
-    :rtype: {numpy.ndarray}
+    :param words: List of AbstractWord objects or a single AbstractWord.
+    :type words: list or AbstractWord
+    :returns: Numpy array of shape
+        ``(Z.shape[0], len(words), Z.shape[2])``.
+    :rtype: numpy.ndarray
     """
-    if isinstance(iterators, SummationIterator):
-        iterators = [iterators]
+    if isinstance(words, AbstractWord):
+        words = [words]
 
-    # divide iterators into seperate lists for SimpleWords and other 
-    # SummationIterators
-    fast_iterators = []
-    fast_iterators_index = []
-    slow_iterators = []
-    slow_iterators_index = []
-    for i, iterator in enumerate(iterators):
-        if isinstance(iterator, SimpleWord):
-            fast_iterators.append(iterator)
-            fast_iterators_index.append(i)
-        elif isinstance(iterator, SummationIterator):
-            slow_iterators.append(iterator)
-            slow_iterators_index.append(i)
+    # divide words into seperate lists for SimpleWords and ComplexWords
+    simple_words = []
+    simple_words_index = []
+    complex_words = []
+    complex_words_index = []
+    for i, word in enumerate(words):
+        if isinstance(word, SimpleWord):
+            simple_words.append(word)
+            simple_words_index.append(i)
+        elif isinstance(word, AbstractWord):
+            complex_words.append(word)
+            complex_words_index.append(i)
         else:
-            raise TypeError("Iterators should be of type SummationIterator")
+            raise TypeError("Given words have to be objects of a class " +
+                            "that inherits from AbstractWord")
 
-    # get solution for the fast iterators
-    # we have to transform the SimpleWords first such that each word has 
-    # the same length and monomial length
-    if fast_iterators:
-        max_dim = max(x.max_dim for x in fast_iterators)
-        fast_iterators_raw = [list(x.monomials()) for x in fast_iterators]
-        max_word_length = max(len(x) for x in fast_iterators_raw)
-        fast_iterators_transformed = np.zeros((len(iterators), 
-                                               max_word_length, max_dim + 1))
-        scales = np.zeros((len(fast_iterators_raw),))
-        for i in range(len(fast_iterators_raw)):
-            scales[i] = fast_iterators[i].scale
-            for j in range(len(fast_iterators_raw[i])):
-                for k in range(len(fast_iterators_raw[i][j])):
-                    fast_iterators_transformed[i,j,k] = \
-                                                fast_iterators_raw[i][j][k]
-        ISS_fast = _accelerated._fast_ISS(Z, fast_iterators_transformed, scales)
+    # get solution for the SimpleWords
+    # transform each SimpleWord in a way such that every word has the
+    # same number of extended letters and each extended letter has the
+    # same number of letters
+    if simple_words:
+        max_dim = max(word._max_dim for word in simple_words)
+        simple_words_raw = [[el for el in word] for word in simple_words]
+        max_word_length = max(len(els) for els in simple_words_raw)
+        simple_words_tf = np.zeros((len(simple_words), 
+                                    max_word_length,
+                                    max_dim + 1))
+        for i in range(len(simple_words_raw)):
+            for j in range(len(simple_words_raw[i])):
+                for k in range(len(simple_words_raw[i][j])):
+                    simple_words_tf[i, j, k] = simple_words_raw[i][j][k]
+        ISS_fast = _accelerated._fast_ISS(Z, simple_words_tf)
 
-    # get solution for SummationIterators that are not of type SimpleWord
-    if slow_iterators:
-        ISS_slow = _slow_ISS(Z, slow_iterators)
+    # get solution for AbstractWords that are not of type SimpleWord
+    if complex_words:
+        ISS_slow = _slow_ISS(Z, complex_words)
 
-    # concatenate results if slow and fast iterators were specified
-    if fast_iterators and slow_iterators:
-        results = np.zeros((Z.shape[0], len(iterators), Z.shape[2]))
-        for i, index in enumerate(fast_iterators_index):
+    # concatenate results if both types of words were specified
+    if simple_words and complex_words:
+        results = np.zeros((Z.shape[0], len(words), Z.shape[2]))
+        for i, index in enumerate(simple_words_index):
             results[:, index, :] = ISS_fast[:, i, :]
-        for i, index in enumerate(slow_iterators_index):
+        for i, index in enumerate(complex_words_index):
             results[:, index, :] = ISS_slow[:, i, :]
         return results
-    elif fast_iterators:
+    elif simple_words:
         return ISS_fast
-    elif slow_iterators:
+    elif complex_words:
         return ISS_slow
 
 def _slow_ISS(Z: np.ndarray,
-              iterators: list) -> np.ndarray:
-    result = np.zeros((Z.shape[0], len(iterators), Z.shape[2]))
+              words: list) -> np.ndarray:
+    # calculates the iterated sums for Z and a given list of
+    # general ComplexWords
+    result = np.zeros((Z.shape[0], len(words), Z.shape[2]))
     for i in range(Z.shape[0]):
-        for j in range(len(iterators)):
+        for j in range(len(words)):
             result[i, j, :] = np.ones(Z.shape[2], dtype=np.float64)
-            for k, mon in enumerate(iterators[j].monomials()):
+            for k, el in enumerate(words[j]):
                 C = np.ones(Z.shape[2], dtype=np.float64)
-                for l in range(len(mon)):
-                    C = C * mon[l](Z[i, :, :])
+                for l in range(len(el)):
+                    C = C * el[l](Z[i, :, :])
                 result[i, j, :] = np.cumsum(result[i, j, :] * C)
-                result[i, j, :] /= Z.shape[2]**iterators[j].scale
 
     return result
