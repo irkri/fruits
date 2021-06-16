@@ -65,12 +65,20 @@ class DataPreparateur(ABC):
 class INC(DataPreparateur):
     """DataPreparateur: Increments
     
-    For a time series 
-    `X = [x_1, x_2, ..., x_n]`
-    this class produces the output
-    `X_inc = [0, x_2-x_1, x_3-x_2, ..., x_n-x_{n-1}]`.
-    If `zero_padding` is set to `False`, then the 0 above will be
-    replaced by `x_1`.
+    For one dimension of a time series::
+
+        X = [x_1, x_2, ..., x_n]
+
+    this class produces the output::
+        
+        X_inc = [0, x_2-x_1, x_3-x_2, ..., x_n-x_{n-1}].
+
+    :param zero_padding: If set to True, then the first entry in each
+        time series will be set to 0. If False, it isn't changed at
+        all., defaults to True
+    :type zero_padding: bool, optional
+    :param name: Name of the preparateur., defaults to "Increments"
+    :type name: str, optional
     """
     def __init__(self,
                  zero_padding: bool = True,
@@ -110,11 +118,12 @@ class INC(DataPreparateur):
 class STD(DataPreparateur):
     """DataPreparateur: Standardization
     
-    For a time series `X` this class produces the output
-    `X_std = (X-mean(X))/std(X)`.
+    Used for standardization of a given time series dataset.
+
+    :param name: Name of the preparateur., defaults to "Standardization"
+    :type name: str, optional
     """
-    def __init__(self,
-                 name: str = "Standardization"):
+    def __init__(self, name: str = "Standardization"):
         super().__init__(name)
         self._mean = None
         self._std = None
@@ -154,5 +163,4 @@ class STD(DataPreparateur):
         return dp
 
     def __str__(self) -> str:
-        string = "STD"
-        return string
+        return "STD"

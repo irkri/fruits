@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from fruits import _accelerated, core
+from fruits import _accelerated
 
 class FeatureSieve(ABC):
     """Abstract class FeatureSieve
@@ -10,10 +10,10 @@ class FeatureSieve(ABC):
     A FeatureSieve object is used to transforms a twodimensional numpy
     array into a onedimensional numpy array.
     The length of the resulting array can be determined by calling
-    `FeatureSieve.nfeatures`.
+    ``FeatureSieve.nfeatures`? .
 
     Each class that inherits FeatureSieve must override the methods
-    `FeatureSieve.sieve` and `FeatureSieve.nfeatures`.
+    ``FeatureSieve.sieve`` and ``FeatureSieve.nfeatures``.
     """
     def __init__(self, name: str = ""):
         super().__init__()
