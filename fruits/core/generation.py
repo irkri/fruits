@@ -36,7 +36,6 @@ def simplewords_by_degree(max_letters: int,
         for word in itertools.product(ext_letters, repeat=n):
             words.append("".join([str(x).replace(", ","") for x in word]))
 
-    print(f"{words=}")
     for i in range(len(words)):
         words[i] = SimpleWord(words[i])
 
