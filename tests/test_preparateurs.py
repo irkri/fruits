@@ -8,8 +8,8 @@ X_1 = np.array([
                ])
 
 def test_increments():
-    X_1_1 = fruits.preparateurs.INC(True).fit_prepare(X_1)
-    increments = fruits.preparateurs.INC(zero_padding=False)
+    X_1_1 = fruits.preparation.INC(True).fit_prepare(X_1)
+    increments = fruits.preparation.INC(zero_padding=False)
     X_1_2 = increments.fit_prepare(X_1)
 
     np.testing.assert_allclose(np.array([
@@ -28,7 +28,7 @@ def test_increments():
     np.testing.assert_allclose(X_1_2, X_1_2_copy)
 
 def test_standardization():
-    X_1_1 = fruits.preparateurs.STD().fit_prepare(X_1)
+    X_1_1 = fruits.preparation.STD().fit_prepare(X_1)
 
     np.testing.assert_almost_equal(0, np.mean(X_1_1.flatten()))
     np.testing.assert_almost_equal(1, np.std(X_1_1.flatten()))
