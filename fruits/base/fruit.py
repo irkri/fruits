@@ -3,9 +3,11 @@ import inspect
 
 import numpy as np
 
+from fruits.base.callback import AbstractCallback
 from fruits.preparation import DataPreparateur
 from fruits.core.wording import AbstractWord
 from fruits.sieving import FeatureSieve
+from fruits.base import scope
 from fruits import core
 
 class Fruit:
@@ -179,29 +181,41 @@ class Fruit:
         """
         return sum([branch.nfeatures() for branch in self._branches])
 
-    def fit(self, X: np.ndarray):
+    def fit(self, X: np.ndarray, callbacks: list = []):
         """Fits all branches to the given data.
         
         :param X: (Multidimensional) time series dataset
         :type X: np.ndarray
+        :param callbacks: List of callbacks. To write your own callback,
+            override the class ``fruits.callback.AbstractCallback``.,
+            defaults to empty list
+        :type callbacks: list of AbstractCallback objects, optional
         """
         for branch in self._branches:
-            branch.fit(X)
+            for callback in callbacks:
+                callback.on_next_branch()
+            branch.fit(X, callbacks)
 
-    def transform(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, callbacks: list = []) -> np.ndarray:
         """Returns a two dimensional array of all features from all
         branches this Fruit object contains.
         
         :param X: (Multidimensional) time series dataset
         :type X: np.ndarray
+        :param callbacks: List of callbacks. To write your own callback,
+            override the class ``fruits.callback.AbstractCallback``.,
+            defaults to empty list
+        :type callbacks: list of AbstractCallback objects, optional
         :rtype: np.ndarray
         :raises: RuntimeError if Fruit.fit wasn't called
         """
         result = np.zeros((X.shape[0], self.nfeatures()))
         index = 0
         for branch in self._branches:
+            for callback in callbacks:
+                callback.on_next_branch()
             k = branch.nfeatures()
-            result[:, index:index+k] = branch.transform(X)
+            result[:, index:index+k] = branch.transform(X, callbacks)
             index += k
         return result
 
@@ -419,7 +433,7 @@ class FruitBranch:
         created FruitBranch object.
         """
         self.clear_preparateurs()
-        self.clear_iterators()
+        self.clear_words()
         self.clear_sieves()
 
     def nfeatures(self) -> int:
@@ -430,16 +444,6 @@ class FruitBranch:
         """
         return sum([s.nfeatures() for s in self._sieves])*len(self._words)
 
-    def _reshape_input(self, X: np.ndarray) -> np.ndarray:
-        out = X.copy()
-        if out.ndim == 1:
-            out = np.expand_dims(out, axis=0)
-        if out.ndim == 2:
-            out = np.expand_dims(out, axis=1)
-        if out.ndim != 3:
-            raise ValueError("Unsupported input shape")
-        return out
-
     def _check_configuration(self):
         # checks if the FruitBranch is configured correctly and ready
         # for fitting
@@ -448,7 +452,7 @@ class FruitBranch:
         if not self._sieves:
             raise RuntimeError("No FeatureSieve objects specified")
 
-    def fit(self, X: np.ndarray):
+    def fit(self, X: np.ndarray, callbacks: list = []):
         """Fits the branch to the given dataset. What this action
         explicitly does depends on the FruitBranch configuration.
         
@@ -456,24 +460,35 @@ class FruitBranch:
             If ``X.ndims < 3`` then the array will be expanded to
             contain 3 dimensions. This could lead to unwanted behaviour.
         :type X: np.ndarray
+        :param callbacks: List of callbacks. To write your own callback,
+            override the class ``fruits.callback.AbstractCallback``.,
+            defaults to empty list
+        :type callbacks: list of AbstractCallback objects, optional
         :raises: ValueError if ``X.ndims > 3``
         """
         self._check_configuration()
+        scope.check_callbacks(callbacks)
 
-        prepared_data = self._reshape_input(X)
+        prepared_data = scope.force_input_shape(X)
         for prep in self._preparateurs:
             prepared_data = prep.fit_prepare(prepared_data)
+            for callback in callbacks:
+                callback.on_preparateur(prepared_data)
+        for callback in callbacks:
+            callback.on_preparation(prepared_data)
 
         self._sieves_extended = []
         for i in range(len(self._words)):
             iterated_data = core.iss.ISS(prepared_data, self._words[i])
+            for callback in callbacks:
+                callback.on_iterated_sum(iterated_data)
             sieves_copy = [sieve.copy() for sieve in self._sieves]
             for sieve in sieves_copy:
                 sieve.fit(iterated_data[:, 0, :])
             self._sieves_extended.append(sieves_copy)
         self._fitted = True
 
-    def transform(self, X: np.ndarray = None) -> np.ndarray:
+    def transform(self, X: np.ndarray, callbacks: list = []) -> np.ndarray:
         """Transforms the given time series dataset. The results are
         the calculated features for the different time series.
         
@@ -481,6 +496,10 @@ class FruitBranch:
             If ``X.ndims < 3`` then the array will be expanded to
             contain 3 dimensions. This could lead to unwanted behaviour.
         :type X: np.ndarray
+        :param callbacks: List of callbacks. To write your own callback,
+            override the class ``fruits.callback.AbstractCallback``.,
+            defaults to empty list
+        :type callbacks: list of AbstractCallback objects, optional
         :rtype: np.ndarray
         :raises: ValueError if ``X.ndims > 3``
         :raises: RuntimeError if FruitBranch.fit wasn't called
@@ -488,15 +507,21 @@ class FruitBranch:
         if not self._fitted:
             raise RuntimeError("Missing call of FruitBranch.fit")
 
-        prepared_data = self._reshape_input(X)
+        prepared_data = scope.force_input_shape(X)
         for prep in self._preparateurs:
             prepared_data = prep.prepare(prepared_data)
+            for callback in callbacks:
+                callback.on_preparateur(prepared_data)
+        for callback in callbacks:
+            callback.on_preparation(prepared_data)
 
         sieved_data = np.zeros((prepared_data.shape[0],
                                 self.nfeatures()))
         k = 0
         for i in range(len(self._words)):
             iterated_data = core.iss.ISS(prepared_data, self._words[i])
+            for callback in callbacks:
+                callback.on_iterated_sum(iterated_data)
             for sieve in self._sieves_extended[i]:
                 new_features = sieve.nfeatures()
                 if new_features == 1:
@@ -504,8 +529,11 @@ class FruitBranch:
                 else:
                     sieved_data[:, k:k+new_features] = \
                             sieve.sieve(iterated_data[:, 0, :])
+                for callback in callbacks:
+                    callback.on_sieve(sieved_data[k:k+new_features])
                 k += new_features
-
+        for callback in callbacks:
+            callback.on_sieving_end(sieved_data)
         return sieved_data
 
     def fit_transform(self, X: np.ndarray) -> np.ndarray:
