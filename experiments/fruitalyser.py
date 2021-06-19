@@ -94,13 +94,37 @@ def load_dataset(path: str) -> tuple:
 
     return X_train, y_train, X_test, y_test
 
+class TransformationCallback(fruits.callback.AbstractCallback):
+    def __init__(self, branch: int = 0):
+        self._branch = branch
+        self._current_branch = -1
+        self._prepared_data = None
+        self._iterated_sums = []
+        self._sieved_data = None
+
+    def on_next_branch(self):
+        self._current_branch += 1
+
+    def on_preparation_end(self, X: np.ndarray):
+        if self._current_branch == self._branch:
+            self._prepared_data = X
+
+    def on_iterated_sum(self, X: np.ndarray):
+        if self._current_branch == self._branch:
+            self._iterated_sums.append(X)
+
+    def on_sieving_end(self, X: np.ndarray):
+        if self._current_branch == self._branch:
+            self._sieved_data = X
+
+
 class Fruitalyser:
     """Class for analysing results for a fruits.Fruit object and its
     classification pipeline.
 
-    :param fruits_configuration: A fruits configuration for feature
+    :param fruit: A fruits configuration for feature
         extraction
-    :type fruits_configuration: fruits.Fruit
+    :type fruit: fruits.Fruit
     :param data: Tuple of a (already split) classification dataset
         ``[X_train, y_train, X_test, y_test]``. This format is the same
         you get from calling the module method
@@ -108,15 +132,16 @@ class Fruitalyser:
     :type data: tuple
     """
     def __init__(self,
-                 fruits_configuration: fruits.Fruit,
+                 fruit: fruits.Fruit,
                  data: tuple):
-        self.fruit = fruits_configuration
+        self.fruit = fruit
         self._extracted = None
         self.X_train , self.y_train, self.X_test, self.y_test = data
 
     def classify(self,
                  classifier=None,
-                 watch_branch: int = 0):
+                 watch_branch: int = 0,
+                 test_set: bool = True):
         """Classifies the specified data by first extracting the
         features of the time series using the fruits.Fruit object.
         
@@ -132,42 +157,51 @@ class Fruitalyser:
             All future calls of other methods on this Fruitalyser
             object will depend on this option., defaults to 0
         :type watch_branch: int, optional
+        :param test_set: If True, the results from the
+            transformation of the test set will be used., defaults to
+            True
+        :type test_set: bool, optional
         """
         if self._extracted is None or self._extracted != watch_branch:
+            self._callback = TransformationCallback(watch_branch)
             watched_branch = self.fruit.branches()[watch_branch]
             start = Timer()
             self.fruit.fit(self.X_train)
             print(f"Fitting took {Timer() - start} s")
             start = Timer()
-            self.all_X_train_feat = self.fruit.transform(self.X_train)
+            if test_set:
+                self.X_train_feat = self.fruit.transform(self.X_train)
+            else:
+                self.X_train_feat = self.fruit.transform(self.X_train,
+                        callbacks=[self._callback])
             print(f"Transforming training set took {Timer() - start} s")
-            self.X_train_prep = watched_branch._prepared_data.copy()
-            self.X_train_iter = watched_branch._iterated_data.copy()
-            self.X_train_feat = watched_branch._sieve(
-                                    watched_branch._iterated_data)
             start = Timer()
-            self.all_X_test_feat = self.fruit.transform(self.X_test)
+            if test_set:
+                self.X_test_feat = self.fruit.transform(self.X_test,
+                        callbacks=[self._callback])
+            else:
+                self.X_test_feat = self.fruit.transform(self.X_test)
             print(f"Transforming testing set took {Timer() - start} s")
-            self.X_test_prep = watched_branch._prepared_data.copy()
-            self.X_test_iter = watched_branch._iterated_data.copy()
-            self.X_test_feat = watched_branch._sieve(
-                                    watched_branch._iterated_data)
-
-            self.fruit.clear_cache()
             self._extracted = watch_branch
 
+            if test_set:
+                self._y = self.y_test
+            else:
+                self._y = self.y_train
+
             self.preparateurs = watched_branch.get_preparateurs()
-            self.iterators = watched_branch.get_iterators()
+            self.words = watched_branch.get_words()
             self.sieves = watched_branch.get_sieves()
             self.nfeatures = sum([sieve.nfeatures() for sieve in self.sieves])
+            self.nbranchfeatures = watched_branch.nfeatures()
         else:
             print("Features already extracted.")
 
         if classifier is None:
             classifier = RidgeClassifierCV(alphas=np.logspace(-3,3,10),
                                            normalize=True)
-        classifier.fit(self.all_X_train_feat, self.y_train)
-        self.test_score = classifier.score(self.all_X_test_feat,
+        classifier.fit(self.X_train_feat, self.y_train)
+        self.test_score = classifier.score(self.X_test_feat,
                                            self.y_test)
 
         print(f"Classification with {type(classifier)}")
@@ -205,8 +239,8 @@ class Fruitalyser:
         for i, test_case in enumerate(test_cases):
             t = {variable: test_case}
             clssfr = classifier(**t)
-            clssfr.fit(self.all_X_train_feat, self.y_train)
-            accuracies[i] = clssfr.score(self.all_X_test_feat, self.y_test)
+            clssfr.fit(self.X_train_feat, self.y_train)
+            accuracies[i] = clssfr.score(self.X_test_feat, self.y_test)
         fig, ax = plt.subplots()
         ax.plot(test_cases, accuracies, marker="x", label="test accuracy")
         ax.vlines(test_cases[np.argmax(accuracies)],
@@ -227,29 +261,8 @@ class Fruitalyser:
         """
         print(self.fruit.summary())
 
-    def plot_input_data(self,
-                        dim: int = 0,
-                        test_set: bool = True) -> tuple:
-        """Plots the input data with ``fruitalyser.msplot()``.
-        
-        :param dim: Which dimension the 2d-plot should show.,
-            defaults to 0
-        :type dim: int, optional
-        :param test_set: If True, the test set is used for plotting.,
-            defaults to True
-        :type test_set: bool, optional
-        :returns: Tuple (figure, axis) corresponding to the return value
-            of ``matplotlib.pyplot.subplots()`` holding the inserted
-            plot(s).
-        :rtype: tuple
-        """
-        if test_set:
-            return msplot(self.X_test[:, dim, :], self.y_test)
-        return msplot(self.X_train[:, dim, :], self.y_train)
-
     def plot_prepared_data(self,
-                           dim: int = 0,
-                           test_set: bool = True) -> tuple:
+                           dim: int = 0) -> tuple:
         """Plots the prepared data of the specified fruits.Fruit object
         with ``fruitalyser.msplot()``. This method can only be used if
         ``self.classify()`` was called before.
@@ -257,93 +270,41 @@ class Fruitalyser:
         :param dim: Which dimension the 2d-plot should show.,
             defaults to 0
         :type dim: int, optional
-        :param test_set: If True, the transformed results of the test
-            set are used for plotting., defaults to True
-        :type test_set: bool, optional
         :returns: Tuple (figure, axis) corresponding to the return value
             of ``matplotlib.pyplot.subplots()`` holding the inserted
             plot(s).
         :rtype: tuple
         """
-        if test_set:
-            return msplot(self.X_test_prep[:, dim, :], self.y_test)
-        return msplot(self.X_train_prep[:, dim, :], self.y_train)
+        return msplot(self._callback._prepared_data[:, dim, :], self._y)
 
-    def get_prepared_data(self, test_set: bool = True) -> np.ndarray:
-        """Returns the prepared data of the fruits.Fruit object.
-        This method can only be used if ``self.classify()`` was called
-        before.
-        
-        :param test_set: If True, the transformed results of the test
-            set are returned., defaults to True
-        :type test_set: bool, optional
-        :returns: Prepared data of the watched FruitBranch
-        :rtype: np.ndarray
-        """
-        if test_set:
-            return self.X_test_prep
-        return self.X_train_prep
-
-    def plot_iterated_data(self,
-                           iterator_indices: list = None,
-                           test_set: bool = True) -> tuple:
+    def plot_iterated_sums(self,
+                           word_indices: list = None) -> list:
         """Plots the iterated sums calculated in the specified
         fruits.Fruit object with ``fruitalyser.msplot()``.
         This method can only be used if ``self.classify()`` was called
         before.
         
-        :param iterator_indices: Indices of the SummationIterator
-            objects that are used for plotting. If ``None``, all
-            iterators are used., defaults to None
-        :type iterator_indices: list, optional
-        :param test_set: If True, the transformed results of the test
-            set are used for plotting., defaults to True
-        :type test_set: bool, optional
-        :returns: Tuple (figure, axis) corresponding to the return value
-            of ``matplotlib.pyplot.subplots()`` holding the inserted
-            plot(s).
-        :rtype: tuple
+        :param word_indices: Indices of the words that are used for
+            plotting. If ``None``, all words are used., defaults to None
+        :type word_indices: list, optional
+        :returns: List of tuples (figure, axis) corresponding to the
+            return value of ``matplotlib.pyplot.subplots()`` holding
+            the inserted plot(s).
+        :rtype: list
         """
-        if iterator_indices is None:
-            iterator_indices = list(range(len(self.iterators)))
+        if word_indices is None:
+            word_indices = list(range(len(self.words)))
         plots = []
-        for index in iterator_indices:
-            if test_set:
-                fig, ax = msplot(self.X_test_iter[:, index, :], self.y_test)
-            else:
-                fig, ax = msplot(self.X_train_iter[:, index, :], self.y_train)
-            ax.set_title(str(self.iterators[index]))
+        for index in word_indices:
+            fig, ax = msplot(self._callback._iterated_sums[index][:, 0, :],
+                             self._y)
+            ax.set_title(str(self.words[index]))
             plots.append((fig, ax))
         return plots
 
-    def get_iterated_data(self,
-                          iterator_indices: list = None,
-                          test_set: bool = True) -> np.ndarray:
-        """Returns the iterated sums calculated in the fruits.Fruit
-        object.
-        This method can only be used if ``self.classify()`` was called
-        before.
-        
-        :param iterator_indices: Indices of the SummationIterator
-            objects that are used. If ``None``, all iterators are used.,
-            defaults to None
-        :type iterator_indices: list, optional
-        :param test_set: If True, the transformed results of the test
-            set are returned., defaults to True
-        :type test_set: bool, optional
-        :returns: Iterated sums used in the watched FruitBranch
-        :rtype: np.ndarray
-        """
-        if iterator_indices is None:
-            iterator_indices = list(range(len(self.iterators)))
-        if test_set:
-            return self.X_test_iter[:, iterator_indices, :]
-        return self.X_test_iter[:, iterator_indices, :]
-
     def plot_features(self,
                       sieve_index: int,
-                      iterator_indices: list = None,
-                      test_set: bool = True) -> sns.PairGrid:
+                      word_indices: list = None) -> sns.PairGrid:
         """Plots the features of the watched ``fruits.FruitBranch``
         object. The ``seaborn.pairplot`` function is used to create
         a plot based on a ``pandas.DataFrame`` consisting of the
@@ -354,43 +315,30 @@ class Fruitalyser:
         :param sieve_index: Index of the FeatureSieve that is used for
             plotting.
         :type sieve_index: int
-        :param iterator_indices: Indices of the SummationIterator
-            objects that are used for plotting. If this is a list with
-            5 integers, the pairplot (also called scatter matrix) is
-            a grid with 5 rows and 5 columns. If ``None``, all
-            iterators are used., defaults to None
-        :type iterator_indices: list, optional
-        :param test_set: If True, the results from the test set are
-            used., defaults to True
-        :type test_set: bool, optional
+        :param word_indices: Indices of the words that are used for
+            plotting. If this is a list with 5 integers, the pairplot
+            (also called scatter matrix) is a grid with 5 rows and 5
+            columns. If ``None``, all words are used., defaults to None
+        :type word_indices: list, optional
         :returns: Pairplot of the specified features.
         :rtype: seaborn.PairGrid
         """
-        if iterator_indices is None:
-            iterator_indices = list(range(len(self.iterators)))
+        if word_indices is None:
+            word_indices = list(range(len(self.words)))
         feats = self.get_feature_dataframe(sieve_index,
-                                           iterator_indices,
-                                           test_set)
-        if test_set:
-            pp = sns.pairplot(feats,
-                              hue="Class",
-                              diag_kind="hist",
-                              markers="+",
-                              palette=sns.color_palette("tab10",
-                                        len(set(self.y_test))))
-        else:
-            pp = sns.pairplot(feats,
-                              hue="Class",
-                              diag_kind="hist",
-                              markers="+",
-                              palette=sns.color_palette("tab10",
-                                        len(set(self.y_train))))
+                                           word_indices)
+        pp = sns.pairplot(feats,
+                          hue="Class",
+                          diag_kind="hist",
+                          markers="+",
+                          palette=sns.color_palette("tab10",
+                                                    len(set(self._y)))
+                         )
         return pp
 
     def get_feature_dataframe(self,
                               sieve_index: int,
-                              iterator_indices: list = None,
-                              test_set: bool = True) -> np.ndarray:
+                              word_indices: list = None) -> np.ndarray:
         """Returns a ``pandas.DataFrame`` object with all features
         matching the following specifications.
         This method can only be used if ``self.classify()`` was called
@@ -398,50 +346,22 @@ class Fruitalyser:
         
         :param sieve_index: Index of the FeatureSieve that is used.
         :type sieve_index: int
-        :param iterator_indices: Indices of the SummationIterator
-            objects that are used. The names of these objects will be
-            the columns names of the table. If ``None``, all
-            iterators are used., defaults to None
-        :type iterator_indices: list, optional
-        :param test_set: If True, the results from the test set are
-            used., defaults to True
-        :type test_set: bool, optional
+        :param word_indices: Indices of the words that are used. The
+            names of these objects will be the columns names of the
+            table. If ``None``, all words are used., defaults to None
+        :type word_indices: list, optional
         :rtype: pandas.DataFrame
         """
-        if iterator_indices is None:
-            iterator_indices = list(range(len(self.iterators)))
-        if test_set:
-            feat_table = np.array([self.X_test_feat[:,
-                                    self.get_feature_index(sieve_index, i)]
-                                   for i in iterator_indices])
-            feats = pd.DataFrame(feat_table.T,
-                                 columns=[str(self.iterators[i])
-                                          for i in iterator_indices])
-            feats["Class"] = self.y_test
-        else:
-            feat_table = np.array([self.X_train_feat[:,
-                                    self.get_feature_index(sieve_index, i)]
-                                   for i in iterator_indices])
-            feats = pd.DataFrame(feat_table.T,
-                                 columns=[str(self.iterators[i])
-                                          for i in iterator_indices])
-            feats["Class"] = self.y_train
+        if word_indices is None:
+            word_indices = list(range(len(self.words)))
+        feat_table = np.array([self._callback._sieved_data[:,
+                                self.get_feature_index(sieve_index, i)]
+                               for i in word_indices])
+        feats = pd.DataFrame(feat_table.T,
+                             columns=[str(self.words[i])
+                                      for i in word_indices])
+        feats["Class"] = self._y
         return feats
-
-    def get_features(self, test_set: bool = True) -> np.ndarray:
-        """Returns the features calculated with the fruits.Fruit object.
-        This method can only be used if ``self.classify()`` was called
-        before.
-        
-        :param test_set: If True, the transformed results of the test
-            set are returned., defaults to True
-        :type test_set: bool, optional
-        :returns: Features calculated in the watched FruitBranch
-        :rtype: np.ndarray
-        """
-        if test_set:
-            return self.X_test_feat
-        return self.X_train_feat
 
     def pca_correlation(self,
                         components: int) -> pd.DataFrame:
@@ -457,21 +377,21 @@ class Fruitalyser:
         :rtype: pandas.DataFrame
         """
         pca = PCA(n_components=components)
-        pca.fit(self.X_train_feat)
+        # standardize feature set
+        pca.fit(self._callback._sieved_data)
         feature_pc_correlation = pd.DataFrame(pca.components_,
-            columns=['Feat-'+str(i+1) for i in range(self.fruit.nfeatures())],
+            columns=['Feat-'+str(i+1) for i in range(self.nbranchfeatures)],
             index=['PC-'+str(i+1) for i in range(components)])
         return feature_pc_correlation
 
-    def rank_iterators_and_sieves(self,
-                                  n: int) -> list:
-        """Ranks the SummationIterator and FeatureSieve objects by
-        relevance for the classification in the watched FruitBranch.
+    def rank_words_and_sieves(self, n: int) -> list:
+        """Ranks the words and sieves by variance in the feature space
+        (using PCA) in the watched FruitBranch.
         
         :param n: Number of objects to rank
         :type n: int
-        :returns: List of index tuples (SummationIterator, FeatureSieve)
-            sorted by relevance for the classfication.
+        :returns: List of tuples (word_index, sieve_index) sorted by
+            relevance for the classfication.
         :rtype: list
         """
         correlation = self.pca_correlation(n)
@@ -483,7 +403,7 @@ class Fruitalyser:
     def split_feature_index(self, index: int) -> tuple:
         """For a given index for one of the calculated features from
         the ``fruits.Fruit`` object, this method returns a tuple
-        containing the index of the SummationIterator and the index of
+        containing the index of the word and the index of
         the FeatureSieve that led to this particular feature.
         This method can only be used if ``self.classify()`` was called
         before.
@@ -492,22 +412,21 @@ class Fruitalyser:
         :type index: int
         :rtype: tuple
         """
-        iterator_index = index // self.nfeatures
-        sieve_index =  index - self.nfeatures*iterator_index
-        return (iterator_index, sieve_index)
+        word_index = index // self.nfeatures
+        sieve_index =  index - self.nfeatures*word_index
+        return (word_index, sieve_index)
 
-    def get_feature_index(self, sieve_index: int, iterator_index: int) -> int:
+    def get_feature_index(self, sieve_index: int, word_index: int) -> int:
         """Returns a feature index in the array of all concatenated
         features.
         This method can only be used if ``self.classify()`` was called
         before.
 
-        :param sieve_index: Index of the corresponding FeatureSieve.
+        :param sieve_index: Index of the corresponding sieve.
         :type sieve_index: int
-        :param iterator_index: Index of the corresponding
-            SummationIterator.
-        :type iterator_index: int
+        :param word_index: Index of the corresponding word.
+        :type word_index: int
         :rtype: int
         """
-        index = iterator_index * self.nfeatures
+        index = word_index * self.nfeatures
         return index + sieve_index
