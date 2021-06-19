@@ -1,6 +1,7 @@
 import itertools
 
-from fruits.core.wording import SimpleWord
+from fruits.core.letters import ExtendedLetter, _letter_configured
+from fruits.core.wording import SimpleWord, ComplexWord
 
 def simplewords_by_degree(max_letters: int,
                           max_extended_letters: int,
@@ -84,3 +85,31 @@ def simplewords_by_length(l: int,
             for word in inner_words:
                 words.append(SimpleWord(word))
     return words
+
+def simplewords_replace_letters(simplewords: list, letter: callable) -> list:
+    """Generate a list of ``ComplexWord`` objects by replacing each
+    letter in every given ``SimpleWord`` object with a specified letter.
+    The dimension a letter extracts will match the dimension of the
+    letter in the simple word.
+    
+    :param simplewords: List of ``SimpleWord`` objects.
+    :type simplewords: list
+    :param letter: Function that is decorated correctly with
+        ``fruits.core.complex_letter``.
+    :type letter: callable
+    :rtype: list of ``ComplexWord`` objects
+    """
+    if not _letter_configured(letter):
+        raise TypeError("Letter has the wrong signature. Perhaps it " +
+                        "wasn't decorated correctly?")
+    complexwords = []
+    for simpleword in simplewords:
+        complexword = ComplexWord()
+        for el in simpleword:
+            ext_letter = ExtendedLetter()
+            for i, dim in enumerate(el):
+                for j in range(dim):
+                    ext_letter.append(letter, i)
+            complexword.multiply(ext_letter)
+        complexwords.append(complexword)
+    return complexwords
