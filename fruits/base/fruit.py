@@ -475,7 +475,7 @@ class FruitBranch:
             for callback in callbacks:
                 callback.on_preparateur(prepared_data)
         for callback in callbacks:
-            callback.on_preparation(prepared_data)
+            callback.on_preparation_end(prepared_data)
 
         self._sieves_extended = []
         for i in range(len(self._words)):
@@ -513,7 +513,7 @@ class FruitBranch:
             for callback in callbacks:
                 callback.on_preparateur(prepared_data)
         for callback in callbacks:
-            callback.on_preparation(prepared_data)
+            callback.on_preparation_end(prepared_data)
 
         sieved_data = np.zeros((prepared_data.shape[0],
                                 self.nfeatures()))

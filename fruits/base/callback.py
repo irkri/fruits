@@ -23,7 +23,7 @@ class AbstractCallback(ABC):
     Called once after the calculation of the prepared data with the
     last ``DataPreparateur``.
     
-    on_iterated_sums(self, X: np.ndarray)
+    on_iterated_sum(self, X: np.ndarray)
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     Called for every iterated sum calculated (for each word).
     
@@ -48,6 +48,9 @@ class AbstractCallback(ABC):
         pass
 
     def on_iterated_sum(self, X: np.ndarray):
+        pass
+
+    def on_sieve(self, X: np.ndarray):
         pass
 
     def on_sieving_end(self, X: np.ndarray):
