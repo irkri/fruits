@@ -6,7 +6,7 @@ COMPLEX_LETTER_SIGNATURE = "fruits_letter"
 COMPLEX_LETTER_NAME = "fruits_name"
 
 class ExtendedLetter:
-    """Class for an extended Letter used in classes inheriting from
+    """Class for an extended letter used in classes inheriting from
     ``fruits.core.wording.AbstractWord``.
     
     An ExtendedLetter object is a container that only allows
@@ -23,6 +23,8 @@ class ExtendedLetter:
     """
     def __init__(self, *letters):
         self._letters = []
+        self._dimensions = []
+        self._string_repr = ""
         for letter in letters:
             if not isinstance(letter, tuple) or len(letter) != 2:
                 raise TypeError("ExtendedLetter can only be initialized " +
@@ -41,16 +43,19 @@ class ExtendedLetter:
         """
         if not callable(letter):
             raise TypeError("Argument letter has to be a callable function")
-        elif (not COMPLEX_LETTER_SIGNATURE in letter.__dict__ or not
-                  COMPLEX_LETTER_NAME in letter.__dict__):
+        elif not _letter_configured(letter):
             raise TypeError("Letter has the wrong signature. Perhaps it " +
                             "wasn't decorated correctly?")
         else:
-            self._letters.append(letter(dim))
+            self._letters.append(letter)
+            self._dimensions.append(dim)
+            self._string_repr += letter.__dict__[COMPLEX_LETTER_NAME]
+            self._string_repr += "(" + str(dim+1) + ")"
 
     def copy(self):
         el = ExtendedLetter()
-        el._letters = self._letters
+        el._letters = self._letters.copy()
+        el._dimensions = self._dimensions.copy()
         return el
 
     def __iter__(self):
@@ -60,17 +65,21 @@ class ExtendedLetter:
     def __next__(self):
         if self._iter_index < len(self._letters)-1:
             self._iter_index += 1
-            return self._letters[self._iter_index]
+            return self._letters[self._iter_index](
+                        self._dimensions[self._iter_index])
         raise StopIteration()
 
     def __len__(self) -> int:
         return len(self._letters)
 
     def __getitem__(self, i: int) -> callable:
-        return self._letters[i]
+        return self._letters[i](self._dimensions[i])
 
     def __copy__(self):
         return self.copy()
+
+    def __str__(self) -> str:
+        return "["+self._string_repr+"]"
 
     def __repr__(self):
         return "fruits.core.letters.ExtendedLetter"
@@ -114,7 +123,7 @@ def complex_letter(*args, name: str = None):
     if len(args) == 2 and not isinstance(args[0], str):
         raise RuntimeError("Unknown argument types supplied.")
     if name is None and len(args)==1 and callable(args[0]):
-        _configure_decorated_function(args[0])
+        _configure_letter(args[0])
         @wraps(args[0])
         def wrapper(i: int):
             def index_manipulation(X: np.ndarray):
@@ -123,7 +132,7 @@ def complex_letter(*args, name: str = None):
         return wrapper
     else:
         def complex_letter_decorator(func):
-            _configure_decorated_function(func, name=name)
+            _configure_letter(func, name=name)
             @wraps(func)
             def wrapper(i: int):
                 def index_manipulation(X: np.ndarray):
@@ -132,7 +141,7 @@ def complex_letter(*args, name: str = None):
             return wrapper
         return complex_letter_decorator
 
-def _configure_decorated_function(func: callable, name: str = None):
+def _configure_letter(func: callable, name: str = None):
     if func.__code__.co_argcount != 2:
         raise RuntimeError("Wrong number of arguments at decorated function " +
                            str(func.__name__) + ". Should be 2.")
@@ -141,3 +150,9 @@ def _configure_decorated_function(func: callable, name: str = None):
         func.__dict__[COMPLEX_LETTER_NAME] = func.__name__
     else:
         func.__dict__[COMPLEX_LETTER_NAME] = name
+
+def _letter_configured(func: callable) -> bool:
+    if (COMPLEX_LETTER_SIGNATURE in func.__dict__ and
+        COMPLEX_LETTER_NAME in func.__dict__):
+        return True
+    return False

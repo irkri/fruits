@@ -145,6 +145,9 @@ class ComplexWord(AbstractWord):
             raise TypeError(f"Cannot compare SimpleWord with {type(other)}")
         return list(self._extended_letters) == list(other._extended_letters)
 
+    def __str__(self) -> str:
+        return "".join([str(el) for el in self._extended_letters])
+
     def __repr__(self) -> str:
         return "fruits.core.wording.ComplexWord(" + self.name + ")"
 
