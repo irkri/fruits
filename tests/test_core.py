@@ -8,42 +8,65 @@ X_1 = np.array([
                ])
 
 def test_fast_slow_iss():
+    @fruits.core.complex_letter
+    def dim_letter(X, i):
+        return X[i, :]
+
     # word [11122][122222][11]
-    word1 = [fruits.core.ExtendedLetter(
-                lambda X: X[0, :]**3, lambda X: X[1, :]**2),
-             fruits.core.ExtendedLetter(
-                lambda X: X[0, :], lambda X: X[1, :]**5),
-             fruits.core.ExtendedLetter(
-                lambda X: X[0, :]**2),
-            ]
+    el_1_1 = fruits.core.ExtendedLetter()
+    for i in range(3):
+        el_1_1.append(dim_letter, 0)
+    for i in range(2):
+        el_1_1.append(dim_letter, 1)
+
+    el_1_2 = fruits.core.ExtendedLetter()
+    for i in range(1):
+        el_1_2.append(dim_letter, 0)
+    for i in range(5):
+        el_1_2.append(dim_letter, 1)
+
+    el_1_3 = fruits.core.ExtendedLetter()
+    for i in range(2):
+        el_1_3.append(dim_letter, 0)
+    
+    word1 = fruits.core.ComplexWord("Word 1")
+    word1.multiply(el_1_1)
+    word1.multiply(el_1_2)
+    word1.multiply(el_1_3)
 
     # word [22][112][2221]
-    word2 = [fruits.core.ExtendedLetter(
-                lambda X: X[1, :]**2),
-             fruits.core.ExtendedLetter(
-                lambda X: X[0, :]**2, lambda X: X[1, :]),
-             fruits.core.ExtendedLetter(
-                lambda X: X[1, :]**3, lambda X: X[0, :]),
-            ]
+    el_2_1 = fruits.core.ExtendedLetter()
+    for i in range(2):
+        el_2_1.append(dim_letter, 1)
 
-    it1 = fruits.core.ComplexWord("word 1")
-    for el in word1:
-        it1.multiply(el)
-    it2 = fruits.core.ComplexWord("word 2")
-    for el in word2:
-        it2.multiply(el)
+    el_2_2 = fruits.core.ExtendedLetter()
+    for i in range(2):
+        el_2_2.append(dim_letter, 0)
+    for i in range(1):
+        el_2_2.append(dim_letter, 1)
+
+    el_2_3 = fruits.core.ExtendedLetter()
+    for i in range(1):
+        el_2_3.append(dim_letter, 0)
+    for i in range(3):
+        el_2_3.append(dim_letter, 1)
+    
+    word2 = fruits.core.ComplexWord("Word 2")
+    word2.multiply(el_2_1)
+    word2.multiply(el_2_2)
+    word2.multiply(el_2_3)
 
     sit1 = fruits.core.SimpleWord("[11122][122222][11]")
     sit2 = fruits.core.SimpleWord("[22][112][2221]")
 
     result_fast = fruits.core.ISS(X_1, [sit1, sit2])
-    result_slow = fruits.core.ISS(X_1, [it1, it2])
+    result_slow = fruits.core.ISS(X_1, [word1, word2])
 
     np.testing.assert_allclose(result_slow, result_fast)
 
-    it1_copy = it1.copy()
-    it2_copy = it2.copy()
-    result_slow_copy = fruits.core.ISS(X_1, [it1_copy, it2_copy])
+    word1_copy = word1.copy()
+    word2_copy = word2.copy()
+    result_slow_copy = fruits.core.ISS(X_1, [word1_copy, word2_copy])
 
     np.testing.assert_allclose(result_slow, result_slow_copy)
 
@@ -94,12 +117,14 @@ def test_simpleword_iss():
                                fruits.core.ISS(X_1, [w1_copy])[:,0,:])
 
 def test_complex_words():
+    @fruits.core.complex_letter(name="ReLU")
+    def relu(X, i):
+        return X[i, :] * (X[i, :]>0)
+
     # word: [relu(0)][relu(1)]
     relu_iterator = fruits.core.ComplexWord("relu collection")
-    relu_iterator.multiply(fruits.core.ExtendedLetter(
-                                lambda X: X[0, :] * (X[0, :]>0)))
-    relu_iterator.multiply(fruits.core.ExtendedLetter(
-                                lambda X: X[1, :] * (X[1, :]>0)))
+    relu_iterator.multiply(fruits.core.ExtendedLetter((relu, 0)))
+    relu_iterator.multiply(fruits.core.ExtendedLetter((relu, 1)))
                                    
     mix = [relu_iterator, fruits.core.SimpleWord("[111]")]
 
