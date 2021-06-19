@@ -26,6 +26,7 @@ directory as this file.
 """
 
 import os
+import time
 import logging
 import argparse
 from timeit import default_timer as Timer
@@ -33,17 +34,19 @@ from timeit import default_timer as Timer
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import RidgeClassifierCV
+from sklearn.preprocessing import FunctionTransformer
 
 from configurations import CONFIGURATIONS
 
 class ClassificationPipeline:
     """Class that manages a time series classification with fruits and a
-    RidgeClassifierCV in sklearn.
+    classifier from sklearn.
     The classification results will be compared with those from ROCKET.
     The results will be flushed in real-time to an output file.
 
-    :param output_file: Path of the file to write the log to. This file
-        will be cleared at the start of the classifications.
+    :param output_file: Path of the file to write the log to. If the
+        file already exists, a time stamp will be added to the new file
+        name.
     :type output_file: str
     :param rocket_results: String of the path to a csv file with
         the classification results from ROCKET.
@@ -51,8 +54,16 @@ class ClassificationPipeline:
     :param verbose: If `True`, print status of classfication to the
         console., defaults to `True`
     :type verbose: bool, optional
+    :param classifier: Classifier with fit and score method from
+        sklearn., defaults to
+        ``RidgeClassifierCV(alphas=np.logspace(-3,3,10),
+                            normalize=True)``
+    :type classfier: ClassifierMixin from sklearn, optional
+    :param scaler: An object that allows calls of fit() and transform()
+        and that scales the features extracted by the fruits pipeline.,
+        defaults to an identity scaler (that doesn't transform at all)
+    :type scaler: Some scaler, preferably from sklearn., optional
     """
-
     table_header = "{:=^25}{:=^25}{:=^25}{:=^25}".format(
                         "Dataset",
                         "Feature Calculation Time",
@@ -63,15 +74,30 @@ class ClassificationPipeline:
     def __init__(self,
                  output_file: str,
                  rocket_results: str,
-                 verbose: bool = True):
+                 verbose: bool = True,
+                 classifier=None,
+                 scaler=None):
         self._results = None
         self._verbose = verbose
         self._datasets = []
         self._paths = []
         self._rocket_csv = pd.read_csv(rocket_results)
+        if classifier is None:
+            self._classifier = RidgeClassifierCV(
+                                    alphas=np.logspace(-3,3,10),
+                                    normalize=True)
+        else:
+            self._classifier = classifier
+        if scaler is None:
+            self._scaler = FunctionTransformer(lambda X: X, validate=False)
+        else:
+            self._scaler = scaler
         self._set_up_logger(output_file)
 
     def _set_up_logger(self, output_file: str):
+        # add timestamp to output file if it exists already
+        if os.path.isfile(output_file):
+            output_file = output_file+"-"+time.strftime("%Y-%m-%d-%H%M%S")
         # empty the output file if it exists already
         with open(output_file, "w") as f:
             f.truncate(0)
@@ -91,7 +117,7 @@ class ClassificationPipeline:
         :type path: str
         :param use_only: List of dataset names. Only the datasets in
             this list will be remembered. If `None`, then all datasets
-            are used later., defaults to None
+            are used., defaults to None
         :type use_only: list of strings
         """
         if not path.endswith("/"):
@@ -141,13 +167,15 @@ class ClassificationPipeline:
                     X_train_feat = fruit.transform(X_train)
                     X_test_feat = fruit.transform(X_test)
                     results[k, i, 0] = Timer() - start
-                    fruit.clear_cache()
 
-                    classifier = RidgeClassifierCV(alphas=np.logspace(-3,3,10),
-                                                   normalize=True)
-                    classifier.fit(X_train_feat, y_train)
+                    self._scaler.fit(X_train_feat)
+                    X_train_feat_scaled = self._scaler.transform(X_train_feat)
+                    X_test_feat_scaled = self._scaler.transform(X_test_feat)
 
-                    results[k, i, 1] = classifier.score(X_test_feat, y_test)
+                    self._classifier.fit(X_train_feat_scaled, y_train)
+
+                    results[k, i, 1] = self._classifier.score(
+                                                X_test_feat_scaled, y_test)
                     self.logger.info("{: ^25}{: ^25}{: ^25}{: ^25}".format(
                         dataset,
                         round(results[k, i, 0], 3),
