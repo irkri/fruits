@@ -141,9 +141,7 @@ class ComplexWord(AbstractWord):
         raise StopIteration()
 
     def __eq__(self, other):
-        if not isinstance(other, SimpleWord):
-            raise TypeError(f"Cannot compare SimpleWord with {type(other)}")
-        return list(self._extended_letters) == list(other._extended_letters)
+        return False
 
     def __str__(self) -> str:
         return "".join([str(el) for el in self._extended_letters])
