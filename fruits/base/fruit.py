@@ -181,7 +181,7 @@ class Fruit:
         """
         return sum([branch.nfeatures() for branch in self._branches])
 
-    def fit(self, X: np.ndarray, callbacks: list = []):
+    def fit(self, X: np.ndarray):
         """Fits all branches to the given data.
         
         :param X: (Multidimensional) time series dataset
@@ -192,8 +192,6 @@ class Fruit:
         :type callbacks: list of AbstractCallback objects, optional
         """
         for branch in self._branches:
-            for callback in callbacks:
-                callback.on_next_branch()
             branch.fit(X, callbacks)
 
     def transform(self, X: np.ndarray, callbacks: list = []) -> np.ndarray:
@@ -468,7 +466,7 @@ class FruitBranch:
             else:
                 self._sieve_prerequisites.append(prereq)
 
-    def fit(self, X: np.ndarray, callbacks: list = []):
+    def fit(self, X: np.ndarray):
         """Fits the branch to the given dataset. What this action
         explicitly does depends on the FruitBranch configuration.
         
@@ -483,21 +481,14 @@ class FruitBranch:
         :raises: ValueError if ``X.ndims > 3``
         """
         self._compile()
-        scope.check_callbacks(callbacks)
 
         prepared_data = scope.force_input_shape(X)
         for prep in self._preparateurs:
             prepared_data = prep.fit_prepare(prepared_data)
-            for callback in callbacks:
-                callback.on_preparateur(prepared_data)
-        for callback in callbacks:
-            callback.on_preparation_end(prepared_data)
 
         self._sieves_extended = []
         for i in range(len(self._words)):
             iterated_data = core.iss.ISS(prepared_data, self._words[i])
-            for callback in callbacks:
-                callback.on_iterated_sum(iterated_data)
             sieves_copy = [sieve.copy() for sieve in self._sieves]
             for sieve in sieves_copy:
                 sieve.fit(iterated_data[:, 0, :])

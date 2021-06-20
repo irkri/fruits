@@ -35,8 +35,7 @@ class AbstractCallback(ABC):
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     Called after the calculation of the features for each iterated sum.
     
-    The callback can then be used in a call of ``Fruit.fit`` or
-    ``Fruit.transform``.
+    The callback can then be used in a call of ``Fruit.transform``.
     """
     def on_next_branch(self):
         pass
