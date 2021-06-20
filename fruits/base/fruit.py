@@ -323,6 +323,9 @@ class FruitBranch:
         # bool variable that is True if the FruitBranch is fitted
         self._fitted = False
 
+        # list of calculations that are shared among sieves
+        self._sieve_prerequisites = None
+
     def add_preparateur(self, preparateur: DataPreparateur):
         """Adds a DataPreparateur object to the branch.
         
@@ -371,6 +374,7 @@ class FruitBranch:
     def clear_words(self):
         """Removes all words that were added to this branch."""
         self._words = []
+        self._sieves_extended = []
         self._fitted = False
 
     def add_sieve(self, feat: FeatureSieve):
@@ -397,6 +401,7 @@ class FruitBranch:
         branch.
         """
         self._sieves = []
+        self._sieve_prerequisites = None
         self._sieves_extended = []
         self._fitted = False
 
@@ -444,13 +449,24 @@ class FruitBranch:
         """
         return sum([s.nfeatures() for s in self._sieves])*len(self._words)
 
-    def _check_configuration(self):
+    def _compile(self):
         # checks if the FruitBranch is configured correctly and ready
         # for fitting
         if not self._words:
             raise RuntimeError("No words specified for ISS calculation")
         if not self._sieves:
             raise RuntimeError("No FeatureSieve objects specified")
+
+        self._sieve_prerequisites = []
+        for i, sieve in enumerate(self._sieves):
+            prereq = sieve._prerequisites()
+            for j in range(i):
+                if prereq == self._sieve_prerequisites[j]:
+                    self._sieve_prerequisites.append(
+                                self._sieve_prerequisites[j])
+                    break
+            else:
+                self._sieve_prerequisites.append(prereq)
 
     def fit(self, X: np.ndarray, callbacks: list = []):
         """Fits the branch to the given dataset. What this action
@@ -466,7 +482,7 @@ class FruitBranch:
         :type callbacks: list of AbstractCallback objects, optional
         :raises: ValueError if ``X.ndims > 3``
         """
-        self._check_configuration()
+        self._compile()
         scope.check_callbacks(callbacks)
 
         prepared_data = scope.force_input_shape(X)
@@ -507,7 +523,11 @@ class FruitBranch:
         if not self._fitted:
             raise RuntimeError("Missing call of FruitBranch.fit")
 
-        prepared_data = scope.force_input_shape(X)
+        input_data = scope.force_input_shape(X)
+        for i in range(len(self._sieves)):
+            self._sieve_prerequisites[i].get(input_data)
+
+        prepared_data = input_data
         for prep in self._preparateurs:
             prepared_data = prep.prepare(prepared_data)
             for callback in callbacks:
@@ -522,7 +542,8 @@ class FruitBranch:
             iterated_data = core.iss.ISS(prepared_data, self._words[i])
             for callback in callbacks:
                 callback.on_iterated_sum(iterated_data)
-            for sieve in self._sieves_extended[i]:
+            for j, sieve in enumerate(self._sieves_extended[i]):
+                sieve._load_prerequisites(self._sieve_prerequisites[j])
                 new_features = sieve.nfeatures()
                 if new_features == 1:
                     sieved_data[:, k] = sieve.sieve(iterated_data[:, 0, :])

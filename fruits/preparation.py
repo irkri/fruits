@@ -58,6 +58,9 @@ class DataPreparateur(ABC):
     def __copy__(self):
         return self.copy()
 
+    def __eq__(self, other) -> bool:
+        return False
+
     def __repr__(self) -> str:
         return "DataPreparateur('" + self._name + "')"
 
@@ -108,6 +111,13 @@ class INC(DataPreparateur):
         """
         dp = INC(self._zero_padding, self.name)
         return dp
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, INC):
+            return False
+        if self._zero_padding == other._zero_padding:
+            return True
+        return False
 
     def __str__(self) -> str:
         string = "INC(" + \
@@ -161,6 +171,9 @@ class STD(DataPreparateur):
         """
         dp = STD(self.name)
         return dp
+
+    def __eq__(self, other) -> bool:
+        return True
 
     def __str__(self) -> str:
         return "STD"
