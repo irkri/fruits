@@ -2,9 +2,8 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from fruits import _accelerated
 from fruits.cache import FruitString
-from fruits.preparation import INC
+from fruits.preparation import INC, _increments
 from fruits.core.wording import SimpleWord
 
 class FeatureSieve(ABC):
@@ -299,9 +298,9 @@ class PPVC(PPV):
             raise RuntimeError("Missing call of PPV.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(len(self._q)):
-            diff = _accelerated._increments(np.expand_dims(
-                                            (X >= self._q[i]).astype(np.int32),
-                                            axis=1))[:, 0, :]
+            diff = _increments(np.expand_dims(
+                                (X >= self._q[i]).astype(np.int32),
+                                axis=1))[:, 0, :]
             # At most X.shape[1]/2 connected components are possible.
             result[:, i] = 2*np.sum(diff == 1, axis=-1) / X.shape[1]
         if self.nfeatures() == 1:

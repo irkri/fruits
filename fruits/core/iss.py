@@ -1,6 +1,6 @@
+import numba
 import numpy as np
 
-from fruits import _accelerated
 from fruits.core.wording import AbstractWord, SimpleWord
 
 def ISS(Z: np.ndarray, words: list) -> np.ndarray:
@@ -55,7 +55,7 @@ def ISS(Z: np.ndarray, words: list) -> np.ndarray:
             for j in range(len(simple_words_raw[i])):
                 for k in range(len(simple_words_raw[i][j])):
                     simple_words_tf[i, j, k] = simple_words_raw[i][j][k]
-        ISS_fast = _accelerated._fast_ISS(Z, simple_words_tf)
+        ISS_fast = _fast_ISS(Z, simple_words_tf)
 
     # get solution for AbstractWords that are not of type SimpleWord
     if complex_words:
@@ -88,4 +88,23 @@ def _slow_ISS(Z: np.ndarray,
                     C = C * el[l](Z[i, :, :])
                 result[i, j, :] = np.cumsum(result[i, j, :] * C)
 
+    return result
+
+@numba.njit(parallel=True, fastmath=True)
+def _fast_ISS(Z: np.ndarray, 
+              words: np.ndarray) -> np.ndarray:
+    # accelerated function for calculation of
+    # fruits.core.ISS(X, [SimpleWord(...)])
+    result = np.zeros((Z.shape[0], len(words), Z.shape[2]))
+    for i in numba.prange(Z.shape[0]):
+        for j in numba.prange(len(words)):
+            result[i, j, :] = np.ones(Z.shape[2], dtype=np.float64)
+            for k in range(len(words[j])):
+                if not np.any(words[j][k]):
+                    continue
+                C = np.ones(Z.shape[2], dtype=np.float64)
+                for l in range(len(words[j][k])):
+                    if words[j][k][l] != 0:
+                        C = C * Z[i, l, :]**words[j][k][l]
+                result[i, j, :] = np.cumsum(result[i, j, :] * C)
     return result
