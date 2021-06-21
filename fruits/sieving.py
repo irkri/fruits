@@ -392,7 +392,9 @@ class MAX(FeatureSieve):
         if self._prereqs is not None:
             prereq = self._prereqs.get()
         else:
-            prereq = self._prerequisites().get(np.expand_dims(X, axis=1))
+            pq = self._prerequisites()
+            pq.process(np.expand_dims(X, axis=1))
+            prereq = pq.get()
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
             new_cuts = []
@@ -507,7 +509,9 @@ class MIN(FeatureSieve):
         if self._prereqs is not None:
             prereq = self._prereqs.get()
         else:
-            prereq = self._prerequisites().get(np.expand_dims(X, axis=1))
+            pq = self._prerequisites()
+            pq.process(np.expand_dims(X, axis=1))
+            prereq = pq.get()
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
             new_cuts = []
@@ -604,7 +608,9 @@ class END(FeatureSieve):
         if self._prereqs is not None:
             prereq = self._prereqs.get()
         else:
-            prereq = self._prerequisites().get(np.expand_dims(X, axis=1))
+            pq = self._prerequisites()
+            pq.process(np.expand_dims(X, axis=1))
+            prereq = pq.get()
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
             for j in range(len(self._cut)):
