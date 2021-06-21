@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 from sklearn.decomposition import PCA
 from sklearn.linear_model import RidgeClassifierCV
 
@@ -22,7 +23,8 @@ def msplot(X: np.ndarray,
            above_error: bool = True,
            below_error: bool = True,
            figure_height: int = 5,
-           figure_width: int = 10) -> tuple:
+           figure_width: int = 10,
+           use_axes: Axes = None) -> tuple:
     """Generates a plot of a time series dataset that is already
     classified. A line for the mean of all time series in each class
     is drawn.
@@ -43,14 +45,18 @@ def msplot(X: np.ndarray,
     :type figure_height: int, optional
     :param figure_width: Width of the plot., defaults to 10
     :type figure_width: int, optional
-    :returns: Tuple (figure, axis) corresponding to the return value of
-        ``matplotlib.pyplot.subplots(
-            figsize=(figure_width, figure_height))`` with the newly
-            inserted plot(s).
-    :rtype: tuple
+    :param use_axes: If an axes is supplied, then the plot will be
+        inserted and the axes is returned. Else, a new axes is created
+        first., defaults to None
+    :type use_axes: bool
+    :returns: Axes with inserted plot and given size
+    :rtype: Axes
     """
     classes = sorted(list(set(y)))
-    fig, ax = plt.subplots(figsize=(figure_width, figure_height))
+    if use_axes is None:
+        fig, ax = plt.subplots(figsize=(figure_width, figure_height))
+    else:
+        ax = use_axes
     for i in range(len(classes)):
         X_class = X[y==classes[i]]
         mean = X_class.mean(axis=0)
@@ -66,7 +72,7 @@ def msplot(X: np.ndarray,
         ax.fill_between(np.arange(len(mean)),
                         below, above, color=color, alpha=.1)
     ax.legend(loc="upper right")
-    return (fig, ax)
+    return ax
 
 def load_dataset(path: str) -> tuple:
     """Returns a time series dataset that is formatted as a .txt file
@@ -140,6 +146,7 @@ class Fruitalyser:
 
     def classify(self,
                  classifier=None,
+                 scaler=None,
                  watch_branch: int = 0,
                  test_set: bool = True):
         """Classifies the specified data by first extracting the
@@ -150,6 +157,10 @@ class Fruitalyser:
                                  normalize=True)```
         :type classifier: Classifier from the package sklearn with
             a fit and score method., optional
+        :param scaler: Used scaler to scale the calculated features.,
+            defaults to None
+        :type scaler: Scaler from the package sklearn with a fit and
+            transform mehtod.
         :param watch_branch: The incremental steps (prepared data, 
             iterated sums) of a fruits.Fruit object can be only saved
             for one branch in this object. The index of this branch
@@ -197,6 +208,10 @@ class Fruitalyser:
         else:
             print("Features already extracted.")
 
+        if scaler is not None:
+            scaler.fit(self.X_train_feat)
+            self.X_train_feat = scaler.transform(self.X_train_feat)
+            self.X_test_feat = scaler.transform(self.X_test_feat)
         if classifier is None:
             classifier = RidgeClassifierCV(alphas=np.logspace(-3,3,10),
                                            normalize=True)
@@ -241,7 +256,7 @@ class Fruitalyser:
             clssfr = classifier(**t)
             clssfr.fit(self.X_train_feat, self.y_train)
             accuracies[i] = clssfr.score(self.X_test_feat, self.y_test)
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(10, 5))
         ax.plot(test_cases, accuracies, marker="x", label="test accuracy")
         ax.vlines(test_cases[np.argmax(accuracies)],
                   min(accuracies),
@@ -275,10 +290,14 @@ class Fruitalyser:
             plot(s).
         :rtype: tuple
         """
-        return msplot(self._callback._prepared_data[:, dim, :], self._y)
+        fig, ax = plt.subplots(figsize=(10, 5))
+        msplot(self._callback._prepared_data[:, dim, :], self._y,
+               use_axes=ax)
+        fig.suptitle("Prepared Data")
+        return fig, ax
 
     def plot_iterated_sums(self,
-                           word_indices: list = None) -> list:
+                           word_indices: list = None) -> tuple:
         """Plots the iterated sums calculated in the specified
         fruits.Fruit object with ``fruitalyser.msplot()``.
         This method can only be used if ``self.classify()`` was called
@@ -287,20 +306,20 @@ class Fruitalyser:
         :param word_indices: Indices of the words that are used for
             plotting. If ``None``, all words are used., defaults to None
         :type word_indices: list, optional
-        :returns: List of tuples (figure, axis) corresponding to the
-            return value of ``matplotlib.pyplot.subplots()`` holding
-            the inserted plot(s).
-        :rtype: list
+        :returns: Tuple (figure, axis) corresponding to the return value
+            of ``matplotlib.pyplot.subplots(1, len(word_indices))``
+            holding the inserted plot(s).
+        :rtype: tuple
         """
         if word_indices is None:
             word_indices = list(range(len(self.words)))
-        plots = []
-        for index in word_indices:
-            fig, ax = msplot(self._callback._iterated_sums[index][:, 0, :],
-                             self._y)
-            ax.set_title(str(self.words[index]))
-            plots.append((fig, ax))
-        return plots
+        fig, axs = plt.subplots(len(word_indices), 1, sharex=True)
+        fig.suptitle("Iterated Sums")
+        for i, index in enumerate(word_indices):
+            msplot(self._callback._iterated_sums[index][:, 0, :], self._y,
+                   use_axes=axs[i])
+            axs[i].set_title(str(self.words[index]))
+        return fig, axs
 
     def plot_features(self,
                       sieve_index: int,
@@ -334,6 +353,7 @@ class Fruitalyser:
                           palette=sns.color_palette("tab10",
                                                     len(set(self._y)))
                          )
+        pp.fig.suptitle(f"Features from sieve {sieve_index}")
         return pp
 
     def get_feature_dataframe(self,
@@ -384,21 +404,45 @@ class Fruitalyser:
             index=['PC-'+str(i+1) for i in range(components)])
         return feature_pc_correlation
 
-    def rank_words_and_sieves(self, n: int) -> list:
+    def rank_words_and_sieves(self, n: int, translate: bool = False) -> list:
         """Ranks the words and sieves by variance in the feature space
         (using PCA) in the watched FruitBranch.
         
         :param n: Number of objects to rank
         :type n: int
-        :returns: List of tuples (word_index, sieve_index) sorted by
-            relevance for the classfication.
+        :param translate: If True, the output will contain the names
+            of the corresponding words and sieves. If False, the indices
+            will be shown., defaults to False
+        :type translate: bool, optional
+        :returns: List of tuples ``(word, sieve)`` of length ``n``.
         :rtype: list
         """
         correlation = self.pca_correlation(n)
         sorted_feature_indices = [np.argmax(correlation.iloc[i])
                                   for i in range(n)]
-        return [self.split_feature_index(feat)
-                for feat in sorted_feature_indices]
+        word_sieves_indices = [self.split_feature_index(feat)
+                               for feat in sorted_feature_indices]
+        if not translate:
+            return word_sieves_indices
+        words = [str(self.words[x[0]]) for x in word_sieves_indices]
+        sieves = [str(self.sieves[self.sieve_index_to_sieve(x[1])])
+                  for x in word_sieves_indices]
+        return list(zip(words, sieves))
+
+    def sieve_index_to_sieve(self, sieve_index: int) -> int:
+        """Returns the name of the FeatureSieve that produces the
+        feature at the given sieve index.
+        
+        :param sieve_index: Index of the sieved feature in the current
+            branch.
+        :type sieve_index: int
+        :rtype: int
+        """
+        s = 0
+        for i, n_i in enumerate([sieve.nfeatures() for sieve in self.sieves]):
+            if sieve_index < s+n_i:
+                return i
+            s += n_i
 
     def split_feature_index(self, index: int) -> tuple:
         """For a given index for one of the calculated features from
