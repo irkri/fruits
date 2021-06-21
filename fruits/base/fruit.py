@@ -186,13 +186,9 @@ class Fruit:
         
         :param X: (Multidimensional) time series dataset
         :type X: np.ndarray
-        :param callbacks: List of callbacks. To write your own callback,
-            override the class ``fruits.callback.AbstractCallback``.,
-            defaults to empty list
-        :type callbacks: list of AbstractCallback objects, optional
         """
         for branch in self._branches:
-            branch.fit(X, callbacks)
+            branch.fit(X)
 
     def transform(self, X: np.ndarray, callbacks: list = []) -> np.ndarray:
         """Returns a two dimensional array of all features from all
@@ -474,10 +470,6 @@ class FruitBranch:
             If ``X.ndims < 3`` then the array will be expanded to
             contain 3 dimensions. This could lead to unwanted behaviour.
         :type X: np.ndarray
-        :param callbacks: List of callbacks. To write your own callback,
-            override the class ``fruits.callback.AbstractCallback``.,
-            defaults to empty list
-        :type callbacks: list of AbstractCallback objects, optional
         :raises: ValueError if ``X.ndims > 3``
         """
         self._compile()
