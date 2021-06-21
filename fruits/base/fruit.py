@@ -451,17 +451,6 @@ class FruitBranch:
         if not self._sieves:
             raise RuntimeError("No FeatureSieve objects specified")
 
-        self._sieve_prerequisites = []
-        for i, sieve in enumerate(self._sieves):
-            prereq = sieve._prerequisites()
-            for j in range(i):
-                if prereq == self._sieve_prerequisites[j]:
-                    self._sieve_prerequisites.append(
-                                self._sieve_prerequisites[j])
-                    break
-            else:
-                self._sieve_prerequisites.append(prereq)
-
     def fit(self, X: np.ndarray):
         """Fits the branch to the given dataset. What this action
         explicitly does depends on the FruitBranch configuration.
@@ -507,8 +496,20 @@ class FruitBranch:
             raise RuntimeError("Missing call of FruitBranch.fit")
 
         input_data = scope.force_input_shape(X)
+
+        # calculates prerequisites for feature sieves
+        _sieve_prerequisites = []
+        for i, sieve in enumerate(self._sieves):
+            prereq = sieve._prerequisites()
+            for j in range(i):
+                if prereq == _sieve_prerequisites[j]:
+                    _sieve_prerequisites.append(_sieve_prerequisites[j])
+                    break
+            else:
+                _sieve_prerequisites.append(prereq)
         for i in range(len(self._sieves)):
-            self._sieve_prerequisites[i].get(input_data)
+            if not _sieve_prerequisites[i].is_processed():
+                _sieve_prerequisites[i].process(input_data)
 
         prepared_data = input_data
         for prep in self._preparateurs:
@@ -526,7 +527,7 @@ class FruitBranch:
             for callback in callbacks:
                 callback.on_iterated_sum(iterated_data)
             for j, sieve in enumerate(self._sieves_extended[i]):
-                sieve._load_prerequisites(self._sieve_prerequisites[j])
+                sieve._load_prerequisites(_sieve_prerequisites[j])
                 new_features = sieve.nfeatures()
                 if new_features == 1:
                     sieved_data[:, k] = sieve.sieve(iterated_data[:, 0, :])
