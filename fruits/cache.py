@@ -10,9 +10,9 @@ class FruitString:
         self._result = None
 
     def get(self, X: np.ndarray = None) -> np.ndarray:
-        if self._result is not None:
+        if X is None and self._result is not None:
             return self._result
-        elif X is None:
+        elif X is None and self._result is None:
             raise RuntimeError("No results available, X has to be supplied")
 
         self._result = X
