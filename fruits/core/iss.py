@@ -90,7 +90,7 @@ def _slow_ISS(Z: np.ndarray,
 
     return result
 
-@numba.njit(parallel=True, fastmath=True)
+@numba.njit(parallel=True, fastmath=True, cache=True)
 def _fast_ISS(Z: np.ndarray, 
               words: np.ndarray) -> np.ndarray:
     # accelerated function for calculation of

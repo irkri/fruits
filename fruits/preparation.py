@@ -64,7 +64,7 @@ class DataPreparateur(ABC):
         return "DataPreparateur('" + self._name + "')"
 
 
-@numba.njit(fastmath=True)
+@numba.njit(fastmath=True, cache=True)
 def _increments(X: np.ndarray):
     # accelerated function that calculates increments of every
     # time series in X, the first value is the first value of the
