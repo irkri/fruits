@@ -313,17 +313,22 @@ class Fruitalyser:
         """
         if word_indices is None:
             word_indices = list(range(len(self.words)))
-        fig, axs = plt.subplots(len(word_indices), 1, sharex=True)
+        fig, axs = plt.subplots(len(word_indices), 1, sharex=True,
+                                figsize=(10,5))
+        if len(word_indices) == 1:
+            axs = [axs]
         fig.suptitle("Iterated Sums")
         for i, index in enumerate(word_indices):
             msplot(self._callback._iterated_sums[index][:, 0, :], self._y,
                    use_axes=axs[i])
             axs[i].set_title(str(self.words[index]))
+        if len(word_indices) == 1:
+            return fig, axs[0]
         return fig, axs
 
     def plot_features(self,
                       sieve_index: int,
-                      word_indices: list = None) -> sns.PairGrid:
+                      word_index: int) -> sns.PairGrid:
         """Plots the features of the watched ``fruits.FruitBranch``
         object. The ``seaborn.pairplot`` function is used to create
         a plot based on a ``pandas.DataFrame`` consisting of the
@@ -331,21 +336,16 @@ class Fruitalyser:
         This method can only be used if ``self.classify()`` was called
         before.
         
-        :param sieve_index: Index of the FeatureSieve that is used for
-            plotting.
-        :type sieve_index: int
-        :param word_indices: Indices of the words that are used for
-            plotting. If this is a list with 5 integers, the pairplot
-            (also called scatter matrix) is a grid with 5 rows and 5
-            columns. If ``None``, all words are used., defaults to None
-        :type word_indices: list, optional
+        :param sieve_index: Index or indices of the sieve(s) that are
+            used.
+        :type sieve_index: int or list of int
+        :param word_index: Index or indices of the word(s) that are
+            used.
+        :type word_index: int or list of int
         :returns: Pairplot of the specified features.
         :rtype: seaborn.PairGrid
         """
-        if word_indices is None:
-            word_indices = list(range(len(self.words)))
-        feats = self.get_feature_dataframe(sieve_index,
-                                           word_indices)
+        feats = self.get_feature_dataframe(sieve_index, word_index)
         pp = sns.pairplot(feats,
                           hue="Class",
                           diag_kind="hist",
@@ -353,35 +353,62 @@ class Fruitalyser:
                           palette=sns.color_palette("tab10",
                                                     len(set(self._y)))
                          )
-        pp.fig.suptitle(f"Features from sieve {sieve_index}")
+
+        if isinstance(sieve_index, int):
+            pp.fig.suptitle(f"Features from sieve {sieve_index}")
+        else:
+            pp.fig.suptitle(f"Features from word {word_index}")
+
         return pp
 
     def get_feature_dataframe(self,
                               sieve_index: int,
-                              word_indices: list = None) -> np.ndarray:
+                              word_index: int) -> np.ndarray:
         """Returns a ``pandas.DataFrame`` object with all features
         matching the following specifications.
         This method can only be used if ``self.classify()`` was called
         before.
         
-        :param sieve_index: Index of the FeatureSieve that is used.
-        :type sieve_index: int
-        :param word_indices: Indices of the words that are used. The
-            names of these objects will be the columns names of the
-            table. If ``None``, all words are used., defaults to None
-        :type word_indices: list, optional
+        :param sieve_index: Index or indices of the sieve(s) that are
+            used.
+        :type sieve_index: int or list of int
+        :param word_index: Index or indices of the word(s) that are
+            used.
+        :type word_index: list or list of int
         :rtype: pandas.DataFrame
         """
-        if word_indices is None:
-            word_indices = list(range(len(self.words)))
-        feat_table = np.array([self._callback._sieved_data[:,
-                                self.get_feature_index(sieve_index, i)]
-                               for i in word_indices])
-        feats = pd.DataFrame(feat_table.T,
-                             columns=[str(self.words[i])
-                                      for i in word_indices])
-        feats["Class"] = self._y
-        return feats
+        if isinstance(sieve_index, int) and isinstance(word_index, list):
+            feat_table = np.array([self._callback._sieved_data[:,
+                                    self.get_feature_index(sieve_index, i)]
+                                   for i in word_index], dtype=np.float64)
+            column_names = [str(self.words[i]) + " : " + str(i+1)
+                            if len(str(self.words[i]))<8
+                            else str(self.words[i])[:5]+"..."+" : "+str(i)
+                            for i in word_index]
+            feats = pd.DataFrame(feat_table.T, columns=column_names)
+            feats["Class"] = self._y
+            return feats
+
+        elif isinstance(sieve_index, list) and isinstance(word_index, int):
+            feat_table = np.array([self._callback._sieved_data[:,
+                                    self.get_feature_index(i, word_index)]
+                                   for i in sieve_index], dtype=np.float64)
+            column_names = [repr(self.sieves[self.sieve_index_to_sieve(i)]) +
+                            " : " + str(i+1)
+                            if len(repr(self.sieves[
+                                    self.sieve_index_to_sieve(i)]))<8
+                            else repr(self.sieves[
+                                    self.sieve_index_to_sieve(i)])[:5]+
+                            "..."+" : "+str(i)
+                            for i in sieve_index]
+            feats = pd.DataFrame(feat_table.T,
+                                 columns=column_names)
+            feats["Class"] = self._y
+            return feats
+
+        else:
+            raise ValueError("One of the two arguments has to be an integer, "+
+                             "the other one a list.")
 
     def pca_correlation(self,
                         components: int) -> pd.DataFrame:
