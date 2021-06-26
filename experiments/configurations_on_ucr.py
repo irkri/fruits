@@ -37,8 +37,6 @@ from sklearn.linear_model import RidgeClassifierCV
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
 from configurations import CONFIGURATIONS
-from star_config import starfruit
-from dilation import papaya
 
 class ClassificationPipeline:
     """Class that manages a time series classification with fruits and a
@@ -229,4 +227,4 @@ if __name__ ==  "__main__":
                                       arguments.rocket_results,
                                       scaler=StandardScaler())
     pipeline.append_data(arguments.dataset_path, use_sets)
-    pipeline.classify([papaya])
+    pipeline.classify(CONFIGURATIONS)
