@@ -117,11 +117,9 @@ def complex_letter(*args, name: str = None):
     :type name: str, optional
     """
     if name is not None and not isinstance(name, str):
-        raise TypeError("Name of the decorated function should be a string.")
-    if len(args) > 2:
-        raise RuntimeError("Too many arguments.")
-    if len(args) == 2 and not isinstance(args[0], str):
-        raise RuntimeError("Unknown argument types supplied.")
+        raise TypeError("Unknown argument type for name")
+    if len(args) > 1:
+        raise RuntimeError("Too many arguments")
     if name is None and len(args)==1 and callable(args[0]):
         _configure_letter(args[0])
         @wraps(args[0])
@@ -131,6 +129,10 @@ def complex_letter(*args, name: str = None):
             return index_manipulation
         return wrapper
     else:
+        if name is None and len(args) > 0:
+            if not isinstance(args[0], str):
+                raise TypeError("Unknown argument type")
+            name = args[0]
         def complex_letter_decorator(func):
             _configure_letter(func, name=name)
             @wraps(func)
