@@ -34,9 +34,11 @@ from timeit import default_timer as Timer
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import RidgeClassifierCV
-from sklearn.preprocessing import FunctionTransformer
+from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
 from configurations import CONFIGURATIONS
+from star_config import starfruit
+from dilation import papaya
 
 class ClassificationPipeline:
     """Class that manages a time series classification with fruits and a
@@ -97,7 +99,9 @@ class ClassificationPipeline:
     def _set_up_logger(self, output_file: str):
         # add timestamp to output file if it exists already
         if os.path.isfile(output_file):
-            output_file = output_file+"-"+time.strftime("%Y-%m-%d-%H%M%S")
+            output_file = output_file.split(".")
+            output_file[-2] += "-"+time.strftime("%Y-%m-%d-%H%M%S")
+            output_file = ".".join(output_file)
         # empty the output file if it exists already
         with open(output_file, "w") as f:
             f.truncate(0)
@@ -222,6 +226,7 @@ if __name__ ==  "__main__":
         use_sets.remove("")
 
     pipeline = ClassificationPipeline(arguments.output_file,
-                                      arguments.rocket_results)
+                                      arguments.rocket_results,
+                                      scaler=StandardScaler())
     pipeline.append_data(arguments.dataset_path, use_sets)
-    pipeline.classify(CONFIGURATIONS)
+    pipeline.classify([papaya])
