@@ -42,38 +42,38 @@ def simplewords_by_degree(max_letters: int,
 
     return words
 
-def simplewords_by_length(l: int,
+def simplewords_by_weight(w: int,
                           dim: int = 1) -> list:
     """Returns a list of all possible and unique SimpleWords that have
     exactly the given number of letters.
-    For ``l=2`` and ``dim=2`` this will return a list containing::
+    For ``w=2`` and ``dim=2`` this will return a list containing::
 
         SimpleWord("[11]"), SimpleWord("[12]"), SimpleWord("[22]"),
         SimpleWord("[1][1]"), SimpleWord("[1][2]"), SimpleWord("[2][2]")
     
-    :param l: Number of letters the words should contain
-    :type l: int
+    :param w: Number of letters the words should contain
+    :type w: int
     :param dim: Highest dimension of a letter., defaults to 1
     :type dim: int, optional
     """
     # generate all extended_letters that can occured in a word with
-    # exactly l letters
+    # exactly w letters
     extended_letters = []
-    for length in range(1, l+1):
+    for length in range(1, w+1):
         extended_letters.append([])
         mons = itertools.combinations_with_replacement(
                                 list(range(1, dim+1)), length)
         for mon in mons:
             extended_letters[-1].append(list(mon))
     # generate all possible combinations of the extended_letters created 
-    # above such that the combination is a word with l letters
-    # (next line is in O(2^l), maybe find a better option later)
-    choose_extended_letters = [t for i in range(1, l+1) for t in
+    # above such that the combination is a word with w letters
+    # (next line is in O(2^w), maybe find a better option later)
+    choose_extended_letters = [t for i in range(1, w+1) for t in
                                itertools.combinations_with_replacement(
-                                list(range(1, l+1)), i)
-                               if sum(t)==l]
+                                list(range(1, w+1)), i)
+                               if sum(t)==w]
     # use the combinations above for generating all possible words with
-    # l letters by using the extended_letters from the beginning
+    # w letters by using the extended_letters from the beginning
     words = []
     for choice in choose_extended_letters:
         selected_extended_letters = []

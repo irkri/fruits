@@ -140,9 +140,9 @@ def test_complex_words():
 
 def test_word_generation():
     for n in range(1, 7):
-        assert len(fruits.core.generation.simplewords_by_length(n, dim=1)) \
+        assert len(fruits.core.generation.simplewords_by_weight(n, dim=1)) \
                 == 2**(n-1)
-    assert len(fruits.core.generation.simplewords_by_length(4, dim=2)) == 82
+    assert len(fruits.core.generation.simplewords_by_weight(4, dim=2)) == 82
 
     assert len(fruits.core.generation.simplewords_by_degree(2, 2, 1)) == 6
     assert len(fruits.core.generation.simplewords_by_degree(2, 3, 1)) == 14
