@@ -104,24 +104,24 @@ class TransformationCallback(fruits.callback.AbstractCallback):
     def __init__(self, branch: int = 0):
         self._branch = branch
         self._current_branch = -1
-        self._prepared_data = None
-        self._iterated_sums = []
-        self._sieved_data = None
+        self.prepared_data = None
+        self.iterated_sums = []
+        self.sieved_data = None
 
     def on_next_branch(self):
         self._current_branch += 1
 
     def on_preparation_end(self, X: np.ndarray):
         if self._current_branch == self._branch:
-            self._prepared_data = X
+            self.prepared_data = X
 
     def on_iterated_sum(self, X: np.ndarray):
         if self._current_branch == self._branch:
-            self._iterated_sums.append(X)
+            self.iterated_sums.append(X)
 
     def on_sieving_end(self, X: np.ndarray):
         if self._current_branch == self._branch:
-            self._sieved_data = X
+            self.sieved_data = X
 
 
 class Fruitalyser:
@@ -174,7 +174,7 @@ class Fruitalyser:
         :type test_set: bool, optional
         """
         if self._extracted is None or self._extracted != watch_branch:
-            self._callback = TransformationCallback(watch_branch)
+            self.callback = TransformationCallback(watch_branch)
             watched_branch = self.fruit.branches()[watch_branch]
             start = Timer()
             self.fruit.fit(self.X_train)
@@ -184,12 +184,12 @@ class Fruitalyser:
                 self.X_train_feat = self.fruit.transform(self.X_train)
             else:
                 self.X_train_feat = self.fruit.transform(self.X_train,
-                        callbacks=[self._callback])
+                        callbacks=[self.callback])
             print(f"Transforming training set took {Timer() - start} s")
             start = Timer()
             if test_set:
                 self.X_test_feat = self.fruit.transform(self.X_test,
-                        callbacks=[self._callback])
+                        callbacks=[self.callback])
             else:
                 self.X_test_feat = self.fruit.transform(self.X_test)
             print(f"Transforming testing set took {Timer() - start} s")
@@ -291,7 +291,7 @@ class Fruitalyser:
         :rtype: tuple
         """
         fig, ax = plt.subplots(figsize=(10, 5))
-        msplot(self._callback._prepared_data[:, dim, :], self._y,
+        msplot(self.callback.prepared_data[:, dim, :], self._y,
                use_axes=ax)
         fig.suptitle("Prepared Data")
         return fig, ax
@@ -314,12 +314,12 @@ class Fruitalyser:
         if word_indices is None:
             word_indices = list(range(len(self.words)))
         fig, axs = plt.subplots(len(word_indices), 1, sharex=True,
-                                figsize=(10,5))
+                                figsize=(10,5*len(word_indices)))
         if len(word_indices) == 1:
             axs = [axs]
         fig.suptitle("Iterated Sums")
         for i, index in enumerate(word_indices):
-            msplot(self._callback._iterated_sums[index][:, 0, :], self._y,
+            msplot(self.callback.iterated_sums[index][:, 0, :], self._y,
                    use_axes=axs[i])
             axs[i].set_title(str(self.words[index]))
         if len(word_indices) == 1:
@@ -378,7 +378,7 @@ class Fruitalyser:
         :rtype: pandas.DataFrame
         """
         if isinstance(sieve_index, int) and isinstance(word_index, list):
-            feat_table = np.array([self._callback._sieved_data[:,
+            feat_table = np.array([self.callback.sieved_data[:,
                                     self.get_feature_index(sieve_index, i)]
                                    for i in word_index], dtype=np.float64)
             column_names = [str(self.words[i]) + " : " + str(i+1)
@@ -390,7 +390,7 @@ class Fruitalyser:
             return feats
 
         elif isinstance(sieve_index, list) and isinstance(word_index, int):
-            feat_table = np.array([self._callback._sieved_data[:,
+            feat_table = np.array([self.callback.sieved_data[:,
                                     self.get_feature_index(i, word_index)]
                                    for i in sieve_index], dtype=np.float64)
             column_names = [repr(self.sieves[self.sieve_index_to_sieve(i)]) +
@@ -425,7 +425,7 @@ class Fruitalyser:
         """
         pca = PCA(n_components=components)
         # standardize feature set
-        pca.fit(self._callback._sieved_data)
+        pca.fit(self.callback.sieved_data)
         feature_pc_correlation = pd.DataFrame(pca.components_,
             columns=['Feat-'+str(i+1) for i in range(self.nbranchfeatures)],
             index=['PC-'+str(i+1) for i in range(components)])
