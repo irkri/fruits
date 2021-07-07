@@ -2,7 +2,9 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from fruits import _accelerated, core
+from fruits.cache import FruitString
+from fruits.preparation import INC, _increments
+from fruits.core.wording import SimpleWord
 
 class FeatureSieve(ABC):
     """Abstract class FeatureSieve
@@ -10,14 +12,15 @@ class FeatureSieve(ABC):
     A FeatureSieve object is used to transforms a twodimensional numpy
     array into a onedimensional numpy array.
     The length of the resulting array can be determined by calling
-    `FeatureSieve.nfeatures`.
+    ``FeatureSieve.nfeatures`? .
 
     Each class that inherits FeatureSieve must override the methods
-    `FeatureSieve.sieve` and `FeatureSieve.nfeatures`.
+    ``FeatureSieve.sieve`` and ``FeatureSieve.nfeatures``.
     """
     def __init__(self, name: str = ""):
         super().__init__()
         self._name = name
+        self._prereqs = None
 
     @property
     def name(self) -> str:
@@ -60,12 +63,14 @@ class FeatureSieve(ABC):
         return self.sieve(X)
 
     @abstractmethod
-    def copy(self):
-        """Returns a copy of this FeatureSieve object.
+    def _prerequisites(self) -> FruitString:
+        pass
 
-        :returns: Copy of this object
-        :rtype: FeatureSieve
-        """
+    def _load_prerequisites(self, fs: FruitString):
+        self._prereqs = fs
+
+    @abstractmethod
+    def copy(self):
         pass
 
     def __copy__(self):
@@ -218,10 +223,12 @@ class PPV(FeatureSieve):
             return result[:, 0]
         return result
 
+    def _prerequisites(self) -> FruitString:
+        return FruitString()
+
     def copy(self):
         """Returns a copy of this object.
         
-        :returns: Copy of this object
         :rtype: PPV
         """
         fs = PPV([x[0] for x in self._q_c_input],
@@ -250,9 +257,9 @@ class PPVC(PPV):
     This is equivalent to the number of consecutive strips of 1's in
     the array (X>=quantile).
 
-    :param quantile: Quantile as actual value or probability for
-        quantile calculation (e.g. 0.5 for the 0.5-quantile),
-        defaults to 0.5
+    :param quantile: Quantile `q` or list of quantiles `[q_1, ..., q_n]`
+        as actual value(s) or probability for quantile calculation
+        (e.g. 0.5 for the 0.5-quantile)., defaults to 0.5
     :type quantile: float, optional
     :param constant: if `True`, the argument `quantile` is interpreted
         as the actual value for the quantile, defaults to False
@@ -260,7 +267,7 @@ class PPVC(PPV):
     :param sample_size: Sample size to use for quantile calculation.
         This option can be ignored if `constant` is set to `True`,
         defaults to 0.05
-    :type sample_size: float, optional
+    :type sample_size: float or list of floats, optional
     :param name: Name for the object, defaults to
         "Proportion of connected components of positive values"
     :type name: str, optional
@@ -288,22 +295,24 @@ class PPVC(PPV):
         :raises: RuntimeError if `self.fit` wasn't called
         """
         if self._q is None:
-            raise RuntimeError("Missing call of PPV.fit()")
+            raise RuntimeError("Missing call of PPVC.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(len(self._q)):
-            diff = _accelerated._increments(np.expand_dims(
-                                            (X >= self._q[i]).astype(np.int32),
-                                            axis=1))[:, 0, :]
-            # At most X.shape[1]/2 connected components are possible.
+            diff = _increments(np.expand_dims(
+                                (X >= self._q[i]).astype(np.int32),
+                                axis=1))[:, 0, :]
+            # at most X.shape[1]/2 connected components are possible
             result[:, i] = 2*np.sum(diff == 1, axis=-1) / X.shape[1]
         if self.nfeatures() == 1:
             return result[:, 0]
         return result
 
+    def _prerequisites(self) -> FruitString:
+        return FruitString()
+
     def copy(self):
         """Returns a copy of this object.
         
-        :returns: Copy of this object
         :rtype: PPV
         """
         fs = PPVC([x[0] for x in self._q_c_input],
@@ -380,18 +389,27 @@ class MAX(FeatureSieve):
             one features per time series)
         :rtype: np.ndarray
         """
-        result = np.zeros((X.shape[0],self.nfeatures()))
+        if self._prereqs is not None:
+            prereq = self._prereqs.get()
+        else:
+            pq = self._prerequisites()
+            pq.process(np.expand_dims(X, axis=1))
+            prereq = pq.get()
+        result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
             new_cuts = []
             for j in range(len(self._cut)):
                 cut = self._cut[j]
                 if 0 < cut < 1:
-                    cut = _accelerated._coquantile(X[i, :], cut)
+                    cut = np.sum((prereq[i] <= (prereq[i, -1] * cut)))
                     if cut == 0:
                         cut = 1
+                elif not isinstance(cut, int):
+                    raise TypeError("Cut has to be a float in (0,1) or an " +
+                                    "integer")
                 elif cut < 0:
                     cut = X.shape[1]
-                elif cut > X.shape[1] or cut==0:
+                elif cut > X.shape[1]:
                     raise IndexError("Cutting index out of range")
                 new_cuts.append(cut)
             if self._segments:
@@ -405,10 +423,18 @@ class MAX(FeatureSieve):
             return result[:, 0]
         return result
 
+    def _prerequisites(self) -> FruitString:
+        fs = FruitString()
+        for c in self._cut:
+            if 0 < c < 1:
+                fs.preparateur = INC(zero_padding=False)
+                fs.word = SimpleWord("[11]")
+                break
+        return fs
+
     def copy(self):
         """Returns a copy of this object.
         
-        :returns: Copy of this object
         :rtype: MAX
         """
         fs = MAX(self._cut, self._segments, self.name)
@@ -480,18 +506,27 @@ class MIN(FeatureSieve):
             one features per time series)
         :rtype: np.ndarray
         """
-        result = np.zeros((X.shape[0],self.nfeatures()))
+        if self._prereqs is not None:
+            prereq = self._prereqs.get()
+        else:
+            pq = self._prerequisites()
+            pq.process(np.expand_dims(X, axis=1))
+            prereq = pq.get()
+        result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
             new_cuts = []
             for j in range(len(self._cut)):
                 cut = self._cut[j]
                 if 0 < cut < 1:
-                    cut = _accelerated._coquantile(X[i, :], cut)
+                    cut = np.sum((prereq[i] <= (prereq[i, -1] * cut)))
                     if cut == 0:
                         cut = 1
+                elif not isinstance(cut, int):
+                    raise TypeError("Cut has to be a float in (0,1) or an " +
+                                    "integer")
                 elif cut < 0:
                     cut = X.shape[1]
-                elif cut > X.shape[1] or cut==0:
+                elif cut > X.shape[1]:
                     raise IndexError("Cutting index out of range")
                 new_cuts.append(cut)
             if self._segments:
@@ -505,10 +540,18 @@ class MIN(FeatureSieve):
             return result[:, 0]
         return result
 
+    def _prerequisites(self) -> FruitString:
+        fs = FruitString()
+        for c in self._cut:
+            if 0 < c <  1:
+                fs.preparateur = INC(zero_padding=False)
+                fs.word = SimpleWord("[11]")
+                break
+        return fs
+
     def copy(self):
         """Returns a copy of this object.
         
-        :returns: Copy of this object
         :rtype: MIN
         """
         fs = MIN(self._cut, self._segments, self.name)
@@ -562,12 +605,23 @@ class END(FeatureSieve):
         :returns: feature array (one feature for each time series)
         :rtype: np.ndarray
         """
+        if self._prereqs is not None:
+            prereq = self._prereqs.get()
+        else:
+            pq = self._prerequisites()
+            pq.process(np.expand_dims(X, axis=1))
+            prereq = pq.get()
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
             for j in range(len(self._cut)):
                 cut = self._cut[j]
                 if 0 < cut < 1:
-                    cut = _accelerated._coquantile(X[i, :], cut)
+                    cut = np.sum((prereq[i] <= (prereq[i, -1] * cut)))
+                    if cut == 0:
+                        cut = 1
+                elif not isinstance(cut, int):
+                    raise TypeError("Cut has to be a float in (0,1) or an " +
+                                    "integer")
                 elif cut < 0:
                     cut = X.shape[1]
                 elif cut > X.shape[1]:
@@ -577,10 +631,18 @@ class END(FeatureSieve):
             return result[:, 0]
         return result
 
+    def _prerequisites(self) -> FruitString:
+        fs = FruitString()
+        for c in self._cut:
+            if 0 < c <  1:
+                fs.preparateur = INC(zero_padding=False)
+                fs.word = SimpleWord("[11]")
+                break
+        return fs
+
     def copy(self):
         """Returns a copy of this object.
         
-        :returns: Copy of this object
         :rtype: END
         """
         fs = END(self._cut, self.name)

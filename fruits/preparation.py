@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 
+import numba
 import numpy as np
-
-from fruits import _accelerated
 
 class DataPreparateur(ABC):
     """Abstract class DataPreperateur
@@ -58,19 +57,43 @@ class DataPreparateur(ABC):
     def __copy__(self):
         return self.copy()
 
+    def __eq__(self, other) -> bool:
+        return False
+
     def __repr__(self) -> str:
         return "DataPreparateur('" + self._name + "')"
 
 
+@numba.njit(fastmath=True, cache=True)
+def _increments(X: np.ndarray):
+    # accelerated function that calculates increments of every
+    # time series in X, the first value is the first value of the
+    # time series
+    result = np.zeros(X.shape)
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
+            result[i, j, 0] = X[i, j, 0]
+            for k in range(1, X.shape[2]):
+                result[i, j, k] = X[i, j, k] - X[i, j, k-1]
+    return result
+
 class INC(DataPreparateur):
     """DataPreparateur: Increments
     
-    For a time series 
-    `X = [x_1, x_2, ..., x_n]`
-    this class produces the output
-    `X_inc = [0, x_2-x_1, x_3-x_2, ..., x_n-x_{n-1}]`.
-    If `zero_padding` is set to `False`, then the 0 above will be
-    replaced by `x_1`.
+    For one dimension of a time series::
+
+        X = [x_1, x_2, ..., x_n]
+
+    this class produces the output::
+        
+        X_inc = [0, x_2-x_1, x_3-x_2, ..., x_n-x_{n-1}].
+
+    :param zero_padding: If set to True, then the first entry in each
+        time series will be set to 0. If False, it isn't changed at
+        all., defaults to True
+    :type zero_padding: bool, optional
+    :param name: Name of the preparateur., defaults to "Increments"
+    :type name: str, optional
     """
     def __init__(self,
                  zero_padding: bool = True,
@@ -87,7 +110,7 @@ class INC(DataPreparateur):
         :returns: stepwise slopes of each time series in X
         :rtype: np.ndarray
         """
-        out = _accelerated._increments(X)
+        out = _increments(X)
         if self._zero_padding:
             out[:, :, 0] = 0
         return out
@@ -101,6 +124,13 @@ class INC(DataPreparateur):
         dp = INC(self._zero_padding, self.name)
         return dp
 
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, INC):
+            return False
+        if self._zero_padding == other._zero_padding:
+            return True
+        return False
+
     def __str__(self) -> str:
         string = "INC(" + \
                 f"zero_padding={self._zero_padding})"
@@ -110,11 +140,12 @@ class INC(DataPreparateur):
 class STD(DataPreparateur):
     """DataPreparateur: Standardization
     
-    For a time series `X` this class produces the output
-    `X_std = (X-mean(X))/std(X)`.
+    Used for standardization of a given time series dataset.
+
+    :param name: Name of the preparateur., defaults to "Standardization"
+    :type name: str, optional
     """
-    def __init__(self,
-                 name: str = "Standardization"):
+    def __init__(self, name: str = "Standardization"):
         super().__init__(name)
         self._mean = None
         self._std = None
@@ -153,6 +184,8 @@ class STD(DataPreparateur):
         dp = STD(self.name)
         return dp
 
+    def __eq__(self, other) -> bool:
+        return True
+
     def __str__(self) -> str:
-        string = "STD"
-        return string
+        return "STD"

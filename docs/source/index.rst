@@ -10,7 +10,7 @@ Welcome to FRUITS's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   readme_link
+   introduction
    modules
 
 Indices and tables

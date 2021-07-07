@@ -10,19 +10,19 @@ X_1 = np.array([
 def test_n_features():
     featex = fruits.Fruit()
 
-    featex.add(fruits.preparateurs.INC(zero_padding=False))
+    featex.add(fruits.preparation.INC(zero_padding=False))
 
-    featex.add(fruits.iterators.generate_words(1,3,5))
+    featex.add(fruits.core.generation.simplewords_by_degree(3, 5, 1))
 
-    assert len(featex.get_iterators()) == 363
+    assert len(featex.get_words()) == 363
 
-    featex.add(fruits.features.PPV(quantile=0, constant=True))
-    featex.add(fruits.features.PPV(quantile=0.2, constant=False, 
+    featex.add(fruits.sieving.PPV(quantile=0, constant=True))
+    featex.add(fruits.sieving.PPV(quantile=0.2, constant=False, 
                                    sample_size=1))
-    featex.add(fruits.features.PPV(quantile=[0.2,5], constant=[False,True], 
+    featex.add(fruits.sieving.PPV(quantile=[0.2,5], constant=[False,True], 
                                    sample_size=1, segments=True))
-    featex.add(fruits.features.MAX(cut=[0.1,0.5,0.9], segments=True))
-    featex.add(fruits.features.MIN(cut=[0.1,0.5,0.9], segments=False))
+    featex.add(fruits.sieving.MAX(cut=[0.1,0.5,0.9], segments=True))
+    featex.add(fruits.sieving.MIN(cut=[0.1,0.5,0.9], segments=False))
 
     assert featex.nfeatures() == 2904
 
@@ -35,18 +35,18 @@ def test_n_features():
 def test_branches():
     featex = fruits.Fruit()
 
-    w1 = fruits.iterators.SimpleWord("[1]")
-    w2 = fruits.iterators.SimpleWord("[2]")
-    w3 = fruits.iterators.SimpleWord("[11]")
-    w4 = fruits.iterators.SimpleWord("[12]")
-    w5 = fruits.iterators.SimpleWord("[1][1]")
-    w6 = fruits.iterators.SimpleWord("[1][2]")
+    w1 = fruits.core.wording.SimpleWord("[1]")
+    w2 = fruits.core.wording.SimpleWord("[2]")
+    w3 = fruits.core.wording.SimpleWord("[11]")
+    w4 = fruits.core.wording.SimpleWord("[12]")
+    w5 = fruits.core.wording.SimpleWord("[1][1]")
+    w6 = fruits.core.wording.SimpleWord("[1][2]")
 
     featex.add(w1, w2, w3)
-    featex.add(fruits.features.MAX)
+    featex.add(fruits.sieving.MAX)
     featex.start_new_branch()
     featex.add(w4, w5, w6)
-    featex.add(fruits.features.MIN)
+    featex.add(fruits.sieving.MIN)
 
     assert featex.nfeatures() == 6
 
