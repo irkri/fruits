@@ -1,24 +1,13 @@
 from setuptools import setup
 
 metadata = dict(
-    name='fruits',
-    version='0.6.0',
-    author='alienkrieg',
-    author_email='alienkrieg@gmail.com',
-    description='Feature extRation Using ITerated Sums',
-    packages=['fruits'],
-    ext_package="",
-    ext_modules=[],
-    py_modules=[
-                'fruits.__init__',
-                'fruits.core',
-                'fruits.features',
-                'fruits.iterators',
-                'fruits.preparateurs',
-                'fruits.main',
-                'fruits.accelerated',
-               ],
-    long_description=open('README.md').read(),
+    name="fruits",
+    version='0.7.0',
+    author="alienkrieg",
+    author_email="alienkrieg@gmail.com",
+    description="Feature extRation Using ITerated Sums",
+    packages=["fruits", "fruits.core", "fruits.base"],
+    long_description=open("README.md").read(),
     install_requires=[
         "numpy >= 1.19.2",
         "numba >= 0.52.0",
