@@ -257,9 +257,9 @@ class PPVC(PPV):
     This is equivalent to the number of consecutive strips of 1's in
     the array (X>=quantile).
 
-    :param quantile: Quantile as actual value or probability for
-        quantile calculation (e.g. 0.5 for the 0.5-quantile),
-        defaults to 0.5
+    :param quantile: Quantile `q` or list of quantiles `[q_1, ..., q_n]`
+        as actual value(s) or probability for quantile calculation
+        (e.g. 0.5 for the 0.5-quantile)., defaults to 0.5
     :type quantile: float, optional
     :param constant: if `True`, the argument `quantile` is interpreted
         as the actual value for the quantile, defaults to False
@@ -267,7 +267,7 @@ class PPVC(PPV):
     :param sample_size: Sample size to use for quantile calculation.
         This option can be ignored if `constant` is set to `True`,
         defaults to 0.05
-    :type sample_size: float, optional
+    :type sample_size: float or list of floats, optional
     :param name: Name for the object, defaults to
         "Proportion of connected components of positive values"
     :type name: str, optional
@@ -295,13 +295,13 @@ class PPVC(PPV):
         :raises: RuntimeError if `self.fit` wasn't called
         """
         if self._q is None:
-            raise RuntimeError("Missing call of PPV.fit()")
+            raise RuntimeError("Missing call of PPVC.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(len(self._q)):
             diff = _increments(np.expand_dims(
                                 (X >= self._q[i]).astype(np.int32),
                                 axis=1))[:, 0, :]
-            # At most X.shape[1]/2 connected components are possible.
+            # at most X.shape[1]/2 connected components are possible
             result[:, i] = 2*np.sum(diff == 1, axis=-1) / X.shape[1]
         if self.nfeatures() == 1:
             return result[:, 0]
