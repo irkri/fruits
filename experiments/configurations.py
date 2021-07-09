@@ -22,7 +22,7 @@ np.random.seed(62)
 
 simple_words_degree_2 = fruits.core.generation.simplewords_by_degree(2, 2, 1)
 simple_words_degree_3 = fruits.core.generation.simplewords_by_degree(3, 3, 1)
-simple_words_long = fruits.core.generation.simplewords_by_length(4, 1)
+simple_words_long = fruits.core.generation.simplewords_by_weight(4, 1)
 
 # Configurations
 
