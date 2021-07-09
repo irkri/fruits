@@ -61,7 +61,7 @@ class DataPreparateur(ABC):
         return False
 
     def __repr__(self) -> str:
-        return "DataPreparateur('" + self._name + "')"
+        return "fruits.preparation.DataPreparateur('" + self._name + "')"
 
 
 @numba.njit(fastmath=True, cache=True)
@@ -178,7 +178,6 @@ class STD(DataPreparateur):
     def copy(self):
         """Returns a copy of the DataPreparateur object.
         
-        :returns: Copy of this object
         :rtype: STD
         """
         dp = STD(self.name)
@@ -189,3 +188,69 @@ class STD(DataPreparateur):
 
     def __str__(self) -> str:
         return "STD"
+
+
+class DIL(DataPreparateur):
+    """DataPreparateur: Dilation
+    
+    This preprocessing tool sets some points in each time series in the
+    given dataset to zero. The indices for those zero sequences are
+    chosen randomly.
+
+    :param clusters: Float value in [0, 1]. The number of zero strips
+        will be calculated by multiplying ``clusters * X.shape[2]``.,
+        defaults to 0.01
+    :type clusters: float, optional
+    :param name: Name of the preparateur., defaults to "Dilation"
+    :type name: str, optional
+    """
+    def __init__(self,
+                 clusters: float = 0.01,
+                 name: str = "Dilation"):
+        super().__init__(name)
+        self._clusters = clusters
+    
+    def fit(self, X: np.ndarray):
+        """Fits the STD object to the given dataset by randomizing the
+        starting points and lengths of the zero strips.
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        """
+        nclusters = int(self._clusters * X.shape[2])
+        self._indices = sorted(np.random.random_sample(nclusters))
+        self._lengths = []
+        for i in range(len(self._indices)):
+            if i == len(self._indices)-1:
+                b = 1 - self._indices[i]
+            else:
+                b = self._indices[i+1] - self._indices[i]
+            self._lengths.append(b*np.random.random_sample())
+            
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        """Returns the transformed dataset.
+        
+        :param X: (multidimensional) time series dataset
+        :type X: np.ndarray
+        :rtype: np.ndarray
+        :raises: RuntimeError if self.fit() wasn't called
+        """
+        X_new = X.copy()
+        for i in range(len(self._indices)):
+            start = int(self._indices[i] * X.shape[2])
+            length = int(self._lengths[i] * X.shape[2])
+            X_new[:, :, start:start+length] = 0
+        return X_new
+    
+    def copy(self):
+        """Returns a copy of the DataPreparateur object.
+        
+        :rtype: DIL
+        """
+        return DIL(self._clusters)
+
+    def __eq__(self, other) -> bool:
+        return False
+
+    def __str__(self) -> str:
+        return f"DIL(clusters={self._clusters})"
