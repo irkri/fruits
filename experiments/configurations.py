@@ -47,7 +47,7 @@ apple03.add(fruits.preparation.INC)
 
 apple04 = apple01.deepcopy()
 apple04.name = "Apple [ID + INC]"
-apple04.add_branch(apple03.current_branch().deepcopy())
+apple04.fork(apple03.branch().deepcopy())
 
 # Banana
 # Q: MAX/MIN with 'segments' True or False
@@ -60,7 +60,7 @@ banana01 = fruits.Fruit("Banana")
 banana01.add(simple_words_degree_2)
 banana01.add(fruits.sieving.MAX(cut=[1,0.2,0.4,0.6,0.8,-1], segments=False))
 banana01.add(fruits.sieving.MIN(cut=[1,0.2,0.4,0.6,0.8,-1], segments=False))
-banana01.start_new_branch()
+banana01.fork()
 banana01.add(fruits.preparation.INC)
 banana01.add(simple_words_degree_2)
 banana01.add(fruits.sieving.MAX(cut=[1,0.2,0.4,0.6,0.8,-1], segments=False))
@@ -70,7 +70,7 @@ banana02 = fruits.Fruit("Banana [Segments]")
 banana02.add(simple_words_degree_2)
 banana02.add(fruits.sieving.MAX(cut=[1,0.2,0.4,0.6,0.8,-1], segments=True))
 banana02.add(fruits.sieving.MIN(cut=[1,0.2,0.4,0.6,0.8,-1], segments=True))
-banana02.start_new_branch()
+banana02.fork()
 banana02.add(fruits.preparation.INC)
 banana02.add(simple_words_degree_2)
 banana02.add(fruits.sieving.MAX(cut=[1,0.2,0.4,0.6,0.8,-1], segments=True))
@@ -86,7 +86,7 @@ kiwi01.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
                                constant=False,
                                sample_size=1,
                                segments=False))
-kiwi01.start_new_branch()
+kiwi01.fork()
 kiwi01.add(fruits.preparation.INC)
 kiwi01.add(simple_words_degree_2)
 kiwi01.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
@@ -100,7 +100,7 @@ kiwi02.add(fruits.sieving.PPV([0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
                                constant=False,
                                sample_size=1,
                                segments=True))
-kiwi02.start_new_branch()
+kiwi02.fork()
 kiwi02.add(fruits.preparation.INC)
 kiwi02.add(simple_words_degree_2)
 kiwi02.add(fruits.sieving.PPV([0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
@@ -123,7 +123,7 @@ orange01.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
 orange01.add(fruits.sieving.MAX)
 orange01.add(fruits.sieving.MIN)
 orange01.add(fruits.sieving.END)
-orange01.start_new_branch()
+orange01.fork()
 orange01.add(simple_words_degree_2)
 orange01.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
                                  constant=False,
@@ -143,7 +143,7 @@ orange02.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
 orange02.add(fruits.sieving.MAX)
 orange02.add(fruits.sieving.MIN)
 orange02.add(fruits.sieving.END)
-orange02.start_new_branch()
+orange02.fork()
 orange02.add(simplewords_replace_letters(simple_words_degree_2, leaky_relu))
 orange02.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
                                  constant=False,
@@ -163,7 +163,7 @@ orange03.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
 orange03.add(fruits.sieving.MAX)
 orange03.add(fruits.sieving.MIN)
 orange03.add(fruits.sieving.END)
-orange03.start_new_branch()
+orange03.fork()
 orange03.add(simplewords_replace_letters(simple_words_degree_2, tanh))
 orange03.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
                                  constant=False,
@@ -183,7 +183,7 @@ orange04.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
 orange04.add(fruits.sieving.MAX)
 orange04.add(fruits.sieving.MIN)
 orange04.add(fruits.sieving.END)
-orange04.start_new_branch()
+orange04.fork()
 orange04.add(simplewords_replace_letters(simple_words_degree_2, sigmoid))
 orange04.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
                                  constant=False,
@@ -212,7 +212,7 @@ peach01.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
 peach01.add(fruits.sieving.MAX)
 peach01.add(fruits.sieving.MIN)
 peach01.add(fruits.sieving.END)
-peach01.start_new_branch()
+peach01.fork()
 peach01.add(simplewords_replace_letters_sequentially(simple_words_long,
                                            [id_,
                                             tanh,
@@ -239,7 +239,7 @@ peach02.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
 peach02.add(fruits.sieving.MAX)
 peach02.add(fruits.sieving.MIN)
 peach02.add(fruits.sieving.END)
-peach02.start_new_branch()
+peach02.fork()
 peach02.add(simplewords_replace_letters_sequentially(simple_words_long,
                                            [tanh,
                                             sigmoid,
@@ -264,7 +264,7 @@ peach03.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
 peach03.add(fruits.sieving.MAX)
 peach03.add(fruits.sieving.MIN)
 peach03.add(fruits.sieving.END)
-peach03.start_new_branch()
+peach03.fork()
 peach03.add(simplewords_replace_letters_sequentially(simple_words_long,
                                            [id_,
                                             leaky_relu]))
