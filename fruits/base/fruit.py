@@ -20,10 +20,9 @@ class Fruit:
     def __init__(self, name: str = ""):
         self.name = name
         # list of FruitBranches
-        self._branches = [FruitBranch()]
-        # pointer for the current branch
-        self._current_branch = self._branches[0]
-        self._current_branch_index = 0
+        self._branches = []
+        # pointer for the current branch index
+        self._cbi = None
 
     @property
     def name(self) -> str:
@@ -31,24 +30,29 @@ class Fruit:
         return self._name
     
     @name.setter
-    def name(self, name:str):
+    def name(self, name: str):
         self._name = name
 
-    def add_branch(self, branch):
-        """Adds a new branch to the pipeline.
+    def fork(self, branch=None):
+        """Adds a new branch to the pipeline. If none is given, an
+        empty FruitBranch will be created and switched to.
 
-        :type branch: FruitBranch
+        :type branch: FruitBranch, optional
         """
+        if branch is None:
+            branch = FruitBranch()
         self._branches.append(branch)
+        self._cbi = len(self._branches) - 1
 
-    def start_new_branch(self):
-        """Adds a new and empty branch to the pipeline and switches to
-        it. All future operations on this Fruit object will be called
-        on the new branch.
+    def branch(self, index: int = None):
+        """Returns the currently selected branch or the branch with the
+        given index.
+        
+        :rtype: FruitBranch
         """
-        self._branches.append(FruitBranch())
-        self._current_branch = self._branches[-1]
-        self._current_branch_index = len(self._branches) - 1
+        if index is None:
+            return self._branches[self._cbi]
+        return self._branches[index]
 
     def branches(self) -> list:
         """Returns all branches of this Fruit object.
@@ -62,95 +66,12 @@ class Fruit:
         objects points to a branch, then each method that is called on
         the Fruit object is actually called on this branch.
         
-        :param index: Integer in ``[0, 1, ..., len(self.branches)-1]``
+        :param index: Integer in ``[0, 1, ..., len(self.branches())-1]``
         :type index: int
         """
-        self._current_branch = self._branches[index]
-        self._current_branch_index = index
-
-    def current_branch(self):
-        """Returns the branch that is currently selected.
-
-        The selected branch is used to extend the pipeline by calling
-        functions like `add()` on the Fruit object. Normally this is
-        done on a FruitBranch object. 
-        
-        :rtype: FruitBranch
-        """
-        return self._current_branch
-
-    def current_branch_index(self) -> int:
-        """Returns the index of the currently selected branch.
-        
-        :rtype: int
-        """
-        return self._current_branch_index
-
-    def add_preparateur(self, preparateur: DataPreparateur):
-        """Adds a DataPreparateur object to the currently selected
-        branch.
-
-        :type preparateur: DataPreparateur
-        """
-        self._current_branch.add_preparateur(preparateur)
-
-    def get_preparateurs(self) -> list:
-        """Returns all DataPreparateur objects that are added to the
-        currently selected branch.
-        
-        :rtype: list
-        """
-        return self._current_branch.get_preparateurs()
-
-    def clear_preparateurs(self):
-        """Removes all added DataPreparateur objects in the currently
-        selected branch.
-        """
-        self._current_branch.clear_preparateurs()
-
-    def add_word(self, sum_iter: AbstractWord):
-        """Adds a AbstractWord object to the currently selected
-        branch.
-
-        :param preparateur: New AbstractWord
-        :type preparateur: AbstractWord
-        """
-        self._current_branch.add_word(sum_iter)
-
-    def get_words(self) -> list:
-        """Returns all AbstractWord objects that are added to the
-        currently selected branch.
-        
-        :rtype: list
-        """
-        return self._current_branch.get_words()
-
-    def clear_iterators(self):
-        """Removes all added AbstractWord objects in the currently
-        selected branch.
-        """
-        self._current_branch.clear_iterators()
-        
-    def add_sieve(self, feat: FeatureSieve):
-        """Adds a FeatureSieve object to the currently selected branch.
-
-        :type preparateur: FeatureSieve
-        """
-        self._current_branch.add_feature_sieve(feat)
-
-    def get_sieves(self) -> list:
-        """Returns all FeatureSieve objects that are added to the
-        currently selected branch.
-        
-        :rtype: list
-        """
-        return self._current_branch.get_sieves()
-
-    def clear_sieves(self):
-        """Removes all added FeatureSieve objects in the currently
-        selected branch.
-        """
-        self._current_branch.clear_sieves()
+        if not (0 <= index < len(self._branches)):
+            raise IndexError("Index has to be in [0, len(self.branches()))")
+        self._cbi = index
 
     def add(self, *objects):
         """Adds one or multiple object(s) to the currently selected
@@ -165,13 +86,9 @@ class Fruit:
             containing multiple objects of mentioned type(s).
         :raises: TypeError if one of the objects has an unknown type
         """
-        self._current_branch.add(objects)
-
-    def clear(self):
-        """Clears all DataPreparateur, AbstractWord and
-        FeatureSieve objects in the currently selected branch.
-        """
-        self._current_branch.clear()
+        if len(self._branches) == 0:
+            self.fork()
+        self._branches[self._cbi].add(objects)
 
     def nfeatures(self) -> int:
         """Returns the total number of features of all branches 
@@ -251,11 +168,8 @@ class Fruit:
         :rtype: Fruit
         """
         copy_ = Fruit(self.name+" (Copy)")
-        copy_._branches = [self._current_branch.copy()]
-        copy_._current_branch = copy_._branches[0]
-        for i in range(len(self._branches)):
-            if i != self._current_branch_index:
-                copy_.add_branch(self._branches[i].copy())
+        for branch in self._branches:
+            copy_.fork(branch.copy())
         return copy_
 
     def deepcopy(self):
@@ -265,11 +179,8 @@ class Fruit:
         :rtype: Fruit
         """
         copy_ = Fruit(self.name+" (Copy)")
-        copy_._branches = [self._current_branch.deepcopy()]
-        copy_._current_branch = copy_._branches[0]
-        for i in range(len(self._branches)):
-            if i != self._current_branch_index:
-                copy_.add_branch(self._branches[i].deepcopy())
+        for branch in self._branches:
+            copy_.fork(branch.deepcopy())
         return copy_
 
     def __copy__(self):
