@@ -158,3 +158,7 @@ def _letter_configured(func: callable) -> bool:
         COMPLEX_LETTER_NAME in func.__dict__):
         return True
     return False
+
+@complex_letter(name="simple_letter")
+def simple_letter(X: np.ndarray, i: int) -> np.ndarray:
+    return X[i, :]

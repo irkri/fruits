@@ -1,7 +1,12 @@
 import itertools
 
-from fruits.core.letters import ExtendedLetter, _letter_configured
-from fruits.core.wording import SimpleWord, ComplexWord
+from fruits.core.letters import (
+    ExtendedLetter,
+    _letter_configured,
+    simple_letter,
+)
+                                
+from fruits.core.wording import SimpleWord, ComplexWord, AbstractWord
 
 def simplewords_by_degree(max_letters: int,
                           max_extended_letters: int,
@@ -86,30 +91,69 @@ def simplewords_by_weight(w: int,
                 words.append(SimpleWord(word))
     return words
 
-def simplewords_replace_letters(simplewords: list, letter: callable) -> list:
-    """Generate a list of ``ComplexWord`` objects by replacing each
-    letter in every given ``SimpleWord`` object with a specified letter.
-    The dimension a letter extracts will match the dimension of the
-    letter in the simple word.
+def _replace_letters_simpleword(word, letter_gen):
+    complexword = ComplexWord()
+    for el in word:
+        new_el = ExtendedLetter()
+        for dim, ndim in enumerate(el):
+            for j in range(ndim):
+                try:
+                    letter = next(letter_gen)
+                except StopIteration:
+                    letter = simple_letter
+                if not _letter_configured(letter):
+                    raise TypeError("Letter has the wrong signature. " +
+                                    "Perhaps it wasn't decorated " +
+                                    "correctly?")
+                new_el.append(letter, dim)
+        complexword.multiply(new_el)
+    return complexword
+
+def _replace_letters_complexword(word, letter_gen):
+    complexword = ComplexWord()
+    for el in word:
+        new_el = ExtendedLetter()
+        for l, dim in zip(el._letters, el._dimensions):
+            try:
+                letter = next(letter_gen)
+            except StopIteration:
+                letter = l
+            if not _letter_configured(letter):
+                raise TypeError("Letter has the wrong signature. " +
+                                "Perhaps it wasn't decorated " +
+                                "correctly?")
+            new_el.append(letter, dim)
+        complexword.multiply(new_el)
+    return complexword
+
+def replace_letters(word, letter_gen):
+    """Replaces the letters in the given word(s) by the iteration
+    results from the supplied generator.
     
-    :param simplewords: List of ``SimpleWord`` objects.
-    :type simplewords: list
-    :param letter: Function that is decorated correctly with
-        ``fruits.core.complex_letter``.
-    :type letter: callable
-    :rtype: list of ``ComplexWord`` objects
+    :type word: Object inherited from Abstractword or a list of them.
+    :param letter_gen: Generator that returns functions correctly
+        decorated with ``fruits.core.complex_letter``. If the iteration
+        through the generator is stopped, all left letters in the word
+        will not be changed.
+    :type letter_gen: generator
+    :rtype: ComplexWord or list of ComplexWords
     """
-    if not _letter_configured(letter):
-        raise TypeError("Letter has the wrong signature. Perhaps it " +
-                        "wasn't decorated correctly?")
-    complexwords = []
-    for simpleword in simplewords:
-        complexword = ComplexWord()
-        for el in simpleword:
-            ext_letter = ExtendedLetter()
-            for i, dim in enumerate(el):
-                for j in range(dim):
-                    ext_letter.append(letter, i)
-            complexword.multiply(ext_letter)
-        complexwords.append(complexword)
-    return complexwords
+    if isinstance(word, list):
+        complexwords = []
+        for i in range(len(word)):
+            if isinstance(word[i], SimpleWord):
+                complexwords.append(_replace_letters_simpleword(word[i],
+                                                                letter_gen))
+            elif isinstance(word[i], ComplexWord):
+                complexwords.append(_replace_letters_complexword(word[i],
+                                                                 letter_gen))
+            else:
+                raise TypeError(f"Unknown word type: {type(word[i])}")
+        return complexwords
+    else:
+        if isinstance(word, SimpleWord):
+            return _replace_letters_simpleword(word, letter_gen)
+        elif isinstance(word, ComplexWord):
+            return _replace_letters_complexword(word, letter_gen)
+        else:
+            raise TypeError(f"Unknown word type: {type(word)}")
