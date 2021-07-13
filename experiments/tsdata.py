@@ -1,7 +1,5 @@
-"""Small python module for the creation and manipulation of artificial
-time series data.
-
-Available datasets are collected in the ``available_datasets`` list.
+"""Small python module for the creation/manipulation/reading of
+(possibly artificial) time series data.
 """
 
 import numpy as np
