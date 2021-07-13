@@ -8,6 +8,27 @@ from context import fruits
 
 # complex letters implementation
 
+def get_dilated_letter(nclusters: int = 100):
+    _indices = sorted(np.random.random_sample(nclusters))
+    _lengths = []
+    for i in range(len(_indices)):
+        if i == len(_indices)-1:
+            b = 1 - _indices[i]
+        else:
+            b = _indices[i+1] - _indices[i]
+        _lengths.append(b*np.random.random_sample())
+
+    @fruits.core.complex_letter(name="DILATED")
+    def dilated(X: np.ndarray, i: int):
+        X_ = X.copy()
+        for i in range(min(int(0.01*X.shape[2]), len(_indices))):
+            start = int(_indices[i] * X.shape[2])
+            length = int(_lengths[i] * X.shape[2])
+            X_[:, :, start:start+length] = 0
+        return X_
+
+    return dilated
+
 @fruits.core.complex_letter(name="SIGMOID")
 def sigmoid(X: np.ndarray, i: int):
     return 1 / (1 + np.exp(-0.001*X[i, :]))
@@ -28,53 +49,3 @@ def tanh(X: np.ndarray, i: int):
 @fruits.core.complex_letter(name="ID")
 def id_(X: np.ndarray, i: int):
     return X[i, :]
-
-def simplewords_replace_letters_randomly(simple_words,
-                                         letters: list):
-    """Generates random complex words. Every letter in each SimpleWord
-    is replaced by a random complex letter in the given list.
-    
-    :param simple_words: list of SimpleWord objects
-    :type simple_words: list
-    :param letters: List of complex letters to choose randomly from.
-    :type letters: list
-    :returns: List of ComplexWord objects
-    :rtype: list
-    """
-    complex_words = []
-    for simple_word in simple_words:
-        complex_words.append(fruits.core.ComplexWord())
-        for el in simple_word:
-            ext_letter = fruits.core.ExtendedLetter()
-            for i, dim in enumerate(el):
-                for l in range(dim):
-                    k = np.random.randint(0, len(letters))
-                    ext_letter.append(letters[k], i)
-            complex_words[-1].multiply(ext_letter)
-    return complex_words
-
-def simplewords_replace_letters_sequentially(simple_words,
-                                             letters: list):
-    """Generates complex words. Every letter in each SimpleWord
-    is replaced by another letter sequentially chosen from the given
-    list.
-    
-    :param simple_words: list of SimpleWord objects
-    :type simple_words: list
-    :param letters: List of complex letters to iterate through.
-    :type letters: list
-    :returns: List of ComplexWord objects
-    :rtype: list
-    """
-    complex_words = []
-    k = 0
-    for simple_word in simple_words:
-        complex_words.append(fruits.core.ComplexWord())
-        for el in simple_word:
-            ext_letter = fruits.core.ExtendedLetter()
-            for i, dim in enumerate(el):
-                for l in range(dim):
-                    ext_letter.append(letters[k], i)
-                    k = (k+1) % len(letters)
-            complex_words[-1].multiply(ext_letter)
-    return complex_words
