@@ -74,32 +74,6 @@ def msplot(X: np.ndarray,
     ax.legend(loc="upper right")
     return ax
 
-def load_dataset(path: str) -> tuple:
-    """Returns a time series dataset that is formatted as a .txt file
-    and readable with numpy.
-    
-    :param path: Path to the dataset. The path has to point to a
-        folder 'name' with two files:
-        'name_TEST.txt' and 'name_TRAIN.txt' where 'name' is the name of
-        the dataset.
-    :type path: str
-    :returns: Tuple (X_train, y_train, X_test, y_test) where X_train
-        and X_test are 3-dimensional numpy arrays
-    :rtype: tuple
-    """
-    dataset = path.split("/")[-1]
-    train_raw = np.loadtxt(f"{path}/{dataset}_TRAIN.txt")
-    test_raw = np.loadtxt(f"{path}/{dataset}_TEST.txt")
-    X_train = train_raw[:, 1:]
-    y_train = train_raw[:, 0].astype(np.int32)
-    X_test = test_raw[:, 1:]
-    y_test =  test_raw[:, 0].astype(np.int32)
-
-    X_train = np.expand_dims(X_train, axis=1)
-    X_test = np.expand_dims(X_test, axis=1)
-
-    return X_train, y_train, X_test, y_test
-
 class TransformationCallback(fruits.callback.AbstractCallback):
     def __init__(self, branch: int = 0):
         self._branch = branch
