@@ -24,7 +24,7 @@ copyright = '2021, alienkrieg'
 author = 'alienkrieg'
 
 # The full version, including alpha/beta/rc tags
-release = '0.7.0'
+release = '0.8.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -33,10 +33,9 @@ release = '0.7.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-                "sphinx.ext.autodoc",
-                "m2r2",
-                "sphinx_rtd_theme"
-             ]
+    "sphinx.ext.autodoc",
+    "sphinx_rtd_theme"
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
