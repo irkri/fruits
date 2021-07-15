@@ -6,14 +6,15 @@ COMPLEX_LETTER_SIGNATURE = "fruits_letter"
 COMPLEX_LETTER_NAME = "fruits_name"
 
 class ExtendedLetter:
-    """Class for an extended letter used in ``fruits.core.ComplexWord``.
+    """Class for an extended letter that is used in
+    :class:`~wording.AbstractWord`.
     
     An ExtendedLetter object is a container that only allows
     appending functions that were decorated with
-    ``fruits.core.complex_letter``.
+    :meth:`fruits.core.complex_letter`.
     It can then be used in a word to calculate iterated sums of a
     multidimensional time series.
-
+    
     :param *letters: Letters to add to the object. One letter is given
         as a tuple ``(letter, dimension)``, where ``letter`` is the
         function decorated with the ``complex_letter`` decorator and

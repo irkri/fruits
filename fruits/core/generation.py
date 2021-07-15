@@ -22,10 +22,10 @@ def simplewords_by_degree(max_letters: int,
     
     :param max_letters: Maximal number of letters in any extended
         letter.
-    :type monomial_length: int
-    :param max_letters: Maximal number of extended letters in any
-        SimpleWord.
-    :type n_extended_letters: int
+    :type max_letters: int
+    :param max_extended_letters: Maximal number of extended letters in
+        any SimpleWord.
+    :type max_extended_letters: int
     :param dim: Maximal dimensionality of the letters in any extended
         letter and any SimpleWord., defaults to 1
     :type dim: int, optional

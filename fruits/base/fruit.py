@@ -108,9 +108,10 @@ class Fruit:
         branch.
         These objects can be one of the following types:
         
-        - fruits.preparateurs.DataPreparateur
-        - classes that inherit from fruits.core.wording.AbstractWord
-        - fruits.features.FeatureSieve
+        - :class:`~fruits.preparateurs.DataPreparateur`
+        - classes that inherit from
+          :class:`~fruits.core.wording.AbstractWord`
+        - :class:`~fruits.features.FeatureSieve`
         
         :type objects: Object of mentioned type(s) or iterable object
             containing multiple objects of mentioned type(s).
@@ -344,9 +345,10 @@ class FruitBranch:
         """Adds one or multiple object(s) to the branch.
         These objects can be of type:
         
-        - fruits.preparateurs.DataPreparateur
-        - classes that inherit from fruits.core.wording.AbstractWord
-        - fruits.features.FeatureSieve
+        - :class:`~fruits.preparateurs.DataPreparateur`
+        - classes that inherit from
+          :class:`~fruits.core.wording.AbstractWord`
+        - :class:`~fruits.features.FeatureSieve`
         
         :type objects: Object(s) of mentioned type(s) or iterable object
             containing multiple objects of mentioned type(s).
