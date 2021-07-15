@@ -4,11 +4,14 @@ import numba
 import numpy as np
 
 class DataPreparateur(ABC):
-    """Abstract class DataPreperateur
+    """Abstract class for a data preparateur.
     
-    A DataPreparateur object can be fitted on a three dimensional numpy 
-    array. The output of DataPreparateur.prepare is a numpy array that
-    matches the shape of the input array.
+    A preparateur can be fitted on a three dimensional numpy array
+    (preferably containing time series data). The output of
+    ``self.prepare`` is a numpy array that matches the shape of the
+    input array.
+    A class derived from DataPreparateur can be added to a
+    ``fruits.Fruit`` object for the preprocessing step.
     """
     def __init__(self, name: str = ""):
         super().__init__()
@@ -23,19 +26,13 @@ class DataPreparateur(ABC):
     def name(self, name: str):
         self._name = name
 
+    @abstractmethod
     def copy(self):
-        """Returns a copy of the DataPreparateur object.
-        
-        :returns: Copy of this object
-        :rtype: DataPreparateur
-        """
-        dp = DataPreparateur(self.name)
-        return dp
+        pass
 
     def fit(self, X: np.ndarray):
         """Fits the DataPreparateur to the given dataset.
         
-        :param X: (multidimensional) time series dataset
         :type X: np.ndarray
         """
         pass
@@ -48,7 +45,7 @@ class DataPreparateur(ABC):
         """Fits the given dataset to the DataPreparateur and returns
         the preparated results.
         
-        :param X: (multidimensional) time series dataset
+        :param X: A (multidimensional) time series dataset.
         :type X: np.ndarray
         """
         self.fit(X)
@@ -61,7 +58,7 @@ class DataPreparateur(ABC):
         return False
 
     def __repr__(self) -> str:
-        return "fruits.preparation.DataPreparateur('" + self._name + "')"
+        return "fruits.preparation.DataPreparateur"
 
 
 @numba.njit(fastmath=True, cache=True)
@@ -102,12 +99,11 @@ class INC(DataPreparateur):
         self._zero_padding = zero_padding
 
     def prepare(self, X: np.ndarray) -> np.ndarray:
-        """Returns the increments of all time series in X.
-        This is the equivalent of the convolution of X and [-1,1].
+        """Returns the increments of all time series in ``X``. This is
+        the equivalent to the convolution of ``X`` and ``[-1, 1]``.
         
-        :param X: (multidimensional) time series dataset
         :type X: np.ndarray
-        :returns: stepwise slopes of each time series in X
+        :returns: Stepwise slopes of each time series in X.
         :rtype: np.ndarray
         """
         out = _increments(X)
@@ -116,9 +112,8 @@ class INC(DataPreparateur):
         return out
 
     def copy(self):
-        """Returns a copy of the DataPreparateur object.
+        """Returns a copy of this preparateur.
         
-        :returns: Copy of this object
         :rtype: INC
         """
         dp = INC(self._zero_padding, self.name)
@@ -135,6 +130,9 @@ class INC(DataPreparateur):
         string = "INC(" + \
                 f"zero_padding={self._zero_padding})"
         return string
+
+    def __repr__(self) -> str:
+        return "fruits.preparation.INC"
 
 
 class STD(DataPreparateur):
@@ -154,19 +152,17 @@ class STD(DataPreparateur):
         """Fits the STD object to the given dataset by calculating the
         mean and standard deviation of the flattened dataset.
         
-        :param X: (multidimensional) time series dataset
         :type X: np.ndarray
         """
         self._mean = np.mean(X)
         self._std = np.std(X)
 
     def prepare(self, X: np.ndarray) -> np.ndarray:
-        """Returns the standardized dataset (X-mu)/std where mu and std
-        are the parameters calculated in :meth:`STD.fit`.
+        """Returns the standardized dataset ``(X-mu)/std`` where ``mu``
+        and ``std`` are the parameters calculated in :meth:`STD.fit`.
         
-        :param X: (multidimensional) time series dataset
         :type X: np.ndarray
-        :returns: (standardized) dataset
+        :returns: Standardized dataset.
         :rtype: np.ndarray
         :raises: RuntimeError if self.fit() wasn't called
         """
@@ -176,7 +172,7 @@ class STD(DataPreparateur):
         return out
 
     def copy(self):
-        """Returns a copy of the DataPreparateur object.
+        """Returns a copy of this preparateur.
         
         :rtype: STD
         """
@@ -189,17 +185,20 @@ class STD(DataPreparateur):
     def __str__(self) -> str:
         return "STD"
 
+    def __repr__(self) -> str:
+        return "fruits.preparation.STD"
+
 
 class DIL(DataPreparateur):
     """DataPreparateur: Dilation
     
-    This preprocessing tool sets some points in each time series in the
-    given dataset to zero. The indices for those zero sequences are
-    chosen randomly.
+    This preparateur sets some slices in each time series in the
+    given dataset to zero. The indices and lengths for those zero
+    sequences are chosen randomly.
 
-    :param clusters: Float value in [0, 1]. The number of zero strips
-        will be calculated by multiplying ``clusters * X.shape[2]``.,
-        defaults to 0.01
+    :param clusters: Float value between 0 and 1 (incl.). The number of
+        zero strips will be calculated by multiplying
+        ``clusters * X.shape[2]`` in ``self.fit(X)``., defaults to 0.01
     :type clusters: float, optional
     :param name: Name of the preparateur., defaults to "Dilation"
     :type name: str, optional
@@ -211,10 +210,9 @@ class DIL(DataPreparateur):
         self._clusters = clusters
     
     def fit(self, X: np.ndarray):
-        """Fits the STD object to the given dataset by randomizing the
+        """Fits the preparateur to the given dataset by randomizing the
         starting points and lengths of the zero strips.
         
-        :param X: (multidimensional) time series dataset
         :type X: np.ndarray
         """
         nclusters = int(self._clusters * X.shape[2])
@@ -230,7 +228,6 @@ class DIL(DataPreparateur):
     def prepare(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed dataset.
         
-        :param X: (multidimensional) time series dataset
         :type X: np.ndarray
         :rtype: np.ndarray
         :raises: RuntimeError if self.fit() wasn't called
@@ -243,7 +240,7 @@ class DIL(DataPreparateur):
         return X_new
     
     def copy(self):
-        """Returns a copy of the DataPreparateur object.
+        """Returns a copy of this preparateur.
         
         :rtype: DIL
         """
@@ -254,3 +251,6 @@ class DIL(DataPreparateur):
 
     def __str__(self) -> str:
         return f"DIL(clusters={self._clusters})"
+
+    def __repr__(self) -> str:
+        return "fruits.preparation.DIL"

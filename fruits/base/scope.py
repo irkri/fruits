@@ -3,6 +3,18 @@ import numpy as np
 from fruits.base.callback import AbstractCallback
 
 def force_input_shape(X: np.ndarray):
+    """Makes the attempt to format the input shape of the
+    multidimensional time series dataset ``X``.
+    This leads to an three dimensional array where
+
+    - ``X.shape[0]``: Number of time series
+    - ``X.shape[1]``: Number of dimensions in each time series
+    - ``X.shape[2]``: Length of each time series
+    
+    :type X: np.ndarray
+    :rtype: np.ndarray
+    :raises: ValueError if ``X.ndim > 3``
+    """
     out = X.copy()
     if out.ndim == 1:
         out = np.expand_dims(out, axis=0)
@@ -13,6 +25,12 @@ def force_input_shape(X: np.ndarray):
     return out
 
 def check_callbacks(callbacks: list):
+    """For a given list of objects, checks if all objects are inherited
+    from ``fruits.base.callback.AbstractCallback``. If not, a
+    ``TypeError`` will be rased.
+    
+    :type callbacks: list
+    """
     for callback in callbacks:
         if not isinstance(callback, AbstractCallback):
             raise TypeError("Supplied callback is not of type " +

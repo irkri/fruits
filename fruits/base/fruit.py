@@ -13,9 +13,41 @@ from fruits import core
 class Fruit:
     """Feature Extractor using iterated sums.
     
-    A Fruit object consists of a number of FruitBranch objects. At the
-    end of the pipeline, each branch returns their own features and
-    they will be concatenated by this class.
+    A Fruit object consists of a number of ``FruitBranch`` objects.
+    At the end of the pipeline, each branch returns their own features
+    and they will be concatenated by this class.
+
+    A simple example (using one ``FruitBranch``):
+
+    .. code-block:: python
+
+        fruit = fruits.Fruit("My Fruit")
+        # optional: add preparateurs for preprocessing
+        fruit.add(fruits.preparation.INC(zero_padding=False))
+        # add words for iterated sums calculation
+        fruit.add(fruits.core.generation.simplewords_by_degree(2, 2, 1))
+        # choose sieves
+        fruit.add(fruits.sieving.PPV(0.5))
+        fruit.add(fruits.sieving.MAX)
+        fruit.add(fruits.sieving.MIN)
+        fruit.add(fruits.sieving.END)
+
+        # transform time series dataset
+        fruit.fit(X_train)
+        X_train_transformed = fruit.transform(X_train)
+        X_test_tranformed = fruit.transform(X_test)
+
+        # use the transformed results (features) in a classifier
+        ...
+
+    The above defined ``fruit`` will result in ``6*4=24`` features per
+    time series.
+
+    Calling ``add(...)`` on a ``Fruit`` object always calls
+    ``branch.add(...)`` where ``branch`` is the currently selected
+    ``FruitBranch`` in this object. What branch is selected can be
+    changed by calling ``self.switch_branch(index)`` or forking a new
+    branch with ``self.fork()``.
     """
     def __init__(self, name: str = ""):
         self.name = name
@@ -62,9 +94,7 @@ class Fruit:
         return self._branches
 
     def switch_branch(self, index: int):
-        """Switches to the branch with the given index. If the Fruit
-        objects points to a branch, then each method that is called on
-        the Fruit object is actually called on this branch.
+        """Switches to the branch with the given index.
         
         :param index: Integer in ``[0, 1, ..., len(self.branches())-1]``
         :type index: int
@@ -74,7 +104,7 @@ class Fruit:
         self._cbi = index
 
     def add(self, *objects):
-        """Adds one or multiple object(s) to the currently selected
+        """Adds one or multiple object(s) to the `currently selected`
         branch.
         These objects can be one of the following types:
         
@@ -101,7 +131,9 @@ class Fruit:
     def fit(self, X: np.ndarray):
         """Fits all branches to the given data.
         
-        :param X: (Multidimensional) time series dataset
+        :param X: (Multidimensional) time series dataset as an array
+            of three dimensions. Have a look at
+            ``fruits.base.scope.force_input_shape``.
         :type X: np.ndarray
         """
         for branch in self._branches:
@@ -111,7 +143,9 @@ class Fruit:
         """Returns a two dimensional array of all features from all
         branches this Fruit object contains.
         
-        :param X: (Multidimensional) time series dataset
+        :param X: (Multidimensional) time series dataset as an array
+            of three dimensions. Have a look at
+            ``fruits.base.scope.force_input_shape``.
         :type X: np.ndarray
         :param callbacks: List of callbacks. To write your own callback,
             override the class ``fruits.callback.AbstractCallback``.,
@@ -209,10 +243,10 @@ class FruitBranch:
     signature for different words the user can specify.
 
     Extracting the Features:
-    Each FeatureSieve added to the branch will be fitted and on 
-    the iterated sums from the previous step. The Fruit object then  
-    returns an array of numbers (the transformed results from those
-    sieves), i.e. the features for each time series.
+    Each FeatureSieve added to the branch will be fitted on 
+    the iterated sums from the previous step. The branch then returns
+    an array of numbers (the transformed results from those sieves),
+    i.e. the features for each time series.
     """
     def __init__(self):
         # lists of used classes for data processing
@@ -234,7 +268,6 @@ class FruitBranch:
     def add_preparateur(self, preparateur: DataPreparateur):
         """Adds a DataPreparateur object to the branch.
         
-        :param preparateur: New preparateur
         :type preparateur: DataPreparateur
         """
         if not isinstance(preparateur, DataPreparateur):
@@ -246,7 +279,6 @@ class FruitBranch:
         """Returns a list of all DataPreparateur objects added to the
         branch.
         
-        :returns: List of DataPreparateur objects
         :rtype: list
         """
         return self._preparateurs
@@ -261,7 +293,6 @@ class FruitBranch:
     def add_word(self, word: AbstractWord):
         """Adds a word to the branch.
         
-        :param preparateur: New ComplexWord or SimpleWord.
         :type preparateur: AbstractWord
         """
         if not isinstance(word, AbstractWord):
@@ -296,7 +327,6 @@ class FruitBranch:
         """Returns a list of all FeatureSieve objects added to the
         branch.
         
-        :returns: List of FeatureSieve objects
         :rtype: list
         """
         return self._sieves
@@ -366,9 +396,9 @@ class FruitBranch:
         """Fits the branch to the given dataset. What this action
         explicitly does depends on the FruitBranch configuration.
         
-        :param X: Multidimensional time series dataset.
-            If ``X.ndims < 3`` then the array will be expanded to
-            contain 3 dimensions. This could lead to unwanted behaviour.
+        :param X: (Multidimensional) time series dataset as an array
+            of three dimensions. Have a look at
+            ``fruits.base.scope.force_input_shape``.
         :type X: np.ndarray
         :raises: ValueError if ``X.ndims > 3``
         """
@@ -391,9 +421,9 @@ class FruitBranch:
         """Transforms the given time series dataset. The results are
         the calculated features for the different time series.
         
-        :param X: Multidimensional time series dataset.
-            If ``X.ndims < 3`` then the array will be expanded to
-            contain 3 dimensions. This could lead to unwanted behaviour.
+        :param X: (Multidimensional) time series dataset as an array
+            of three dimensions. Have a look at
+            ``fruits.base.scope.force_input_shape``.
         :type X: np.ndarray
         :param callbacks: List of callbacks. To write your own callback,
             override the class ``fruits.callback.AbstractCallback``.,
@@ -453,12 +483,14 @@ class FruitBranch:
         return sieved_data
 
     def fit_transform(self, X: np.ndarray) -> np.ndarray:
-        """This function does the same that calling `FruitBranch.fit(X)`
-        and `FruitBranch.transform(X)` consecutively does.
+        """This function does the same that calling ``self.fit(X)`` and
+        ``self.transform(X)`` consecutively does.
         
-        :param X: (multidimensional) time series dataset
+        :param X: (Multidimensional) time series dataset as an array
+            of three dimensions. Have a look at
+            ``fruits.base.scope.force_input_shape``.
         :type X: np.ndarray
-        :returns: transformed time series (features)
+        :returns: Array of features.
         :rtype: np.ndarray
         """
         self.fit(X)
@@ -466,10 +498,8 @@ class FruitBranch:
 
     def summary(self) -> str:
         """Returns a summary of this object. The summary contains all
-        added DataPreparateur, AbstractWord and FeatureSieve
-        objects.
+        added preparateurs, words and sieves.
         
-        :returns: Summary as string
         :rtype: str
         """
         summary = "{:-^80}".format("fruits.FruitBranch")

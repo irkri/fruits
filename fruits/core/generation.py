@@ -56,7 +56,7 @@ def simplewords_by_weight(w: int,
         SimpleWord("[11]"), SimpleWord("[12]"), SimpleWord("[22]"),
         SimpleWord("[1][1]"), SimpleWord("[1][2]"), SimpleWord("[2][2]")
     
-    :param w: Number of letters the words should contain
+    :param w: Weight of the words, i.e. number of letters.
     :type w: int
     :param dim: Highest dimension of a letter., defaults to 1
     :type dim: int, optional

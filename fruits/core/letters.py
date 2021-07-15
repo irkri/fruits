@@ -6,8 +6,7 @@ COMPLEX_LETTER_SIGNATURE = "fruits_letter"
 COMPLEX_LETTER_NAME = "fruits_name"
 
 class ExtendedLetter:
-    """Class for an extended letter used in classes inheriting from
-    ``fruits.core.wording.AbstractWord``.
+    """Class for an extended letter used in ``fruits.core.ComplexWord``.
     
     An ExtendedLetter object is a container that only allows
     appending functions that were decorated with
@@ -53,6 +52,10 @@ class ExtendedLetter:
             self._string_repr += "(" + str(dim+1) + ")"
 
     def copy(self):
+        """Returns a copy of this extended letter.
+        
+        :rtype: ExtendedLetter
+        """
         el = ExtendedLetter()
         el._letters = self._letters.copy()
         el._dimensions = self._dimensions.copy()
