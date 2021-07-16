@@ -367,14 +367,14 @@ class MAX(FeatureSieve):
         ``cut=[1,5,10]`` results in two features ``max(X[0:5])`` and
         ``max(X[4:10])``.
         If set to ``False``, then the left interval border is always 0.,
-        defaults to ``False``
+        defaults to ``True``
     :type segments: bool, optional
     :param name: Name of the object, defaults to "Maximal value"
     :type name: str, optional
     """
     def __init__(self,
                  cut: int = -1,
-                 segments: bool = False,
+                 segments: bool = True,
                  name: str = "Maximal value"):
         super().__init__(name)
         self._cut = cut if isinstance(cut, list) else [cut]
@@ -488,14 +488,14 @@ class MIN(FeatureSieve):
         ``cut=[1,5,10]`` results in two features ``min(X[0:5])`` and
         ``min(X[5:10])``.
         If set to ``False``, then the left interval border is always 0.,
-        defaults to ``False``
+        defaults to ``True``
     :type segments: bool, optional
     :param name: Name of the object, defaults to "Minimal value"
     :type name: str, optional
     """
     def __init__(self,
                  cut: int = -1,
-                 segments: bool = False,
+                 segments: bool = True,
                  name: str = "Minimum value"):
         super().__init__(name)
         self._cut = cut if isinstance(cut, list) else [cut]
