@@ -515,6 +515,10 @@ class FruitBranch:
         summary += f"\nIterators ({len(self._words)}): "
         if len(self._words) == 0:
             summary += "-"
+        elif len(self._words) > 10:
+            summary += "\n\t+ " + \
+                       "\n\t+ ".join([str(x) for x in self._words[:9]])
+            summary += "\n\t..."
         else:
             summary += "\n\t+ " + \
                        "\n\t+ ".join([str(x) for x in self._words])
