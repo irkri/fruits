@@ -161,9 +161,11 @@ class ClassificationPipeline:
                     test = np.loadtxt(f"{path}/{dataset}/{dataset}_TEST.txt")
 
                     y_train = train[:, 0].astype(np.int32)
-                    X_train = np.expand_dims(train[:, 1:], axis=1)
+                    X_train = np.nan_to_num(
+                                np.expand_dims(train[:, 1:], axis=1))
                     y_test = test[:, 0].astype(np.int32)
-                    X_test = np.expand_dims(test[:, 1:], axis=1)
+                    X_test = np.nan_to_num(
+                                np.expand_dims(test[:, 1:], axis=1))
 
                     start = Timer()
                     fruit.fit(X_train)
