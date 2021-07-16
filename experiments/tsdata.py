@@ -103,11 +103,15 @@ def load_dataset(path: str) -> tuple:
     :rtype: tuple
     """
     dataset = path.split("/")[-1]
-    train_raw = np.loadtxt(f"{path}/{dataset}_TRAIN.txt")
-    test_raw = np.loadtxt(f"{path}/{dataset}_TEST.txt")
-    X_train = train_raw[:, 1:]
+    delim = None
+    with open(f"{path}/{dataset}_TRAIN.txt") as f:
+        if "," in f.readline():
+            delim = ","
+    train_raw = np.loadtxt(f"{path}/{dataset}_TRAIN.txt", delimiter=delim)
+    test_raw = np.loadtxt(f"{path}/{dataset}_TEST.txt", delimiter=delim)
+    X_train = np.nan_to_num(train_raw[:, 1:])
     y_train = train_raw[:, 0].astype(np.int32)
-    X_test = test_raw[:, 1:]
+    X_test = np.nan_to_num(test_raw[:, 1:])
     y_test =  test_raw[:, 0].astype(np.int32)
 
     X_train = np.expand_dims(X_train, axis=1)

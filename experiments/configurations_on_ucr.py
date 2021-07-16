@@ -37,6 +37,7 @@ from sklearn.linear_model import RidgeClassifierCV
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
 from configurations import CONFIGURATIONS
+import tsdata
 
 class ClassificationPipeline:
     """Class that manages a time series classification with fruits and a
@@ -83,6 +84,7 @@ class ClassificationPipeline:
         self._datasets = []
         self._paths = []
         self._rocket_csv = pd.read_csv(rocket_results)
+        self._output_file = output_file
         if classifier is None:
             self._classifier = RidgeClassifierCV(
                                     alphas=np.logspace(-3,3,10),
@@ -93,21 +95,20 @@ class ClassificationPipeline:
             self._scaler = FunctionTransformer(lambda X: X, validate=False)
         else:
             self._scaler = scaler
-        self._set_up_logger(output_file)
 
-    def _set_up_logger(self, output_file: str):
+    def _set_up_logger(self):
         # add timestamp to output file if it exists already
-        if os.path.isfile(output_file):
-            output_file = output_file.split(".")
-            output_file[-2] += "-"+time.strftime("%Y-%m-%d-%H%M%S")
-            output_file = ".".join(output_file)
+        if os.path.isfile(self._output_file):
+            self._output_file = self._output_file.split(".")
+            self._output_file[-2] += "-"+time.strftime("%Y-%m-%d-%H%M%S")
+            self._output_file = ".".join(self._output_file)
         # empty the output file if it exists already
-        with open(output_file, "w") as f:
+        with open(self._output_file, "w") as f:
             f.truncate(0)
         # create a logger that flushes accuracy results to the given
         # file path at the end of the classification of each dataset
         self.logger = logging.Logger("fruits classification results")
-        fh = logging.FileHandler(output_file)
+        fh = logging.FileHandler(self._output_file)
         self.logger.addHandler(fh)
 
     def append_data(self, path: str, use_only: list = None):
@@ -139,6 +140,7 @@ class ClassificationPipeline:
             use for classification.
         :type fruits_configurations: list of fruits.Fruit objects
         """
+        self._set_up_logger()
         n_datasets = sum([len(ds) for ds in self._datasets])
         results = np.zeros((len(fruits_configurations), n_datasets, 4))
 
@@ -157,15 +159,8 @@ class ClassificationPipeline:
 
                 for dataset in self._datasets[j]:
 
-                    train = np.loadtxt(f"{path}/{dataset}/{dataset}_TRAIN.txt")
-                    test = np.loadtxt(f"{path}/{dataset}/{dataset}_TEST.txt")
-
-                    y_train = train[:, 0].astype(np.int32)
-                    X_train = np.nan_to_num(
-                                np.expand_dims(train[:, 1:], axis=1))
-                    y_test = test[:, 0].astype(np.int32)
-                    X_test = np.nan_to_num(
-                                np.expand_dims(test[:, 1:], axis=1))
+                    X_train, y_train, X_test, y_test = tsdata.load_dataset(
+                        path+dataset)
 
                     start = Timer()
                     fruit.fit(X_train)
