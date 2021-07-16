@@ -64,8 +64,9 @@ class ClassificationPipeline:
         defaults to an identity scaler (that doesn't transform at all)
     :type scaler: Some scaler, preferably from sklearn., optional
     """
-    table_header = "{:=^25}{:=^25}{:=^25}{:=^25}".format(
+    table_header = "{:=^25}{:=^20}{:=^25}{:=^25}{:=^25}".format(
                         "Dataset",
+                        "Train/Test/Length",
                         "Feature Calculation Time",
                         "FRUITS Accuracy",
                         "ROCKET Mean Accuracy",
@@ -160,9 +161,9 @@ class ClassificationPipeline:
                     test = np.loadtxt(f"{path}/{dataset}/{dataset}_TEST.txt")
 
                     y_train = train[:, 0].astype(np.int32)
-                    X_train = train[:, 1:]
+                    X_train = np.expand_dims(train[:, 1:], axis=1)
                     y_test = test[:, 0].astype(np.int32)
-                    X_test = test[:, 1:]
+                    X_test = np.expand_dims(test[:, 1:], axis=1)
 
                     start = Timer()
                     fruit.fit(X_train)
@@ -178,8 +179,11 @@ class ClassificationPipeline:
 
                     results[k, i, 1] = self._classifier.score(
                                                 X_test_feat_scaled, y_test)
-                    self.logger.info("{: ^25}{: ^25}{: ^25}{: ^25}".format(
+                    self.logger.info(("{: ^25}{: ^20}{: ^25}{: ^25}" +
+                                      "{: ^25}").format(
                         dataset,
+                        f"{X_train.shape[0]}/{X_test.shape[0]}/" + \
+                        f"{X_train.shape[2]}",
                         round(results[k, i, 0], 3),
                         round(results[k, i, 1], 3),
                         round(self._rocket_csv[self._rocket_csv["dataset"] == \
@@ -192,8 +196,9 @@ class ClassificationPipeline:
 
             self.logger.info(len(self.table_header) * "-")
             mean_rocket_a = self._rocket_csv["accuracy_mean"].to_numpy().mean()
-            self.logger.info("{: ^25}{: ^25}{: ^25}{: ^25}".format(
+            self.logger.info("{: ^25}{: ^20}{: ^25}{: ^25}{: ^25}".format(
                                 "MEAN",
+                                "-/-/-",
                                 round(results[k, :, 0].mean(), 6),
                                 round(results[k, :, 1].mean(), 6),
                                 round(mean_rocket_a, 6)))
