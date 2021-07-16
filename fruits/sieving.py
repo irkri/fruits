@@ -73,12 +73,14 @@ class FeatureSieve(ABC):
     def copy(self):
         pass
 
+    def summary(self) -> str:
+        return "FeatureSieve('" + self._name + "')"
+
     def __copy__(self):
         return self.copy()
 
     def __repr__(self) -> str:
-        out = "FeatureSieve('" + self._name + "')"
-        return out
+        return "FeatureSieve('" + self._name + "')"
 
 
 class PPV(FeatureSieve):
@@ -127,7 +129,7 @@ class PPV(FeatureSieve):
     def __init__(self,
                  quantile: float = 0.5,
                  constant: bool = False,
-                 sample_size: float = 1,
+                 sample_size: float = 1.0,
                  segments: bool = False,
                  name: str = "Proportion of positive values"):
         super().__init__(name)
@@ -235,13 +237,21 @@ class PPV(FeatureSieve):
                  self.name)
         return fs
 
-    def __str__(self) -> str:
-        string = "PPV(" + \
-                f"quantile={[x[0] for x in self._q_c_input]}, " + \
-                f"constant={[x[1] for x in self._q_c_input]}, " + \
-                f"sample_size={self._sample_size}, " + \
-                f"segments={self._segments})"
+    def summary(self) -> str:
+        string = f"PPV [sampling={self._sample_size}"
+        if self._segments:
+            string += ", segments"
+        string += f"] -> {self.nfeatures()}:"
+        for x in self._q_c_input:
+            string += f"\n   > {x[0]} | {x[1]}"
         return string
+
+    def __str__(self) -> str:
+        return "PPV(" + \
+               f"quantile={[x[0] for x in self._q_c_input]}, " + \
+               f"constant={[x[1] for x in self._q_c_input]}, " + \
+               f"sample_size={self._sample_size}, " + \
+               f"segments={self._segments})"
 
 
 class PPVC(PPV):
@@ -276,7 +286,7 @@ class PPVC(PPV):
     def __init__(self,
                  quantile: float = 0.5,
                  constant: bool = False,
-                 sample_size: float = 1,
+                 sample_size: float = 1.0,
                  name:str = "Proportion of connected components of "+
                             "positive values"):
         super().__init__(quantile,
@@ -320,6 +330,13 @@ class PPVC(PPV):
                   self._sample_size,
                   self.name)
         return fs
+
+    def summary(self) -> str:
+        string = f"PPVC [sampling={self._sample_size}"
+        string += f"] -> {self.nfeatures()}:"
+        for x in self._q_c_input:
+            string += f"\n    > {x[0]} | {x[1]}"
+        return string
 
     def __str__(self) -> str:
         string = "PPVC(" + \
@@ -426,6 +443,15 @@ class MAX(FeatureSieve):
                 fs.word = SimpleWord("[11]")
                 break
         return fs
+
+    def summary(self) -> str:
+        string = f"MAX"
+        if self._segments:
+            string += " [segments]"
+        string += f" -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
 
     def copy(self):
         """Returns a copy of this object.
@@ -539,6 +565,15 @@ class MIN(FeatureSieve):
                 break
         return fs
 
+    def summary(self) -> str:
+        string = f"MIN"
+        if self._segments:
+            string += " [segments]"
+        string += f" -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
+
     def copy(self):
         """Returns a copy of this object.
         
@@ -625,6 +660,12 @@ class END(FeatureSieve):
                 fs.word = SimpleWord("[11]")
                 break
         return fs
+
+    def summary(self) -> str:
+        string = f"END -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
 
     def copy(self):
         """Returns a copy of this object.

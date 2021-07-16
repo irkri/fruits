@@ -508,22 +508,25 @@ class FruitBranch:
         summary += f"\nNumber of features: {self.nfeatures()}"
         summary += f"\n\nPreparateurs ({len(self._preparateurs)}): "
         if len(self._preparateurs) == 0:
-            summary += "-" 
-        else: 
+            summary += "-"
+        else:
             summary += "\n\t+ " + \
                        "\n\t+ ".join([str(x) for x in self._preparateurs])
         summary += f"\nIterators ({len(self._words)}): "
         if len(self._words) == 0:
-            summary += "-" 
-        else: 
+            summary += "-"
+        else:
             summary += "\n\t+ " + \
                        "\n\t+ ".join([str(x) for x in self._words])
         summary += f"\nSieves ({len(self._sieves)}): "
         if len(self._sieves) == 0:
-            summary += "-" 
-        else: 
-            summary += "\n\t+ " + \
-                       "\n\t+ ".join([str(x) for x in self._sieves])
+            summary += "-"
+        else:
+            for x in self._sieves:
+                lines = x.summary().split("\n")
+                summary += "\n\t+ " + lines[0]
+                summary += "\n\t  "
+                summary += "\n\t  ".join(lines[1:])
         return summary
 
     def copy(self):
