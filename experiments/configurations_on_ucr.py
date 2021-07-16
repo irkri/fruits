@@ -132,7 +132,7 @@ class ClassificationPipeline:
                 if use_only is None or folder in use_only:
                     self._datasets[-1].append(folder)
 
-    def classify(self, fruits_configurations: list):
+    def classify(self, fruits_configurations: list, log_fruit: bool = False):
         """Classifies all datasets specified earlier.
 
         :param fruits_configurations: A list of fruits configurations to
@@ -202,6 +202,8 @@ class ClassificationPipeline:
                                 round(results[k, :, 0].mean(), 6),
                                 round(results[k, :, 1].mean(), 6),
                                 round(mean_rocket_a, 6)))
+            if log_fruit:
+                self.logger.info("\n"+fruit.summary())
 
             if k < len(fruits_configurations)-1:
                 self.logger.info("\n" + len(self.table_header)*"*" + "\n")
