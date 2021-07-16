@@ -65,7 +65,7 @@ class ClassificationPipeline:
         defaults to an identity scaler (that doesn't transform at all)
     :type scaler: Some scaler, preferably from sklearn., optional
     """
-    table_header = "{:=^25}{:=^20}{:=^25}{:=^25}{:=^25}".format(
+    table_header = "{:=^30}{:=^20}{:=^25}{:=^25}{:=^25}".format(
                         "Dataset",
                         "Train/Test/Length",
                         "Feature Calculation Time",
@@ -176,7 +176,7 @@ class ClassificationPipeline:
 
                     results[k, i, 1] = self._classifier.score(
                                                 X_test_feat_scaled, y_test)
-                    self.logger.info(("{: ^25}{: ^20}{: ^25}{: ^25}" +
+                    self.logger.info(("{: ^30}{: ^20}{: ^25}{: ^25}" +
                                       "{: ^25}").format(
                         dataset,
                         f"{X_train.shape[0]}/{X_test.shape[0]}/" + \
@@ -193,7 +193,7 @@ class ClassificationPipeline:
 
             self.logger.info(len(self.table_header) * "-")
             mean_rocket_a = self._rocket_csv["accuracy_mean"].to_numpy().mean()
-            self.logger.info("{: ^25}{: ^20}{: ^25}{: ^25}{: ^25}".format(
+            self.logger.info("{: ^30}{: ^20}{: ^25}{: ^25}{: ^25}".format(
                                 "MEAN",
                                 "-/-/-",
                                 round(results[k, :, 0].mean(), 6),
