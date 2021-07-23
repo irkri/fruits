@@ -79,13 +79,15 @@ class ClassificationPipeline:
                  rocket_results: str,
                  verbose: bool = True,
                  classifier=None,
-                 scaler=None):
+                 scaler=None,
+                 comet_experiment=None):
         self._results = None
         self._verbose = verbose
         self._datasets = []
         self._paths = []
         self._rocket_csv = pd.read_csv(rocket_results)
         self._output_file = output_file
+        self._comet_exp = comet_experiment
         if classifier is None:
             self._classifier = RidgeClassifierCV(
                                     alphas=np.logspace(-3,3,10),
@@ -160,24 +162,55 @@ class ClassificationPipeline:
 
                 for dataset in self._datasets[j]:
 
+                    if self._comet_exp is not None:
+                        self._comet_exp.log_dataset_info(name=dataset)
+                        self._comet_exp.set_step(i)
+
                     X_train, y_train, X_test, y_test = tsdata.load_dataset(
                         path+dataset)
 
-                    start = Timer()
-                    fruit.fit(X_train)
-                    X_train_feat = fruit.transform(X_train)
-                    X_test_feat = fruit.transform(X_test)
-                    results[k, i, 0] = Timer() - start
+                    if self._comet_exp is not None:
+                        with self._comet_exp.train():
+                            start = Timer()
+                            fruit.fit(X_train)
+                            X_train_feat = fruit.transform(X_train)
+                            end_train = Timer() - start
+                            self._scaler.fit(X_train_feat)
+                            X_train_feat_scaled = self._scaler.transform(
+                                                    X_train_feat)
+                            self._classifier.fit(X_train_feat_scaled, y_train)
 
-                    self._scaler.fit(X_train_feat)
-                    X_train_feat_scaled = self._scaler.transform(X_train_feat)
-                    X_test_feat_scaled = self._scaler.transform(X_test_feat)
+                        with self._comet_exp.test():
+                            start = Timer()
+                            X_test_feat = fruit.transform(X_test)
+                            end_test = Timer() - start
+                            X_test_feat_scaled = self._scaler.transform(
+                                                    X_test_feat)
 
-                    self._classifier.fit(X_train_feat_scaled, y_train)
+                            results[k, i, 1] = self._classifier.score(
+                                                    X_test_feat_scaled, y_test)
+                            self._comet_exp.log_metric("accuracy",
+                                                       results[k,i,1])
+                    else:
+                        start = Timer()
+                        fruit.fit(X_train)
+                        X_train_feat = fruit.transform(X_train)
+                        X_test_feat = fruit.transform(X_test)
+                        results[k, i, 0] = Timer() - start
 
-                    results[k, i, 1] = self._classifier.score(
-                                                X_test_feat_scaled, y_test)
+                        self._scaler.fit(X_train_feat)
+                        X_train_feat_scaled = self._scaler.transform(
+                                                        X_train_feat)
+                        X_test_feat_scaled = self._scaler.transform(
+                                                        X_test_feat)
 
+                        self._classifier.fit(X_train_feat_scaled, y_train)
+
+                        results[k, i, 1] = self._classifier.score(
+                                                    X_test_feat_scaled, y_test)
+
+
+                    results[k, i, 0] = end_train + end_test
                     mark = " "
                     rocket_acc = self._rocket_csv[
                         self._rocket_csv["dataset"] == dataset][
