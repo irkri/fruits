@@ -65,12 +65,13 @@ class ClassificationPipeline:
         defaults to an identity scaler (that doesn't transform at all)
     :type scaler: Some scaler, preferably from sklearn., optional
     """
-    table_header = "{:=^30}{:=^20}{:=^25}{:=^25}{:=^25}".format(
+    table_header = "{:=^30}{:=^20}{:=^25}{:=^25}{:=^25}{:=^3}".format(
                         "Dataset",
                         "Train/Test/Length",
                         "Feature Calculation Time",
                         "FRUITS Accuracy",
                         "ROCKET Mean Accuracy",
+                        "M",
                     )
 
     def __init__(self,
@@ -176,15 +177,23 @@ class ClassificationPipeline:
 
                     results[k, i, 1] = self._classifier.score(
                                                 X_test_feat_scaled, y_test)
+
+                    mark = " "
+                    rocket_acc = self._rocket_csv[
+                        self._rocket_csv["dataset"] == dataset][
+                            "accuracy_mean"].to_numpy()[0]
+                    fruits_acc = results[k, i, 1]
+                    if fruits_acc >= rocket_acc:
+                        mark = "X"
                     self.logger.info(("{: ^30}{: ^20}{: ^25}{: ^25}" +
-                                      "{: ^25}").format(
+                                      "{: ^25}{: ^3}").format(
                         dataset,
                         f"{X_train.shape[0]}/{X_test.shape[0]}/" + \
                         f"{X_train.shape[2]}",
                         round(results[k, i, 0], 3),
-                        round(results[k, i, 1], 3),
-                        round(self._rocket_csv[self._rocket_csv["dataset"] == \
-                                dataset]["accuracy_mean"].to_numpy()[0], 3)))
+                        round(fruits_acc, 3),
+                        round(rocket_acc, 3),
+                        mark))
                     self.logger.handlers[0].flush()
                     if self._verbose:
                         print(".", end="", flush=True)
@@ -192,13 +201,19 @@ class ClassificationPipeline:
                     i += 1
 
             self.logger.info(len(self.table_header) * "-")
+            mark = " "
             mean_rocket_a = self._rocket_csv["accuracy_mean"].to_numpy().mean()
-            self.logger.info("{: ^30}{: ^20}{: ^25}{: ^25}{: ^25}".format(
+            mean_fruits_a = results[k, :, 1].mean()
+            if mean_fruits_a >= mean_rocket_a:
+                mark = "+++"
+            self.logger.info(("{: ^30}{: ^20}{: ^25}{: ^25}{: ^25}" +
+                              "{: ^3}").format(
                                 "MEAN",
                                 "-/-/-",
                                 round(results[k, :, 0].mean(), 6),
                                 round(results[k, :, 1].mean(), 6),
-                                round(mean_rocket_a, 6)))
+                                round(mean_rocket_a, 6),
+                                mark))
             if log_fruit:
                 self.logger.info("\n"+fruit.summary())
 
