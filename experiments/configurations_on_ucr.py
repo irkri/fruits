@@ -1,34 +1,12 @@
-"""This python module contains a class ClassificationPipeline, that
-is able to perform a classification task for time series data from
-timeseriesclassification.com.
-
-The datasets should be available in a .txt file and readable with
-numpy.
-
-A ClassificationPipeline object can be used via import in another
-python script or in a terminal/console by using this file as an
-executable script.
-
-Usage:
-    $ python configurations_on_ucr.py -d [directory of datasets]
-
-Optional arguments:
-    -u : Path to a txt file with names of datasets. Only these datasets
-         will then be loaded from the dataset directory.
-    -o : Output file path.,
-         defaults to "./ucr_configuration_results.txt"
-    -r : File with the accuracy results from rocket.,
-         defaults to "./rocket_results_ucr.csv"
-
-The fruits configurations to use for feature calculation are defined
-in the file configurations.py which should be located in the same
-directory as this file.
+"""This python module contains a class FRUITSExperiment, that can be
+used to perform a classification task for multidimensional time series
+data using a Fruit feature extractor from the package fruits.
+A comet_ml experiment can be supplied to the class for tracking the
+results of the experiment.
 """
 
 import os
 import time
-import logging
-import argparse
 from timeit import default_timer as Timer
 
 import numpy as np
@@ -36,62 +14,64 @@ import pandas as pd
 from sklearn.linear_model import RidgeClassifierCV
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
-from configurations import CONFIGURATIONS
+from context import fruits
 import tsdata
 
-class ClassificationPipeline:
-    """Class that manages a time series classification with fruits and a
-    classifier from sklearn.
-    The classification results will be compared with those from ROCKET.
-    The results will be flushed in real-time to an output file.
-
-    :param output_file: Path of the file to write the log to. If the
-        file already exists, a time stamp will be added to the new file
-        name.
-    :type output_file: str
-    :param rocket_results: String of the path to a csv file with
-        the classification results from ROCKET.
-    :type rocket_results: str
+class FRUITSExperiment:
+    """A pipeline that connects feature extraction of the fruits package
+    with a classifier from sklearn for a classification task of 
+    multidimensional time series data.
+    
+    :param rocket_csv: String of the path to a csv file with
+        the classification results from ROCKET. These results will be
+        used for comparision. If None is given, a 0 will be inserted at
+        each point in the output table., defaults to None
+    :type rocket_csv: str, optional
     :param verbose: If `True`, print status of classfication to the
         console., defaults to `True`
     :type verbose: bool, optional
     :param classifier: Classifier with fit and score method from
         sklearn., defaults to
-        ``RidgeClassifierCV(alphas=np.logspace(-3,3,10),
+        ``RidgeClassifierCV(alphas=np.logspace(-3, 3, 10),
                             normalize=True)``
     :type classfier: ClassifierMixin from sklearn, optional
     :param scaler: An object that allows calls of fit() and transform()
         and that scales the features extracted by the fruits pipeline.,
         defaults to an identity scaler (that doesn't transform at all)
     :type scaler: Some scaler, preferably from sklearn., optional
+    :param comet_experiment: Experiment object from the package comet_ml
+        that is used for saving the results from the classification.,
+        defaults to None
+    :type comet_experiment: comet_ml.Experiment, optional
     """
-    table_header = "{:=^30}{:=^20}{:=^25}{:=^25}{:=^25}{:=^3}".format(
-                        "Dataset",
-                        "Train/Test/Length",
-                        "Feature Calculation Time",
-                        "FRUITS Accuracy",
-                        "ROCKET Mean Accuracy",
-                        "M",
-                    )
+    output_header_names = [
+        "Dataset",
+        "Shape",
+        "FRUITS Time",
+        "FRUITS Acc",
+        "ROCKET Acc",
+        "M",
+    ]
 
     def __init__(self,
-                 output_file: str,
-                 rocket_results: str,
-                 verbose: bool = True,
+                 rocket_csv=None,
+                 verbose=True,
                  classifier=None,
                  scaler=None,
                  comet_experiment=None):
-        self._results = None
+        self._results = pd.DataFrame(columns=self.output_header_names)
+        if rocket_csv is not None:
+            self._rocket_csv = pd.read_csv(rocket_csv)
+        else:
+            self._rocket_csv = rocket_csv
         self._verbose = verbose
-        self._datasets = []
-        self._paths = []
-        self._rocket_csv = pd.read_csv(rocket_results)
-        self._output_file = output_file
+        # dictionary self._datasets[path] = [datasets in path]
+        self._datasets = dict()
         self._comet_exp = comet_experiment
+        self._fruit = None
         if classifier is None:
-            self._classifier = RidgeClassifierCV(
-                                    alphas=np.logspace(-3,3,10),
-                                    normalize=True)
+            self._classifier = RidgeClassifierCV(alphas=np.logspace(-3, 3, 10),
+                                                 normalize=True)
         else:
             self._classifier = classifier
         if scaler is None:
@@ -99,22 +79,7 @@ class ClassificationPipeline:
         else:
             self._scaler = scaler
 
-    def _set_up_logger(self):
-        # add timestamp to output file if it exists already
-        if os.path.isfile(self._output_file):
-            self._output_file = self._output_file.split(".")
-            self._output_file[-2] += "-"+time.strftime("%Y-%m-%d-%H%M%S")
-            self._output_file = ".".join(self._output_file)
-        # empty the output file if it exists already
-        with open(self._output_file, "w") as f:
-            f.truncate(0)
-        # create a logger that flushes accuracy results to the given
-        # file path at the end of the classification of each dataset
-        self.logger = logging.Logger("fruits classification results")
-        fh = logging.FileHandler(self._output_file)
-        self.logger.addHandler(fh)
-
-    def append_data(self, path: str, use_only: list = None):
+    def append_data(self, path: str, names: list = None):
         """Finds time series datasets in the specified directory for
         later usage.
         
@@ -122,161 +87,130 @@ class ClassificationPipeline:
             structured like the datasets you get from
             timeseriesclassification.com.
         :type path: str
-        :param use_only: List of dataset names. Only the datasets in
+        :param names: List of dataset names. Only the datasets in
             this list will be remembered. If `None`, then all datasets
             are used., defaults to None
-        :type use_only: list of strings
+        :type names: list of strings
         """
         if not path.endswith("/"):
             path += "/"
-        self._paths.append(path)
-        self._datasets.append([])
+        self._datasets[path] = []
         for folder in sorted(os.listdir(path)):
-            if os.path.isdir(path + folder):
-                if use_only is None or folder in use_only:
-                    self._datasets[-1].append(folder)
+            if os.path.isdir(os.path.join(path, folder)):
+                if names is None or folder in names:
+                    self._datasets[path].append(folder)
+        if len(self._datasets[path]) == 0:
+            del self._datasets[path]
 
-    def classify(self, fruits_configurations: list, log_fruit: bool = False):
-        """Classifies all datasets specified earlier.
-
-        :param fruits_configurations: A list of fruits configurations to
-            use for classification.
-        :type fruits_configurations: list of fruits.Fruit objects
+    def classify(self, fruit: fruits.Fruit):
+        """Classifies all datasets added earlier and summarizes the
+        results in a pandas DataFrame.
+        
+        :param fruit: Feature extractor to use for classification.
+        :type fruits: fruits.Fruit
         """
-        self._set_up_logger()
-        n_datasets = sum([len(ds) for ds in self._datasets])
-        results = np.zeros((len(fruits_configurations), n_datasets, 4))
+        self._fruit = fruit
 
-        for k, fruit in enumerate(fruits_configurations):
+        if self._comet_exp is not None:
+            self._comet_exp.log_dataset_info(name=\
+                ",".join([ds for path in self._datasets
+                             for ds in self._datasets[path]]))
+            self._comet_exp.log_text(fruit.summary())
 
-            self.logger.info(f"Configuration: {fruit.name}, " +
-                             f"Features: {fruit.nfeatures()}\n")
-            self.logger.info(self.table_header)
+        if self._verbose:
+            print(f"Starting Classification")
 
-            if self._verbose:
-                print(f"Starting: Configuration {k+1}")
+        i = 0
 
-            i = 0
+        for j, path in enumerate(self._datasets):
 
-            for j, path in enumerate(self._paths):
+            for dataset in self._datasets[path]:
 
-                for dataset in self._datasets[j]:
+                results = [dataset]
 
-                    if self._comet_exp is not None:
-                        self._comet_exp.log_dataset_info(name=dataset)
-                        self._comet_exp.set_step(i)
+                if self._comet_exp is not None:
+                    self._comet_exp.set_step(i)
 
-                    X_train, y_train, X_test, y_test = tsdata.load_dataset(
-                        path+dataset)
+                X_train, y_train, X_test, y_test = tsdata.load_dataset(
+                    path+dataset)
+                results.append(f"{X_train.shape[0]}/{X_test.shape[0]}/"+
+                               f"{X_train.shape[2]}")
 
-                    if self._comet_exp is not None:
-                        with self._comet_exp.train():
-                            start = Timer()
-                            fruit.fit(X_train)
-                            X_train_feat = fruit.transform(X_train)
-                            end_train = Timer() - start
-                            self._scaler.fit(X_train_feat)
-                            X_train_feat_scaled = self._scaler.transform(
-                                                    X_train_feat)
-                            self._classifier.fit(X_train_feat_scaled, y_train)
+                start = Timer()
+                fruit.fit(X_train)
+                X_train_feat = fruit.transform(X_train)
+                X_test_feat = fruit.transform(X_test)
+                results.append(Timer() - start)
 
-                        with self._comet_exp.test():
-                            start = Timer()
-                            X_test_feat = fruit.transform(X_test)
-                            end_test = Timer() - start
-                            X_test_feat_scaled = self._scaler.transform(
-                                                    X_test_feat)
+                self._scaler.fit(X_train_feat)
+                X_train_feat_scaled = self._scaler.transform(
+                                                X_train_feat)
+                X_test_feat_scaled = self._scaler.transform(
+                                                X_test_feat)
 
-                            results[k, i, 1] = self._classifier.score(
-                                                    X_test_feat_scaled, y_test)
-                            self._comet_exp.log_metric("accuracy",
-                                                       results[k,i,1])
-                    else:
-                        start = Timer()
-                        fruit.fit(X_train)
-                        X_train_feat = fruit.transform(X_train)
-                        X_test_feat = fruit.transform(X_test)
-                        results[k, i, 0] = Timer() - start
+                self._classifier.fit(X_train_feat_scaled, y_train)
 
-                        self._scaler.fit(X_train_feat)
-                        X_train_feat_scaled = self._scaler.transform(
-                                                        X_train_feat)
-                        X_test_feat_scaled = self._scaler.transform(
-                                                        X_test_feat)
+                results.append(self._classifier.score(
+                                X_test_feat_scaled, y_test))
 
-                        self._classifier.fit(X_train_feat_scaled, y_train)
+                mark = "-"
+                if self._rocket_csv is not None:
+                    results.append(self._rocket_csv[
+                                    self._rocket_csv["dataset"] == dataset]\
+                                    ["accuracy_mean"].iloc[0])
+                else:
+                    results.append(0)
+                if results[3] >= results[4]:
+                    mark = "X"
+                results.append(mark)
+                self._results.loc[len(self._results)] = results
+                if self._verbose:
+                    print(".", end="", flush=True)
+                i += 1
 
-                        results[k, i, 1] = self._classifier.score(
-                                                    X_test_feat_scaled, y_test)
+        if self._comet_exp is not None:
+            self._comet_exp.log_table("results.csv", self._results)
+            self._comet_exp.log_text(self._results.to_markdown(index=False,
+                                                        numalign="center",
+                                                        stralign="center"))
+            self._comet_exp.log_html(self._results.to_html(index=False,
+                                                           justify="center"))
 
+        if self._verbose:
+            print(f"\nDone")
 
-                    results[k, i, 0] = end_train + end_test
-                    mark = " "
-                    rocket_acc = self._rocket_csv[
-                        self._rocket_csv["dataset"] == dataset][
-                            "accuracy_mean"].to_numpy()[0]
-                    fruits_acc = results[k, i, 1]
-                    if fruits_acc >= rocket_acc:
-                        mark = "X"
-                    self.logger.info(("{: ^30}{: ^20}{: ^25}{: ^25}" +
-                                      "{: ^25}{: ^3}").format(
-                        dataset,
-                        f"{X_train.shape[0]}/{X_test.shape[0]}/" + \
-                        f"{X_train.shape[2]}",
-                        round(results[k, i, 0], 3),
-                        round(fruits_acc, 3),
-                        round(rocket_acc, 3),
-                        mark))
-                    self.logger.handlers[0].flush()
-                    if self._verbose:
-                        print(".", end="", flush=True)
+    def produce_output(self,
+                       filename: str,
+                       txt: bool = True,
+                       csv: bool = False):
+        """Outputs all results of classified datasets to the file(s).
+        
+        :param filename: Name of the file (without extension) that is
+            used for the different extension types. If it exists already
+            as a .txt or .csv file, a timestamp is appended to the name
+            before saving.
+        :type filename: str
+        :param txt: If True, a .txt file will be produced containing a
+            table of accuracy results and a summary of the used fruits
+            object., defaults to True
+        :type txt: bool, optional
+        :param csv: If True, a .csv file will be produced containing all
+            accuracy results., defaults to False
+        :type csv: bool, optional
+        """
+        if self._fruit is None:
+            raise RuntimeError("No output available")
+        filename = filename.split(".")[0]
 
-                    i += 1
+        if os.path.isfile(filename+".txt") or os.path.isfile(filename+".csv"):
+            filename += "-" + time.strftime("%Y-%m-%d-%H%M%S")
 
-            self.logger.info(len(self.table_header) * "-")
-            mark = " "
-            mean_rocket_a = self._rocket_csv["accuracy_mean"].to_numpy().mean()
-            mean_fruits_a = results[k, :, 1].mean()
-            if mean_fruits_a >= mean_rocket_a:
-                mark = "+++"
-            self.logger.info(("{: ^30}{: ^20}{: ^25}{: ^25}{: ^25}" +
-                              "{: ^3}").format(
-                                "MEAN",
-                                "-/-/-",
-                                round(results[k, :, 0].mean(), 6),
-                                round(results[k, :, 1].mean(), 6),
-                                round(mean_rocket_a, 6),
-                                mark))
-            if log_fruit:
-                self.logger.info("\n"+fruit.summary())
-
-            if k < len(fruits_configurations)-1:
-                self.logger.info("\n" + len(self.table_header)*"*" + "\n")
-
-            if self._verbose:
-                print(f"\nDone.")
-
-
-if __name__ ==  "__main__":
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("-d", "--dataset_path", type=str, required=True)
-    parser.add_argument("-u", "--use_datasets", default=None)
-    parser.add_argument("-o", "--output_file",
-                        default="./ucr_configuration_results.txt")
-    parser.add_argument("-r", "--rocket_results",
-                        default="./rocket_results_ucr.csv")
-
-    arguments = parser.parse_args()
-
-    use_sets = None
-    if arguments.use_datasets is not None:
-        with open(arguments.use_datasets) as f:
-            use_sets = f.read().split("\n")
-        use_sets.remove("")
-
-    pipeline = ClassificationPipeline(arguments.output_file,
-                                      arguments.rocket_results,
-                                      scaler=StandardScaler())
-    pipeline.append_data(arguments.dataset_path, use_sets)
-    pipeline.classify(CONFIGURATIONS)
+        if txt:
+            with open(filename+".txt", "w") as file:
+                file.write(self._results.to_markdown(index=False,
+                                                     tablefmt="grid",
+                                                     numalign="center",
+                                                     stralign="center"))
+                file.write("\n\n\n"+self._fruit.summary()+"\n")
+        if csv:
+            self._results.to_csv(filename+".csv", index=False)
