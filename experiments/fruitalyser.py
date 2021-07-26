@@ -199,7 +199,8 @@ class Fruitalyser:
     def test_classifier(self,
                         classifier,
                         variable: str = None,
-                        test_cases: list = None):
+                        test_cases: list = None,
+                        **kwargs):
         """Tests a classifier for its accuracy on the features of the
         input data. The classifier is initialized with different
         configurations and a 2D-plot is created for visualisation of the
@@ -216,6 +217,8 @@ class Fruitalyser:
             with all of these values and the results (accuracy on test
             set) are plottet.
         :type test_cases: list
+        :param kwargs: Keyword arguments passed to the classifier.
+        :type kwargs: unfold dict
         :returns: Tuple (figure, axis) corresponding to the return value
             of ``matplotlib.pyplot.subplots()`` holding the inserted
             plot(s).
@@ -227,6 +230,7 @@ class Fruitalyser:
         accuracies = np.zeros(len(test_cases))
         for i, test_case in enumerate(test_cases):
             t = {variable: test_case}
+            t = dict(kwargs, **t)
             clssfr = classifier(**t)
             clssfr.fit(self.X_train_feat, self.y_train)
             accuracies[i] = clssfr.score(self.X_test_feat, self.y_test)
