@@ -14,9 +14,29 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from sklearn.decomposition import PCA
-from sklearn.linear_model import RidgeClassifierCV
+from sklearn.linear_model import RidgeClassifierCV, SGDClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
 
 from context import fruits
+
+_CLASSIFIERS = [
+    (RidgeClassifierCV, {"alphas": np.logspace(-3, 3, 10),
+                         "normalize": True}),
+    (SVC, {"kernel": "poly",
+           "gamma": "auto",
+           "degree": 1},
+        "degree",
+        list(range(1, 6))),
+    (KNeighborsClassifier, {"n_neighbors": 1},
+        "n_neighbors",
+        list(range(1, 21))),
+    (SGDClassifier, {"penalty": "l1",
+                     "alpha": 0.0001,
+                     "max_iter": 10_000},
+        "max_iter",
+        [100, 1000, 10_000, 50_000, 100_000]),
+]
 
 def msplot(X: np.ndarray,
            y: np.ndarray,
@@ -247,6 +267,26 @@ class Fruitalyser:
         ax.set_ylabel("Accuracy")
         ax.legend(loc="upper right")
         return fig, ax
+
+    def classifier_battery(self):
+        """Tests a bunch of classifiers for the already calculated
+        features. Returns a list of (figure, axis) tuples from
+        ``self.test_classifier()``.
+        This method can only be used if ``self.classify()`` was called
+        before.
+        """
+        figax = []
+        for clssfr in _CLASSIFIERS:
+            classifier = clssfr[0](**(clssfr[1]))
+            classifier.fit(self.X_train_feat, self.y_train)
+            score = classifier.score(self.X_test_feat, self.y_test)
+            print(f"Classifier: {str(classifier)}\n\t-> Accuracy: {score}")
+            if len(clssfr) > 2:
+                figax.append(self.test_classifier(clssfr[0],
+                                                  variable=clssfr[2],
+                                                  test_cases=clssfr[3],
+                                                  **(clssfr[1])))
+        return figax
 
     def print_fruit(self):
         """Prints a summary of the fruits.Fruit object this Fruitalyser
