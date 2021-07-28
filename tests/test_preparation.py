@@ -32,3 +32,32 @@ def test_standardization():
 
     np.testing.assert_almost_equal(0, np.mean(X_1_1.flatten()))
     np.testing.assert_almost_equal(1, np.std(X_1_1.flatten()))
+
+def test_window():
+    X = np.array([
+                    [[1,2,4,5, 6],
+                     [11,22,33,44,55]],
+
+                    [[10,20,30,40,50],
+                     [111,222,333,444,555]],
+
+                    [[1,0,1,0,1],
+                     [-5,-1,-4,-0.5,-8]]
+                   ])
+
+    w = fruits.preparation.WINDOW(start=0.0,end=0.7, calculate_increments=True)
+    result = w.prepare(X)
+    assert X.shape == result.shape
+    assert np.allclose( result[0], [[1,2,0,0, 0], [11,22,0,0,0]] )
+    assert np.allclose( result[1], [[10,20,30,0,0], [111,222,333,0,0]] )
+
+    w = fruits.preparation.WINDOW(start=0.7,end=1.0, calculate_increments=True)
+    result = w.prepare(X)
+    assert np.allclose( result[0], [[0,0,4,5, 6], [0,0,33,44,55]] )
+    assert np.allclose( result[1], [[0,0,0,40,50], [0,0,0,444,555]] )
+
+    w = fruits.preparation.WINDOW(start=0.0,end=0.7, calculate_increments=True, fn='abs(.)')
+    result = w.prepare(X)
+    assert X.shape == result.shape
+    assert np.allclose( result[0], [[1,2,4,0,0], [11,22,33,0,0]] )
+

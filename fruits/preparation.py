@@ -254,3 +254,125 @@ class DIL(DataPreparateur):
 
     def __repr__(self) -> str:
         return "fruits.preparation.DIL"
+
+class WINDOW(DataPreparateur):
+    """DataPreparateur: WINDOW
+    
+    Outside of a certain window the time series is set to zero.
+    The window is obtained according to 'quantiles' of a certain function of each time series,
+    for example its quadratic variation.
+
+    :param start: Quantile start; float value between 0 and 1 (incl.).
+    :type start: float.
+    :param end: Quantile end; float value between 0 and 1 (incl.).
+    :type end: float.
+    :param calculate_increments: If True, calculate increments first.
+    :type end: bool, defaults to False.
+    :param fn: What function to calculate.
+    :type fn: str, defaults to '(.)^2'.
+    """
+    def __init__(self,
+                 start: float,
+                 end:   float,
+                 calculate_increments: bool = False,
+                 fn:  str = '(.)^2'
+                 ):
+        super().__init__('WINDOW')
+        self.start = start
+        self.end   = end
+        self.calculate_increments = calculate_increments
+        self.fn = fn
+    
+    def fit(self, X: np.ndarray):
+        pass
+            
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        # XXX Only uses direction 0 at the moment.
+        if self.calculate_increments:
+            Z = np.diff( X[:,0,:], axis=-1, prepend=np.zeros( (X.shape[0],1) ) )
+        else:
+            Z = X[:,0,:]
+
+        # XXX This should maybe be implemented using complex words.
+        if self.fn == '(.)^2':
+            Q = np.cumsum( Z**2, axis=-1 )
+        elif self.fn == 'abs(.)':
+            Q = np.cumsum( np.abs(Z), axis=-1 )
+        else:
+            raise Exception('fn={} not implemented'.format(fn))
+
+        Q = Q[:,np.newaxis,:]
+        MAX = np.max(Q, axis=-1)
+        MAX = MAX[:,:,np.newaxis]
+        Q = Q / MAX
+
+        keep = (Q > self.start) & (Q <= self.end)
+        return X * keep
+    
+    def copy(self):
+        fail
+
+    def __eq__(self, other) -> bool:
+        return False
+
+    def __str__(self) -> str:
+        return f"WINDOW()"
+
+    def __repr__(self) -> str:
+        return "fruits.preparation.WINDOW"
+
+
+#class VERTICAL(DataPreparateur):
+#    """DataPreparateur: VERTICAL
+#    
+#    Outside of a certain window the time series is set to zero.
+#    The window is obtained according to 'quantiles' of its height.
+#    def __init__(self,
+#                 start: float = 0.0,
+#                 end:   float = 0.5,
+#                 undo_inc: bool = True):
+#        super().__init__('VERTICAL')
+#        self.start = start
+#        self.end   = end
+#        self.undo_inc = undo_inc
+#    
+#    def fit(self, X: np.ndarray):
+#        pass
+#            
+#    def prepare(self, X: np.ndarray) -> np.ndarray:
+#        if self.undo_inc:
+#            _X = np.cumsum( X, axis=-1 )
+#        else:
+#            _X = X
+#        #print()
+#        #print('X=',X,X.shape)
+#        #SUM = np.sum(np.abs(_X), axis=1)
+#        SUM = np.sum(_X, axis=1)
+#        #print('SUM=',SUM,SUM.shape)
+#        MIN = np.min(SUM, axis=-1)
+#        MAX = np.max(SUM, axis=-1)
+#        #print('MIN=',MIN.shape)
+#        MIN = MIN[:,np.newaxis]
+#        MAX = MAX[:,np.newaxis]
+#        #print('MIN=',MIN.shape)
+#
+#        height = ( SUM - MIN ) / (MAX-MIN)
+#        #print('height=',height, height.shape)
+#        height = height[:,np.newaxis,:]
+#        #print('height=',height, height.shape)
+#
+#        keep = (height > self.start) & (height <= self.end)
+#        tmp = X * keep
+#        return tmp
+#    
+#    def copy(self):
+#        fail
+#
+#    def __eq__(self, other) -> bool:
+#        return False
+#
+#    def __str__(self) -> str:
+#        return f"VERTICAL()"
+#
+#    def __repr__(self) -> str:
+#        return "fruits.preparation.VERTICAL"

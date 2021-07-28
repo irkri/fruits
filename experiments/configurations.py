@@ -200,9 +200,58 @@ peach03.add(fruits.sieving.MAX)
 peach03.add(fruits.sieving.MIN)
 peach03.add(fruits.sieving.END)
 
+words = simple_words_degree_2
+papaya = fruits.Fruit("Papaya")
+
+papaya.add(words)
+papaya.add(fruits.preparation.INC)
+papaya.add(fruits.sieving.END())
+papaya.add(fruits.sieving.MAX())
+papaya.add(fruits.sieving.MIN())
+
+papaya.fork()
+papaya.add(words)
+papaya.add(fruits.sieving.END())
+papaya.add(fruits.sieving.MAX())
+papaya.add(fruits.sieving.MIN())
+
+for n_cuts in [2,4]:#,8,16]:
+    for i in range(0,n_cuts):
+
+        #papaya.fork()
+        #papaya.add(words)
+        #papaya.add(fruits.preparation.INC)
+        #papaya.add(fruits.preparation.VERTICAL(start=i * 1./n_cuts,end=(i+1) * 1./n_cuts,undo_inc=True))
+        #papaya.add(fruits.sieving.END())
+        #papaya.add(fruits.sieving.MAX())
+        #papaya.add(fruits.sieving.MIN())
+
+        #papaya.fork()
+        #papaya.add(words)
+        #papaya.add(fruits.preparation.VERTICAL(start=i * 1./n_cuts,end=(i+1) * 1./n_cuts,undo_inc=False))
+        #papaya.add(fruits.sieving.END())
+        #papaya.add(fruits.sieving.MAX())
+        #papaya.add(fruits.sieving.MIN())
+
+        papaya.fork()
+        papaya.add(words)
+        papaya.add(fruits.preparation.INC)
+        papaya.add(fruits.preparation.WINDOW(start=i * 1./n_cuts - 1./(2*n_cuts),end=(i+1) * 1./n_cuts + 1./(2*n_cuts), fn='abs(.)'))
+        papaya.add(fruits.sieving.END())
+        papaya.add(fruits.sieving.MAX())
+        papaya.add(fruits.sieving.MIN())
+
+        papaya.fork()
+        papaya.add(words)
+        papaya.add(fruits.preparation.WINDOW(start=i * 1./n_cuts - 1./(2*n_cuts),end=(i+1) * 1./n_cuts + 1./(2*n_cuts), calculate_increments=True, fn='abs(.)'))
+        papaya.add(fruits.sieving.END())
+        papaya.add(fruits.sieving.MAX())
+        papaya.add(fruits.sieving.MIN())
+
 CONFIGURATIONS = [
     apple01, apple02, apple03, apple04,
     kiwi01, kiwi02,
     banana01, banana02,
     peach01, peach02, peach03,
+    papaya
 ]
