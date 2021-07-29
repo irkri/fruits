@@ -3,7 +3,7 @@ import itertools
 from fruits.core.letters import (
     ExtendedLetter,
     _letter_configured,
-    simple_letter,
+    simple,
 )
                                 
 from fruits.core.wording import SimpleWord, ComplexWord, AbstractWord
@@ -100,7 +100,7 @@ def _replace_letters_simpleword(word, letter_gen):
                 try:
                     letter = next(letter_gen)
                 except StopIteration:
-                    letter = simple_letter
+                    letter = simple
                 if not _letter_configured(letter):
                     raise TypeError("Letter has the wrong signature. " +
                                     "Perhaps it wasn't decorated " +

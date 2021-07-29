@@ -163,6 +163,10 @@ def _letter_configured(func: callable) -> bool:
         return True
     return False
 
-@complex_letter(name="simple_letter")
-def simple_letter(X: np.ndarray, i: int) -> np.ndarray:
+@complex_letter(name="SIMPLE")
+def simple(X: np.ndarray, i: int) -> np.ndarray:
     return X[i, :]
+
+@complex_letter(name="ABS")
+def absolute(X: np.ndarray, i: int) -> np.ndarray:
+    return np.abs(X[i, :])
