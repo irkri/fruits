@@ -6,7 +6,7 @@ import numpy as np
 
 def _multisine(x, coeff):
     return sum([coeff[i, 0]*np.sin(coeff[i, 1]*x+coeff[i, 2])
-                for i in range(3)])
+                for i in range(len(coeff))])
 
 def multisine(train_size: int = 100,
               test_size: int = 1000,
