@@ -3,6 +3,9 @@ from abc import ABC, abstractmethod
 import numba
 import numpy as np
 
+from fruits.cache import FruitString
+from fruits.core.wording import AbstractWord, SimpleWord
+
 class DataPreparateur(ABC):
     """Abstract class for a data preparateur.
     
@@ -89,13 +92,10 @@ class INC(DataPreparateur):
         time series will be set to 0. If False, it isn't changed at
         all., defaults to True
     :type zero_padding: bool, optional
-    :param name: Name of the preparateur., defaults to "Increments"
-    :type name: str, optional
     """
     def __init__(self,
-                 zero_padding: bool = True,
-                 name: str = "Increments"):
-        super().__init__(name)
+                 zero_padding: bool = True):
+        super().__init__("Increments")
         self._zero_padding = zero_padding
 
     def prepare(self, X: np.ndarray) -> np.ndarray:
@@ -103,7 +103,6 @@ class INC(DataPreparateur):
         the equivalent to the convolution of ``X`` and ``[-1, 1]``.
         
         :type X: np.ndarray
-        :returns: Stepwise slopes of each time series in X.
         :rtype: np.ndarray
         """
         out = _increments(X)
@@ -116,7 +115,7 @@ class INC(DataPreparateur):
         
         :rtype: INC
         """
-        dp = INC(self._zero_padding, self.name)
+        dp = INC(self._zero_padding)
         return dp
 
     def __eq__(self, other) -> bool:
@@ -139,12 +138,9 @@ class STD(DataPreparateur):
     """DataPreparateur: Standardization
     
     Used for standardization of a given time series dataset.
-
-    :param name: Name of the preparateur., defaults to "Standardization"
-    :type name: str, optional
     """
-    def __init__(self, name: str = "Standardization"):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__("Standardization")
         self._mean = None
         self._std = None
 
@@ -176,8 +172,7 @@ class STD(DataPreparateur):
         
         :rtype: STD
         """
-        dp = STD(self.name)
-        return dp
+        return STD()
 
     def __eq__(self, other) -> bool:
         return True
@@ -200,14 +195,13 @@ class DIL(DataPreparateur):
         zero strips will be calculated by multiplying
         ``clusters * X.shape[2]`` in ``self.fit(X)``., defaults to 0.01
     :type clusters: float, optional
-    :param name: Name of the preparateur., defaults to "Dilation"
-    :type name: str, optional
     """
     def __init__(self,
-                 clusters: float = 0.01,
-                 name: str = "Dilation"):
-        super().__init__(name)
+                 clusters: float = 0.01):
+        super().__init__("Dilation")
         self._clusters = clusters
+        self._indices = None
+        self._lengths = None
     
     def fit(self, X: np.ndarray):
         """Fits the preparateur to the given dataset by randomizing the
@@ -232,6 +226,8 @@ class DIL(DataPreparateur):
         :rtype: np.ndarray
         :raises: RuntimeError if self.fit() wasn't called
         """
+        if self._indices is None:
+            raise RuntimeError("Missing call of fit method")
         X_new = X.copy()
         for i in range(len(self._indices)):
             start = int(self._indices[i] * X.shape[2])
@@ -255,124 +251,66 @@ class DIL(DataPreparateur):
     def __repr__(self) -> str:
         return "fruits.preparation.DIL"
 
-class WINDOW(DataPreparateur):
-    """DataPreparateur: WINDOW
+
+class WIN(DataPreparateur):
+    """DataPreparateur: Window
     
     Outside of a certain window the time series is set to zero.
-    The window is obtained according to 'quantiles' of a certain function of each time series,
-    for example its quadratic variation.
-
+    The window is obtained according to 'quantiles' of a certain
+    function of each time series, for example its quadratic variation by
+    calculating increments and getting results from
+    ``fruits.core.ISS(X, [SimpleWord("[11]")])``.
+    
     :param start: Quantile start; float value between 0 and 1 (incl.).
-    :type start: float.
+    :type start: float
     :param end: Quantile end; float value between 0 and 1 (incl.).
-    :type end: float.
-    :param calculate_increments: If True, calculate increments first.
-    :type end: bool, defaults to False.
-    :param fn: What function to calculate.
-    :type fn: str, defaults to '(.)^2'.
+    :type end: float
+    :param increments: If True, calculate increments first.
+    :type increments: bool, defaults to True
+    :param word: What function to calculate
+    :type word: AbstractWord, defaults to SimpleWord("[11]")
     """
     def __init__(self,
                  start: float,
-                 end:   float,
-                 calculate_increments: bool = False,
-                 fn:  str = '(.)^2'
-                 ):
-        super().__init__('WINDOW')
-        self.start = start
-        self.end   = end
-        self.calculate_increments = calculate_increments
-        self.fn = fn
-    
-    def fit(self, X: np.ndarray):
-        pass
+                 end: float,
+                 increments: bool = True,
+                 word: AbstractWord = SimpleWord("[11]")):
+        super().__init__("Window")
+        self._start = start
+        self._end = end
+        self._increments = increments
+        self._word = word
             
     def prepare(self, X: np.ndarray) -> np.ndarray:
-        # XXX Only uses direction 0 at the moment.
-        if self.calculate_increments:
-            Z = np.diff( X[:,0,:], axis=-1, prepend=np.zeros( (X.shape[0],1) ) )
-        else:
-            Z = X[:,0,:]
+        """Returns the transformed dataset.
+        
+        :type X: np.ndarray
+        :rtype: np.ndarray
+        :raises: RuntimeError if self.fit() wasn't called
+        """
+        pipeline = FruitString()
+        if self._increments:
+            pipeline.preparateur = INC(zero_padding=False)
+        pipeline.word = self._word
+        pipeline.process(X)
+        Q = np.expand_dims(pipeline.get().copy(), axis=1)
+        del pipeline
 
-        # XXX This should maybe be implemented using complex words.
-        if self.fn == '(.)^2':
-            Q = np.cumsum( Z**2, axis=-1 )
-        elif self.fn == 'abs(.)':
-            Q = np.cumsum( np.abs(Z), axis=-1 )
-        else:
-            raise Exception('fn={} not implemented'.format(fn))
+        maxima = np.expand_dims(np.max(Q, axis=2), axis=-1)
+        Q = Q / maxima
 
-        Q = Q[:,np.newaxis,:]
-        MAX = np.max(Q, axis=-1)
-        MAX = MAX[:,:,np.newaxis]
-        Q = Q / MAX
-
-        keep = (Q > self.start) & (Q <= self.end)
-        return X * keep
+        mask = (Q > self._start) & (Q <= self._end)
+        return X * mask
     
     def copy(self):
-        fail
+        return WIN(self._start, self._end, self._increments, self._word)
 
     def __eq__(self, other) -> bool:
         return False
 
     def __str__(self) -> str:
-        return f"WINDOW()"
+        return (f"WIN(start={self._start}, end={self._end}, " +
+                f"increments={self._increments}, word={str(self._word)})")
 
     def __repr__(self) -> str:
-        return "fruits.preparation.WINDOW"
-
-
-#class VERTICAL(DataPreparateur):
-#    """DataPreparateur: VERTICAL
-#    
-#    Outside of a certain window the time series is set to zero.
-#    The window is obtained according to 'quantiles' of its height.
-#    def __init__(self,
-#                 start: float = 0.0,
-#                 end:   float = 0.5,
-#                 undo_inc: bool = True):
-#        super().__init__('VERTICAL')
-#        self.start = start
-#        self.end   = end
-#        self.undo_inc = undo_inc
-#    
-#    def fit(self, X: np.ndarray):
-#        pass
-#            
-#    def prepare(self, X: np.ndarray) -> np.ndarray:
-#        if self.undo_inc:
-#            _X = np.cumsum( X, axis=-1 )
-#        else:
-#            _X = X
-#        #print()
-#        #print('X=',X,X.shape)
-#        #SUM = np.sum(np.abs(_X), axis=1)
-#        SUM = np.sum(_X, axis=1)
-#        #print('SUM=',SUM,SUM.shape)
-#        MIN = np.min(SUM, axis=-1)
-#        MAX = np.max(SUM, axis=-1)
-#        #print('MIN=',MIN.shape)
-#        MIN = MIN[:,np.newaxis]
-#        MAX = MAX[:,np.newaxis]
-#        #print('MIN=',MIN.shape)
-#
-#        height = ( SUM - MIN ) / (MAX-MIN)
-#        #print('height=',height, height.shape)
-#        height = height[:,np.newaxis,:]
-#        #print('height=',height, height.shape)
-#
-#        keep = (height > self.start) & (height <= self.end)
-#        tmp = X * keep
-#        return tmp
-#    
-#    def copy(self):
-#        fail
-#
-#    def __eq__(self, other) -> bool:
-#        return False
-#
-#    def __str__(self) -> str:
-#        return f"VERTICAL()"
-#
-#    def __repr__(self) -> str:
-#        return "fruits.preparation.VERTICAL"
+        return "fruits.preparation.WIN"
