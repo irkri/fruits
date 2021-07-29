@@ -35,29 +35,38 @@ def test_standardization():
 
 def test_window():
     X = np.array([
-                    [[1,2,4,5, 6],
-                     [11,22,33,44,55]],
+                  [[1,2,4,5, 6],
+                   [11,22,33,44,55]],
 
-                    [[10,20,30,40,50],
-                     [111,222,333,444,555]],
+                  [[10,20,30,40,50],
+                   [111,222,333,444,555]]
+                ])
 
-                    [[1,0,1,0,1],
-                     [-5,-1,-4,-0.5,-8]]
-                   ])
+    w = fruits.preparation.WIN(0.0, 0.7)
+    result = w.fit_prepare(X)
+    np.testing.assert_allclose(np.array([
+                                [[1,2,0,0,0], [11,22,0,0,0]],
+                                [[10,20,30,0,0], [111,222,333,0,0]]
+                               ]),
+                               result)
 
-    w = fruits.preparation.WINDOW(start=0.0,end=0.7, calculate_increments=True)
-    result = w.prepare(X)
-    assert X.shape == result.shape
-    assert np.allclose( result[0], [[1,2,0,0, 0], [11,22,0,0,0]] )
-    assert np.allclose( result[1], [[10,20,30,0,0], [111,222,333,0,0]] )
+    w = fruits.preparation.WIN(0.7, 1.0)
+    result = w.fit_prepare(X)
+    np.testing.assert_allclose(np.array([
+                                [[0,0,4,5,6], [0,0,33,44,55]],
+                                [[0,0,0,40,50], [0,0,0,444,555]]
+                               ]),
+                               result)
 
-    w = fruits.preparation.WINDOW(start=0.7,end=1.0, calculate_increments=True)
-    result = w.prepare(X)
-    assert np.allclose( result[0], [[0,0,4,5, 6], [0,0,33,44,55]] )
-    assert np.allclose( result[1], [[0,0,0,40,50], [0,0,0,444,555]] )
+    abs1 = fruits.core.wording.ComplexWord()
+    el = fruits.core.letters.ExtendedLetter()
+    el.append(fruits.core.letters.absolute)
+    abs1.multiply(el)
 
-    w = fruits.preparation.WINDOW(start=0.0,end=0.7, calculate_increments=True, fn='abs(.)')
-    result = w.prepare(X)
-    assert X.shape == result.shape
-    assert np.allclose( result[0], [[1,2,4,0,0], [11,22,33,0,0]] )
-
+    w = fruits.preparation.WIN(0.0, 0.7, word=abs1)
+    result = w.fit_prepare(X)
+    np.testing.assert_allclose(np.array([
+                                [[1,2,4,0,0], [11,22,33,0,0]],
+                                [[10,20,30,0,0], [111,222,333,0,0]]
+                               ]),
+                               result)
