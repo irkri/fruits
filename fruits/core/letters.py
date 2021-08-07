@@ -6,20 +6,17 @@ COMPLEX_LETTER_SIGNATURE = "fruits_letter"
 COMPLEX_LETTER_NAME = "fruits_name"
 
 class ExtendedLetter:
-    """Class for an extended letter that is used in
-    :class:`~wording.AbstractWord`.
-    
+    """Class for an extended letter used in words.
+    A word (see :class:`~fruits.core.wording.AbstractWord`) consists of
+    a number of extended letters.
     An ExtendedLetter object is a container that only allows
     appending functions that were decorated with
-    :meth:`fruits.core.complex_letter`.
-    It can then be used in a word to calculate iterated sums of a
-    multidimensional time series.
+    :meth:`~fruits.core.letters.complex_letter`.
     
-    :param *letters: Letters to add to the object. One letter is given
-        as a tuple ``(letter, dimension)``, where ``letter`` is the
-        function decorated with the ``complex_letter`` decorator and
-        ``dimension`` is the second argument of ``letter``.
-    :type *letters: One or more tuples
+    :param letters: Any number of tuples ``(letter, dim)`` where ``dim``
+        is the dimension the function ``letter`` will extract from a
+        time series.
+    :type letters: tuple(s)
     """
     def __init__(self, *letters):
         self._letters = []
@@ -35,7 +32,7 @@ class ExtendedLetter:
         """Appends a letter to the ExtendedLetter object.
         
         :param letter: Function that was decorated with
-            ``fruits.core.complex_letter``.
+            :meth:`~fruits.core.letters.complex_letter`.
         :type letter: callable
         :param int: Dimension of the letter that is going to be used as
             its second argument, if it has one., defaults to 0
@@ -91,7 +88,7 @@ class ExtendedLetter:
 
 def complex_letter(*args, name: str = None):
     """Decorator for the implementation of a complex letter appendable
-    to an ``ExtendedLetter`` object.
+    to an :class:`fruits.core.letters.ExtendedLetter` object.
     
     It is possible to implement your own complex letters by using this
     decorator. Your complex letter has to be a function (e.g. called
@@ -114,6 +111,11 @@ def complex_letter(*args, name: str = None):
 
         @fruits.core.complex_letter
 
+    Available predefined letters are:
+    
+        - ``simple``: Extracting a single dimension
+        - ``absolute``: Extracting the absolute value of a single dimension
+    
     :param name: You can supply a name to the function. This name will
         be used for documentation in an ``ExtendedLetter`` object. If
         no name is supplied, then the name of the function is used.,
