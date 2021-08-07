@@ -1,39 +1,26 @@
-fruits.core
-------------------
+fruits
+------
 
-.. automodule:: fruits.core
+fruits.cache
+^^^^^^^^^^^^
+
+.. automodule:: fruits.cache
    :members:
    :undoc-members:
    :show-inheritance:
 
-fruits.features
-----------------------
+fruits.preparation
+^^^^^^^^^^^^^^^^^^
 
-.. automodule:: fruits.features
+.. automodule:: fruits.preparation
    :members:
    :undoc-members:
    :show-inheritance:
 
-fruits.iterators
------------------------
+fruits.sieving
+^^^^^^^^^^^^^^
 
-.. automodule:: fruits.iterators
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-fruits.main
-------------------
-
-.. automodule:: fruits.main
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-fruits.preparateurs
---------------------------
-
-.. automodule:: fruits.preparateurs
+.. automodule:: fruits.sieving
    :members:
    :undoc-members:
    :show-inheritance:

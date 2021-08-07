@@ -13,17 +13,48 @@ from fruits import core
 class Fruit:
     """Feature Extractor using iterated sums.
     
-    A Fruit object consists of a number of FruitBranch objects. At the
-    end of the pipeline, each branch returns their own features and
-    they will be concatenated by this class.
+    A Fruit object consists of a number of ``FruitBranch`` objects.
+    At the end of the pipeline, each branch returns their own features
+    and they will be concatenated by this class.
+
+    A simple example (using one ``FruitBranch``):
+
+    .. code-block:: python
+
+        fruit = fruits.Fruit("My Fruit")
+        # optional: add preparateurs for preprocessing
+        fruit.add(fruits.preparation.INC(zero_padding=False))
+        # add words for iterated sums calculation
+        fruit.add(fruits.core.generation.simplewords_by_degree(2, 2, 1))
+        # choose sieves
+        fruit.add(fruits.sieving.PPV(0.5))
+        fruit.add(fruits.sieving.MAX)
+        fruit.add(fruits.sieving.MIN)
+        fruit.add(fruits.sieving.END)
+
+        # transform time series dataset
+        fruit.fit(X_train)
+        X_train_transformed = fruit.transform(X_train)
+        X_test_tranformed = fruit.transform(X_test)
+
+        # use the transformed results (features) in a classifier
+        ...
+
+    The above defined ``fruit`` will result in ``6*4=24`` features per
+    time series.
+
+    Calling ``add(...)`` on a ``Fruit`` object always calls
+    ``branch.add(...)`` where ``branch`` is the currently selected
+    ``FruitBranch`` in this object. What branch is selected can be
+    changed by calling ``self.switch_branch(index)`` or forking a new
+    branch with ``self.fork()``.
     """
     def __init__(self, name: str = ""):
         self.name = name
         # list of FruitBranches
-        self._branches = [FruitBranch()]
-        # pointer for the current branch
-        self._current_branch = self._branches[0]
-        self._current_branch_index = 0
+        self._branches = []
+        # pointer for the current branch index
+        self._cbi = None
 
     @property
     def name(self) -> str:
@@ -31,24 +62,29 @@ class Fruit:
         return self._name
     
     @name.setter
-    def name(self, name:str):
+    def name(self, name: str):
         self._name = name
 
-    def add_branch(self, branch):
-        """Adds a new branch to the pipeline.
+    def fork(self, branch=None):
+        """Adds a new branch to the pipeline. If none is given, an
+        empty FruitBranch will be created and switched to.
 
-        :type branch: FruitBranch
+        :type branch: FruitBranch, optional
         """
+        if branch is None:
+            branch = FruitBranch()
         self._branches.append(branch)
+        self._cbi = len(self._branches) - 1
 
-    def start_new_branch(self):
-        """Adds a new and empty branch to the pipeline and switches to
-        it. All future operations on this Fruit object will be called
-        on the new branch.
+    def branch(self, index: int = None):
+        """Returns the currently selected branch or the branch with the
+        given index.
+        
+        :rtype: FruitBranch
         """
-        self._branches.append(FruitBranch())
-        self._current_branch = self._branches[-1]
-        self._current_branch_index = len(self._branches) - 1
+        if index is None:
+            return self._branches[self._cbi]
+        return self._branches[index]
 
     def branches(self) -> list:
         """Returns all branches of this Fruit object.
@@ -58,120 +94,32 @@ class Fruit:
         return self._branches
 
     def switch_branch(self, index: int):
-        """Switches to the branch with the given index. If the Fruit
-        objects points to a branch, then each method that is called on
-        the Fruit object is actually called on this branch.
+        """Switches to the branch with the given index.
         
-        :param index: Integer in ``[0, 1, ..., len(self.branches)-1]``
+        :param index: Integer in ``[0, 1, ..., len(self.branches())-1]``
         :type index: int
         """
-        self._current_branch = self._branches[index]
-        self._current_branch_index = index
-
-    def current_branch(self):
-        """Returns the branch that is currently selected.
-
-        The selected branch is used to extend the pipeline by calling
-        functions like `add()` on the Fruit object. Normally this is
-        done on a FruitBranch object. 
-        
-        :rtype: FruitBranch
-        """
-        return self._current_branch
-
-    def current_branch_index(self) -> int:
-        """Returns the index of the currently selected branch.
-        
-        :rtype: int
-        """
-        return self._current_branch_index
-
-    def add_preparateur(self, preparateur: DataPreparateur):
-        """Adds a DataPreparateur object to the currently selected
-        branch.
-
-        :type preparateur: DataPreparateur
-        """
-        self._current_branch.add_preparateur(preparateur)
-
-    def get_preparateurs(self) -> list:
-        """Returns all DataPreparateur objects that are added to the
-        currently selected branch.
-        
-        :rtype: list
-        """
-        return self._current_branch.get_preparateurs()
-
-    def clear_preparateurs(self):
-        """Removes all added DataPreparateur objects in the currently
-        selected branch.
-        """
-        self._current_branch.clear_preparateurs()
-
-    def add_word(self, sum_iter: AbstractWord):
-        """Adds a AbstractWord object to the currently selected
-        branch.
-
-        :param preparateur: New AbstractWord
-        :type preparateur: AbstractWord
-        """
-        self._current_branch.add_word(sum_iter)
-
-    def get_words(self) -> list:
-        """Returns all AbstractWord objects that are added to the
-        currently selected branch.
-        
-        :rtype: list
-        """
-        return self._current_branch.get_words()
-
-    def clear_iterators(self):
-        """Removes all added AbstractWord objects in the currently
-        selected branch.
-        """
-        self._current_branch.clear_iterators()
-        
-    def add_sieve(self, feat: FeatureSieve):
-        """Adds a FeatureSieve object to the currently selected branch.
-
-        :type preparateur: FeatureSieve
-        """
-        self._current_branch.add_feature_sieve(feat)
-
-    def get_sieves(self) -> list:
-        """Returns all FeatureSieve objects that are added to the
-        currently selected branch.
-        
-        :rtype: list
-        """
-        return self._current_branch.get_sieves()
-
-    def clear_sieves(self):
-        """Removes all added FeatureSieve objects in the currently
-        selected branch.
-        """
-        self._current_branch.clear_sieves()
+        if not (0 <= index < len(self._branches)):
+            raise IndexError("Index has to be in [0, len(self.branches()))")
+        self._cbi = index
 
     def add(self, *objects):
-        """Adds one or multiple object(s) to the currently selected
+        """Adds one or multiple object(s) to the `currently selected`
         branch.
         These objects can be one of the following types:
         
-        - fruits.preparateurs.DataPreparateur
-        - classes that inherit from fruits.core.wording.AbstractWord
-        - fruits.features.FeatureSieve
+        - :class:`~fruits.preparateurs.DataPreparateur`
+        - classes that inherit from
+          :class:`~fruits.core.wording.AbstractWord`
+        - :class:`~fruits.features.FeatureSieve`
         
         :type objects: Object of mentioned type(s) or iterable object
             containing multiple objects of mentioned type(s).
         :raises: TypeError if one of the objects has an unknown type
         """
-        self._current_branch.add(objects)
-
-    def clear(self):
-        """Clears all DataPreparateur, AbstractWord and
-        FeatureSieve objects in the currently selected branch.
-        """
-        self._current_branch.clear()
+        if len(self._branches) == 0:
+            self.fork()
+        self._branches[self._cbi].add(objects)
 
     def nfeatures(self) -> int:
         """Returns the total number of features of all branches 
@@ -184,7 +132,9 @@ class Fruit:
     def fit(self, X: np.ndarray):
         """Fits all branches to the given data.
         
-        :param X: (Multidimensional) time series dataset
+        :param X: (Multidimensional) time series dataset as an array
+            of three dimensions. Have a look at
+            ``fruits.base.scope.force_input_shape``.
         :type X: np.ndarray
         """
         for branch in self._branches:
@@ -194,7 +144,9 @@ class Fruit:
         """Returns a two dimensional array of all features from all
         branches this Fruit object contains.
         
-        :param X: (Multidimensional) time series dataset
+        :param X: (Multidimensional) time series dataset as an array
+            of three dimensions. Have a look at
+            ``fruits.base.scope.force_input_shape``.
         :type X: np.ndarray
         :param callbacks: List of callbacks. To write your own callback,
             override the class ``fruits.callback.AbstractCallback``.,
@@ -251,11 +203,8 @@ class Fruit:
         :rtype: Fruit
         """
         copy_ = Fruit(self.name+" (Copy)")
-        copy_._branches = [self._current_branch.copy()]
-        copy_._current_branch = copy_._branches[0]
-        for i in range(len(self._branches)):
-            if i != self._current_branch_index:
-                copy_.add_branch(self._branches[i].copy())
+        for branch in self._branches:
+            copy_.fork(branch.copy())
         return copy_
 
     def deepcopy(self):
@@ -265,11 +214,8 @@ class Fruit:
         :rtype: Fruit
         """
         copy_ = Fruit(self.name+" (Copy)")
-        copy_._branches = [self._current_branch.deepcopy()]
-        copy_._current_branch = copy_._branches[0]
-        for i in range(len(self._branches)):
-            if i != self._current_branch_index:
-                copy_.add_branch(self._branches[i].deepcopy())
+        for branch in self._branches:
+            copy_.fork(branch.deepcopy())
         return copy_
 
     def __copy__(self):
@@ -298,10 +244,10 @@ class FruitBranch:
     signature for different words the user can specify.
 
     Extracting the Features:
-    Each FeatureSieve added to the branch will be fitted and on 
-    the iterated sums from the previous step. The Fruit object then  
-    returns an array of numbers (the transformed results from those
-    sieves), i.e. the features for each time series.
+    Each FeatureSieve added to the branch will be fitted on 
+    the iterated sums from the previous step. The branch then returns
+    an array of numbers (the transformed results from those sieves),
+    i.e. the features for each time series.
     """
     def __init__(self):
         # lists of used classes for data processing
@@ -323,7 +269,6 @@ class FruitBranch:
     def add_preparateur(self, preparateur: DataPreparateur):
         """Adds a DataPreparateur object to the branch.
         
-        :param preparateur: New preparateur
         :type preparateur: DataPreparateur
         """
         if not isinstance(preparateur, DataPreparateur):
@@ -335,7 +280,6 @@ class FruitBranch:
         """Returns a list of all DataPreparateur objects added to the
         branch.
         
-        :returns: List of DataPreparateur objects
         :rtype: list
         """
         return self._preparateurs
@@ -350,7 +294,6 @@ class FruitBranch:
     def add_word(self, word: AbstractWord):
         """Adds a word to the branch.
         
-        :param preparateur: New ComplexWord or SimpleWord.
         :type preparateur: AbstractWord
         """
         if not isinstance(word, AbstractWord):
@@ -385,7 +328,6 @@ class FruitBranch:
         """Returns a list of all FeatureSieve objects added to the
         branch.
         
-        :returns: List of FeatureSieve objects
         :rtype: list
         """
         return self._sieves
@@ -403,9 +345,10 @@ class FruitBranch:
         """Adds one or multiple object(s) to the branch.
         These objects can be of type:
         
-        - fruits.preparateurs.DataPreparateur
-        - classes that inherit from fruits.core.wording.AbstractWord
-        - fruits.features.FeatureSieve
+        - :class:`~fruits.preparateurs.DataPreparateur`
+        - classes that inherit from
+          :class:`~fruits.core.wording.AbstractWord`
+        - :class:`~fruits.features.FeatureSieve`
         
         :type objects: Object(s) of mentioned type(s) or iterable object
             containing multiple objects of mentioned type(s).
@@ -455,9 +398,9 @@ class FruitBranch:
         """Fits the branch to the given dataset. What this action
         explicitly does depends on the FruitBranch configuration.
         
-        :param X: Multidimensional time series dataset.
-            If ``X.ndims < 3`` then the array will be expanded to
-            contain 3 dimensions. This could lead to unwanted behaviour.
+        :param X: (Multidimensional) time series dataset as an array
+            of three dimensions. Have a look at
+            ``fruits.base.scope.force_input_shape``.
         :type X: np.ndarray
         :raises: ValueError if ``X.ndims > 3``
         """
@@ -480,9 +423,9 @@ class FruitBranch:
         """Transforms the given time series dataset. The results are
         the calculated features for the different time series.
         
-        :param X: Multidimensional time series dataset.
-            If ``X.ndims < 3`` then the array will be expanded to
-            contain 3 dimensions. This could lead to unwanted behaviour.
+        :param X: (Multidimensional) time series dataset as an array
+            of three dimensions. Have a look at
+            ``fruits.base.scope.force_input_shape``.
         :type X: np.ndarray
         :param callbacks: List of callbacks. To write your own callback,
             override the class ``fruits.callback.AbstractCallback``.,
@@ -542,12 +485,14 @@ class FruitBranch:
         return sieved_data
 
     def fit_transform(self, X: np.ndarray) -> np.ndarray:
-        """This function does the same that calling `FruitBranch.fit(X)`
-        and `FruitBranch.transform(X)` consecutively does.
+        """This function does the same that calling ``self.fit(X)`` and
+        ``self.transform(X)`` consecutively does.
         
-        :param X: (multidimensional) time series dataset
+        :param X: (Multidimensional) time series dataset as an array
+            of three dimensions. Have a look at
+            ``fruits.base.scope.force_input_shape``.
         :type X: np.ndarray
-        :returns: transformed time series (features)
+        :returns: Array of features.
         :rtype: np.ndarray
         """
         self.fit(X)
@@ -555,32 +500,37 @@ class FruitBranch:
 
     def summary(self) -> str:
         """Returns a summary of this object. The summary contains all
-        added DataPreparateur, AbstractWord and FeatureSieve
-        objects.
+        added preparateurs, words and sieves.
         
-        :returns: Summary as string
         :rtype: str
         """
         summary = "{:-^80}".format("fruits.FruitBranch")
         summary += f"\nNumber of features: {self.nfeatures()}"
         summary += f"\n\nPreparateurs ({len(self._preparateurs)}): "
         if len(self._preparateurs) == 0:
-            summary += "-" 
-        else: 
+            summary += "-"
+        else:
             summary += "\n\t+ " + \
                        "\n\t+ ".join([str(x) for x in self._preparateurs])
         summary += f"\nIterators ({len(self._words)}): "
         if len(self._words) == 0:
-            summary += "-" 
-        else: 
+            summary += "-"
+        elif len(self._words) > 10:
+            summary += "\n\t+ " + \
+                       "\n\t+ ".join([str(x) for x in self._words[:9]])
+            summary += "\n\t..."
+        else:
             summary += "\n\t+ " + \
                        "\n\t+ ".join([str(x) for x in self._words])
         summary += f"\nSieves ({len(self._sieves)}): "
         if len(self._sieves) == 0:
-            summary += "-" 
-        else: 
-            summary += "\n\t+ " + \
-                       "\n\t+ ".join([str(x) for x in self._sieves])
+            summary += "-"
+        else:
+            for x in self._sieves:
+                lines = x.summary().split("\n")
+                summary += "\n\t+ " + lines[0]
+                summary += "\n\t  "
+                summary += "\n\t  ".join(lines[1:])
         return summary
 
     def copy(self):

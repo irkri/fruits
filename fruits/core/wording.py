@@ -4,25 +4,23 @@ from abc import ABC, abstractmethod
 from fruits.core.letters import ExtendedLetter
 
 class AbstractWord(ABC):
-    """Abstract Class Abstractword
-
-    This abstractly used class is a collection of extended letters.
-    An extended letter is a collection of letters. A letter is a
-    function that accepts and returns numpy arrays. The order of the
-    letters in an extended letter doesn't matter.
+    """This abstractly used class is a word, that is collection of
+    extended letters. An extended letter is a collection of letters.
+    A letter is a function that accepts and returns numpy arrays. The
+    order of the letters in an extended letter doesn't matter.
 
     An AbstractWord object is used for the calculation of iterated sums
     for a list of numbers. This can be done by calling::
 
         fruits.core.iss.ISS(X, word)
 
-    where `word` is an object of a class that inherits AbstractWord.
+    where ``word`` is an object of a class that inherits AbstractWord.
 
     Each AbstractWord is iterable. The items returned by the iterator
-    are the extended letters.
+    are the extended letters (``fruits.core.letters.ExtendedLetter``).
 
-    One can extend an already created AbstractWord object by calling
-    ``AbstractWord.multiply(...)``.
+    One can extend an already created word by calling
+    ``self.multiply(...)``.
 
     :param name: Name of the AbstractWord object, defaults to ""
     :type name: str, optional
@@ -46,8 +44,9 @@ class AbstractWord(ABC):
     def multiply(self, other):
         pass
 
+    @abstractmethod
     def copy(self):
-        return AbstractWord(self.name)
+        pass
 
     @abstractmethod
     def __iter__(self):
@@ -64,11 +63,11 @@ class AbstractWord(ABC):
         return self.name
 
     def __repr__(self) -> str:
-        return "fruits.core.wording.AbstractWord('" + self.name + "')"
+        return "fruits.core.wording.AbstractWord"
 
 
 class ComplexWord(AbstractWord):
-    """Class ComplexWord, inherited from AbstractWord
+    """A ComplexWord is directly inherited from ``AbstractWord``.
     
     This class manages the concatenation of ``ExtendedLetter`` objects.
 
@@ -79,15 +78,17 @@ class ComplexWord(AbstractWord):
         word = ComplexWord()
 
         el01 = ExtendedLetter()
-        el01.append(lambda X: X[0, :]**2)
+        el01.append(fruits.core.letters.simple_letter, 0)
+        el01.append(fruits.core.letters.simple_letter, 0)
         el02 = ExtendedLetter()
-        el02.append(lambda X: X[0, :])
-        el01.append(lambda X: X[1, :]**2)
+        el02.append(fruits.core.letters.simple_letter, 0)
+        el02.append(fruits.core.letters.simple_letter, 1)
+        el02.append(fruits.core.letters.simple_letter, 1)
 
         word.multiply(el01)
         word.multiply(el02)
 
-        iterated_sums = fruits.core.iss.ISS(X, word)
+        iterated_sums = fruits.core.ISS(X, word)
 
     The result in ``iterated_sums`` is equal to 
 
@@ -96,7 +97,7 @@ class ComplexWord(AbstractWord):
         numpy.cumsum(numpy.cumsum(X[0, :]**2) * X[0, :]*X[1, :]**2)
 
     which corresponds to a call of
-    ``fruits.core.iss.ISS(X, SimpleWord("[11][122]"))``.
+    ``fruits.core.ISS(X, SimpleWord("[11][122]"))``.
 
     :param name: Name of the object, has no influence on any
         computation., defaults to ""
@@ -107,11 +108,9 @@ class ComplexWord(AbstractWord):
         self._extended_letters = []
 
     def multiply(self, other):
-        """Multiplies this ComplexWord object with another object.
+        """Appends ExtendedLetter objects to this word.
         
-        :param other: Object that is suitable for multiplication
         :type other: ComplexWord or ExtendedLetter
-        :raises: TypeError if ``other`` has the wrong type
         """
         if isinstance(other, ExtendedLetter):
             self._extended_letters.append(other)
@@ -122,7 +121,7 @@ class ComplexWord(AbstractWord):
             raise TypeError(f"Cannot multiply ComplexWord with {type(other)}")
 
     def copy(self):
-        """Returns a copy of this ComplexWord.
+        """Returns a copy of this word.
         
         :rtype: ComplexWord
         """
@@ -147,17 +146,23 @@ class ComplexWord(AbstractWord):
         return "".join([str(el) for el in self._extended_letters])
 
     def __repr__(self) -> str:
-        return "fruits.core.wording.ComplexWord(" + self.name + ")"
+        return "fruits.core.wording.ComplexWord"
 
 
 class SimpleWord(AbstractWord):
-    """Class SimpleWord, inherited from AbstractWord
+    """A SimpleWord is directly inherited from ``AbstractWord``.
 
-    A SimpleWord is a special form of an AbstractWord that contains
-    functions which extract a single dimension of a multidimesional 
-    time series.
-    It is used to speed up the calculation of iterated sums and to make
-    the creation of such a construct easier.
+    A ``SimpleWord`` is a special form of an ``AbstractWord`` that
+    contains functions which extract a single dimension of a
+    multidimesional time series.
+    The letters in this object do the same like the predefined letter
+    ``fruits.core.letters.simple_letter`` but they are saved as integers
+    in a numpy array which allows for better space and computation
+    management. It is therefore used to speed up the calculation of
+    iterated sums and to make the creation of such a construct easier.
+    Defining simple words should always be achieved by creating a
+    ``SimpleWord`` object rather than defining a ``ComplexWord`` and
+    using the mentioned ``simple_letter``.
 
     Example:
 
@@ -249,5 +254,8 @@ class SimpleWord(AbstractWord):
             raise TypeError(f"Cannot compare SimpleWord with {type(other)}")
         return list(self._extended_letters) == list(other._extended_letters)
 
+    def __str__(self) -> str:
+        return self.name
+
     def __repr__(self) -> str:
-        return "fruits.core.wording.SimpleWord(" + self.name + ")"
+        return "fruits.core.wording.SimpleWord"

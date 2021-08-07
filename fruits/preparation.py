@@ -3,12 +3,18 @@ from abc import ABC, abstractmethod
 import numba
 import numpy as np
 
+from fruits.cache import FruitString
+from fruits.core.wording import AbstractWord, SimpleWord
+
 class DataPreparateur(ABC):
-    """Abstract class DataPreperateur
+    """Abstract class for a data preparateur.
     
-    A DataPreparateur object can be fitted on a three dimensional numpy 
-    array. The output of DataPreparateur.prepare is a numpy array that
-    matches the shape of the input array.
+    A preparateur can be fitted on a three dimensional numpy array
+    (preferably containing time series data). The output of
+    ``self.prepare`` is a numpy array that matches the shape of the
+    input array.
+    A class derived from DataPreparateur can be added to a
+    ``fruits.Fruit`` object for the preprocessing step.
     """
     def __init__(self, name: str = ""):
         super().__init__()
@@ -23,19 +29,13 @@ class DataPreparateur(ABC):
     def name(self, name: str):
         self._name = name
 
+    @abstractmethod
     def copy(self):
-        """Returns a copy of the DataPreparateur object.
-        
-        :returns: Copy of this object
-        :rtype: DataPreparateur
-        """
-        dp = DataPreparateur(self.name)
-        return dp
+        pass
 
     def fit(self, X: np.ndarray):
         """Fits the DataPreparateur to the given dataset.
         
-        :param X: (multidimensional) time series dataset
         :type X: np.ndarray
         """
         pass
@@ -48,7 +48,7 @@ class DataPreparateur(ABC):
         """Fits the given dataset to the DataPreparateur and returns
         the preparated results.
         
-        :param X: (multidimensional) time series dataset
+        :param X: A (multidimensional) time series dataset.
         :type X: np.ndarray
         """
         self.fit(X)
@@ -61,7 +61,7 @@ class DataPreparateur(ABC):
         return False
 
     def __repr__(self) -> str:
-        return "DataPreparateur('" + self._name + "')"
+        return "fruits.preparation.DataPreparateur"
 
 
 @numba.njit(fastmath=True, cache=True)
@@ -92,22 +92,17 @@ class INC(DataPreparateur):
         time series will be set to 0. If False, it isn't changed at
         all., defaults to True
     :type zero_padding: bool, optional
-    :param name: Name of the preparateur., defaults to "Increments"
-    :type name: str, optional
     """
     def __init__(self,
-                 zero_padding: bool = True,
-                 name: str = "Increments"):
-        super().__init__(name)
+                 zero_padding: bool = True):
+        super().__init__("Increments")
         self._zero_padding = zero_padding
 
     def prepare(self, X: np.ndarray) -> np.ndarray:
-        """Returns the increments of all time series in X.
-        This is the equivalent of the convolution of X and [-1,1].
+        """Returns the increments of all time series in ``X``. This is
+        the equivalent to the convolution of ``X`` and ``[-1, 1]``.
         
-        :param X: (multidimensional) time series dataset
         :type X: np.ndarray
-        :returns: stepwise slopes of each time series in X
         :rtype: np.ndarray
         """
         out = _increments(X)
@@ -116,12 +111,11 @@ class INC(DataPreparateur):
         return out
 
     def copy(self):
-        """Returns a copy of the DataPreparateur object.
+        """Returns a copy of this preparateur.
         
-        :returns: Copy of this object
         :rtype: INC
         """
-        dp = INC(self._zero_padding, self.name)
+        dp = INC(self._zero_padding)
         return dp
 
     def __eq__(self, other) -> bool:
@@ -136,17 +130,17 @@ class INC(DataPreparateur):
                 f"zero_padding={self._zero_padding})"
         return string
 
+    def __repr__(self) -> str:
+        return "fruits.preparation.INC"
+
 
 class STD(DataPreparateur):
     """DataPreparateur: Standardization
     
     Used for standardization of a given time series dataset.
-
-    :param name: Name of the preparateur., defaults to "Standardization"
-    :type name: str, optional
     """
-    def __init__(self, name: str = "Standardization"):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__("Standardization")
         self._mean = None
         self._std = None
 
@@ -154,19 +148,17 @@ class STD(DataPreparateur):
         """Fits the STD object to the given dataset by calculating the
         mean and standard deviation of the flattened dataset.
         
-        :param X: (multidimensional) time series dataset
         :type X: np.ndarray
         """
         self._mean = np.mean(X)
         self._std = np.std(X)
 
     def prepare(self, X: np.ndarray) -> np.ndarray:
-        """Returns the standardized dataset (X-mu)/std where mu and std
-        are the parameters calculated in :meth:`STD.fit`.
+        """Returns the standardized dataset ``(X-mu)/std`` where ``mu``
+        and ``std`` are the parameters calculated in :meth:`STD.fit`.
         
-        :param X: (multidimensional) time series dataset
         :type X: np.ndarray
-        :returns: (standardized) dataset
+        :returns: Standardized dataset.
         :rtype: np.ndarray
         :raises: RuntimeError if self.fit() wasn't called
         """
@@ -176,16 +168,149 @@ class STD(DataPreparateur):
         return out
 
     def copy(self):
-        """Returns a copy of the DataPreparateur object.
+        """Returns a copy of this preparateur.
         
-        :returns: Copy of this object
         :rtype: STD
         """
-        dp = STD(self.name)
-        return dp
+        return STD()
 
     def __eq__(self, other) -> bool:
         return True
 
     def __str__(self) -> str:
         return "STD"
+
+    def __repr__(self) -> str:
+        return "fruits.preparation.STD"
+
+
+class DIL(DataPreparateur):
+    """DataPreparateur: Dilation
+    
+    This preparateur sets some slices in each time series in the
+    given dataset to zero. The indices and lengths for those zero
+    sequences are chosen randomly.
+
+    :param clusters: Float value between 0 and 1 (incl.). The number of
+        zero strips will be calculated by multiplying
+        ``clusters * X.shape[2]`` in ``self.fit(X)``., defaults to 0.01
+    :type clusters: float, optional
+    """
+    def __init__(self,
+                 clusters: float = 0.01):
+        super().__init__("Dilation")
+        self._clusters = clusters
+        self._indices = None
+        self._lengths = None
+    
+    def fit(self, X: np.ndarray):
+        """Fits the preparateur to the given dataset by randomizing the
+        starting points and lengths of the zero strips.
+        
+        :type X: np.ndarray
+        """
+        nclusters = int(self._clusters * X.shape[2])
+        self._indices = sorted(np.random.random_sample(nclusters))
+        self._lengths = []
+        for i in range(len(self._indices)):
+            if i == len(self._indices)-1:
+                b = 1 - self._indices[i]
+            else:
+                b = self._indices[i+1] - self._indices[i]
+            self._lengths.append(b*np.random.random_sample())
+            
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        """Returns the transformed dataset.
+        
+        :type X: np.ndarray
+        :rtype: np.ndarray
+        :raises: RuntimeError if self.fit() wasn't called
+        """
+        if self._indices is None:
+            raise RuntimeError("Missing call of fit method")
+        X_new = X.copy()
+        for i in range(len(self._indices)):
+            start = int(self._indices[i] * X.shape[2])
+            length = int(self._lengths[i] * X.shape[2])
+            X_new[:, :, start:start+length] = 0
+        return X_new
+    
+    def copy(self):
+        """Returns a copy of this preparateur.
+        
+        :rtype: DIL
+        """
+        return DIL(self._clusters)
+
+    def __eq__(self, other) -> bool:
+        return False
+
+    def __str__(self) -> str:
+        return f"DIL(clusters={self._clusters})"
+
+    def __repr__(self) -> str:
+        return "fruits.preparation.DIL"
+
+
+class WIN(DataPreparateur):
+    """DataPreparateur: Window
+    
+    Outside of a certain window the time series is set to zero.
+    The window is obtained according to 'quantiles' of a certain
+    function of each time series, for example its quadratic variation by
+    calculating increments and getting results from
+    ``fruits.core.ISS(X, [SimpleWord("[11]")])``.
+    
+    :param start: Quantile start; float value between 0 and 1 (incl.).
+    :type start: float
+    :param end: Quantile end; float value between 0 and 1 (incl.).
+    :type end: float
+    :param increments: If True, calculate increments first.
+    :type increments: bool, defaults to True
+    :param word: What function to calculate
+    :type word: AbstractWord, defaults to SimpleWord("[11]")
+    """
+    def __init__(self,
+                 start: float,
+                 end: float,
+                 increments: bool = True,
+                 word: AbstractWord = SimpleWord("[11]")):
+        super().__init__("Window")
+        self._start = start
+        self._end = end
+        self._increments = increments
+        self._word = word
+            
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        """Returns the transformed dataset.
+        
+        :type X: np.ndarray
+        :rtype: np.ndarray
+        :raises: RuntimeError if self.fit() wasn't called
+        """
+        pipeline = FruitString()
+        if self._increments:
+            pipeline.preparateur = INC(zero_padding=False)
+        pipeline.word = self._word
+        pipeline.process(X)
+        Q = np.expand_dims(pipeline.get().copy(), axis=1)
+        del pipeline
+
+        maxima = np.expand_dims(np.max(Q, axis=2), axis=-1)
+        Q = Q / maxima
+
+        mask = (Q > self._start) & (Q <= self._end)
+        return X * mask
+    
+    def copy(self):
+        return WIN(self._start, self._end, self._increments, self._word)
+
+    def __eq__(self, other) -> bool:
+        return False
+
+    def __str__(self) -> str:
+        return (f"WIN(start={self._start}, end={self._end}, " +
+                f"increments={self._increments}, word={str(self._word)})")
+
+    def __repr__(self) -> str:
+        return "fruits.preparation.WIN"

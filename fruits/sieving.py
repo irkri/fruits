@@ -7,12 +7,13 @@ from fruits.preparation import INC, _increments
 from fruits.core.wording import SimpleWord
 
 class FeatureSieve(ABC):
-    """Abstract class FeatureSieve
+    """Abstract class for a feature sieve. Sieves are the last part of a
+    FRUITS pipeline.
     
-    A FeatureSieve object is used to transforms a twodimensional numpy
-    array into a onedimensional numpy array.
-    The length of the resulting array can be determined by calling
-    ``FeatureSieve.nfeatures`? .
+    A feature sieve is used to transforms a twodimensional numpy
+    array containing iterated sums into a onedimensional numpy array of
+    features. The length of the resulting array can be determined by
+    calling ``FeatureSieve.nfeatures``.
 
     Each class that inherits FeatureSieve must override the methods
     ``FeatureSieve.sieve`` and ``FeatureSieve.nfeatures``.
@@ -38,10 +39,9 @@ class FeatureSieve(ABC):
         pass
 
     def fit(self, X: np.ndarray):
-        """Fits the FeatureSieve to the dataset. This method may do
-        nothing for some classes that inherit FeatureSieve.
-
-        :param X: (multidimensional) time series dataset
+        """Fits the sieve to the dataset.
+        
+        :param X: 2-dimensional numpy array of iterated sums.
         :type X: np.ndarray
         """
         pass
@@ -51,12 +51,12 @@ class FeatureSieve(ABC):
         pass
 
     def fit_sieve(self, X: np.ndarray) -> np.ndarray:
-        """Equivalent of calling `FeatureSieve.fit` and
-        `FeatureSieve.sieve` consecutively.
+        """Equivalent of calling ``FeatureSieve.fit`` and
+        ``FeatureSieve.sieve`` consecutively.
         
-        :param X: (onedimensional) time series dataset
+        :param X: 2-dimensional numpy array of iterated sums.
         :type X: np.ndarray
-        :returns: array of features (one for each time series)
+        :returns: Array of features
         :rtype: np.ndarray
         """
         self.fit(X)
@@ -73,34 +73,36 @@ class FeatureSieve(ABC):
     def copy(self):
         pass
 
+    def summary(self) -> str:
+        return "FeatureSieve('" + self._name + "')"
+
     def __copy__(self):
         return self.copy()
 
     def __repr__(self) -> str:
-        out = "FeatureSieve('" + self._name + "')"
-        return out
+        return "FeatureSieve('" + self._name + "')"
 
 
 class PPV(FeatureSieve):
     """FeatureSieve: Proportion of positive values
     
-    For a calculated quantile with `PPV.fit`, this FeatureSieve
-    calculates the proportion of values in a time series that is greater
-    than the calculated quantile.
+    For a calculated quantile with ``PPV.fit``, this feature sieve
+    calculates the proportion of values in a time series that are
+    greater than the calculated quantile(s).
 
-    :param quantile: Quantile `q` or list of quantiles `[q_1, ..., q_n]`
+    :param quantile: Quantile or list of quantiles ``[q_1, ..., q_n]``
         as actual value(s) or probability for quantile calculation
         (e.g. 0.5 for the 0.5-quantile)., defaults to 0.5
     :type quantile: float or list of floats, optional
-    :param constant: If `True`, the argument `quantile` is interpreted
-        as the actual value for the quantile. If `quantile` is a list,
-        then `constant` can be a list of booleans `[b_1, ..., b_n]` 
-        where `b_i` explains the behaviour/interpretation of `q_i` or a
-        single boolean that explains what every single `q_i` is (value
-        or probability)., defaults to False
+    :param constant: If ``True``, the argument ``quantile`` is
+        interpreted as the actual value for the quantile.
+        If ``quantile`` is a list, then ``constant`` can be a list of
+        booleans ``[b_1, ..., b_n]`` where ``b_i`` explains the
+        interpretation of ``q_i`` or a single boolean for each ``q_i``.
+        (value or probability)., defaults to False
     :type constant: bool or list of bools, optional
     :param sample_size: Sample size to use for quantile calculation.
-        This option can be ignored if `constant` is set to `True`.,
+        This option can be ignored if ``constant`` is set to ``True``.,
         defaults to 0.05
     :type sample_size: float, optional
     :param segments: If `True`, then the proportion of values within
@@ -111,9 +113,9 @@ class PPV(FeatureSieve):
         .. code-block::python
             np.array([np.sum(q_{i-1} <= X[k] < q_i)]) / len(X[k])])
 
-        where `k` is the index of the time series and `i` ranges from
-        1 to n.
-        If set to `False`, then the features will be
+        where ``k`` is the index of the time series and ``i`` ranges
+        from 1 to n.
+        If set to ``False``, then the features will be
 
         .. code-block::python
             np.array([np.sum(X[k] <= q_i)]) / len(X[k])])
@@ -127,7 +129,7 @@ class PPV(FeatureSieve):
     def __init__(self,
                  quantile: float = 0.5,
                  constant: bool = False,
-                 sample_size: float = 0.05,
+                 sample_size: float = 1.0,
                  segments: bool = False,
                  name: str = "Proportion of positive values"):
         super().__init__(name)
@@ -165,9 +167,8 @@ class PPV(FeatureSieve):
         self._segments = segments
 
     def nfeatures(self) -> int:
-        """Returns the number of features this FeatureSieve produces.
+        """Returns the number of features this sieve produces.
         
-        :returns: number of features per time series
         :rtype: int
         """
         if self._segments:
@@ -177,8 +178,7 @@ class PPV(FeatureSieve):
 
     def fit(self, X: np.ndarray):
         """Calculates and remembers the quantile(s) of the input data.
-
-        :param X: (onedimensional) time series dataset
+        
         :type X: np.ndarray
         """
         self._q = [x[0] for x in self._q_c_input]
@@ -199,11 +199,10 @@ class PPV(FeatureSieve):
         """Returns the transformed data. See the class definition for
         detailed information.
         
-        :param X: (onedimensional) time series dataset
         :type X: np.ndarray
         :returns: array of features
         :rtype: np.ndarray
-        :raises: RuntimeError if `self.fit` wasn't called
+        :raises: RuntimeError if ``self.fit`` wasn't called
         """
         if self._q is None:
             raise RuntimeError("Missing call of PPV.fit()")
@@ -238,44 +237,56 @@ class PPV(FeatureSieve):
                  self.name)
         return fs
 
-    def __str__(self) -> str:
-        string = "PPV(" + \
-                f"quantile={[x[0] for x in self._q_c_input]}, " + \
-                f"constant={[x[1] for x in self._q_c_input]}, " + \
-                f"sample_size={self._sample_size}, " + \
-                f"segments={self._segments})"
+    def summary(self) -> str:
+        string = f"PPV [sampling={self._sample_size}"
+        if self._segments:
+            string += ", segments"
+        string += f"] -> {self.nfeatures()}:"
+        for x in self._q_c_input:
+            string += f"\n   > {x[0]} | {x[1]}"
         return string
+
+    def __str__(self) -> str:
+        return "PPV(" + \
+               f"quantile={[x[0] for x in self._q_c_input]}, " + \
+               f"constant={[x[1] for x in self._q_c_input]}, " + \
+               f"sample_size={self._sample_size}, " + \
+               f"segments={self._segments})"
 
 
 class PPVC(PPV):
     """FeatureSieve: Proportion of connected components of positive
     values
     
-    For a calculated quantile with `PPV.fit`, this FeatureSieve
+    For a calculated quantile with ``PPVC.fit``, this FeatureSieve
     calculates the connected components of the proportion of values in
     a time series that is greater than the calculated quantile.
     This is equivalent to the number of consecutive strips of 1's in
-    the array (X>=quantile).
-
-    :param quantile: Quantile `q` or list of quantiles `[q_1, ..., q_n]`
+    the array ``X>=quantile``.
+    
+    :param quantile: Quantile or list of quantiles ``[q_1, ..., q_n]``
         as actual value(s) or probability for quantile calculation
         (e.g. 0.5 for the 0.5-quantile)., defaults to 0.5
-    :type quantile: float, optional
-    :param constant: if `True`, the argument `quantile` is interpreted
-        as the actual value for the quantile, defaults to False
-    :type constant: bool, optional
+    :type quantile: float or list of floats, optional
+    :param constant: If ``True``, the argument ``quantile`` is
+        interpreted as the actual value for the quantile.
+        If ``quantile`` is a list, then ``constant`` can be a list of
+        booleans ``[b_1, ..., b_n]`` where ``b_i`` explains the
+        interpretation of ``q_i`` or a single boolean for each ``q_i``.
+        (value or probability)., defaults to False
+    :type constant: bool or list of bools, optional
     :param sample_size: Sample size to use for quantile calculation.
-        This option can be ignored if `constant` is set to `True`,
+        This option can be ignored if ``constant`` is set to ``True``.,
         defaults to 0.05
-    :type sample_size: float or list of floats, optional
-    :param name: Name for the object, defaults to
-        "Proportion of connected components of positive values"
+    :type sample_size: float, optional
+    :param name: Name for the object.,
+        defaults to "Proportion of positive values"
     :type name: str, optional
     """
     def __init__(self,
                  quantile: float = 0.5,
                  constant: bool = False,
-                 sample_size: float = 0.05,
+                 sample_size: float = 1.0,
                  name:str = "Proportion of connected components of "+
                             "positive values"):
         super().__init__(quantile,
@@ -285,14 +296,13 @@ class PPVC(PPV):
                          name)
 
     def sieve(self, X: np.ndarray) -> np.ndarray:
-        """Returns the number of consecutive strips of 1's in `(X>=q)`
-        if q denotes the quantile calculated with `self.fit`.
+        """Returns the transformed data. See the class definition for
+        detailed information.
         
-        :param X: (onedimensional) time series dataset
         :type X: np.ndarray
-        :returns: array of features (one for each time series)
+        :returns: Array of features.
         :rtype: np.ndarray
-        :raises: RuntimeError if `self.fit` wasn't called
+        :raises: RuntimeError if ``self.fit`` wasn't called
         """
         if self._q is None:
             raise RuntimeError("Missing call of PPVC.fit()")
@@ -313,13 +323,20 @@ class PPVC(PPV):
     def copy(self):
         """Returns a copy of this object.
         
-        :rtype: PPV
+        :rtype: PPVC
         """
         fs = PPVC([x[0] for x in self._q_c_input],
                   [x[1] for x in self._q_c_input],
                   self._sample_size,
                   self.name)
         return fs
+
+    def summary(self) -> str:
+        string = f"PPVC [sampling={self._sample_size}"
+        string += f"] -> {self.nfeatures()}:"
+        for x in self._q_c_input:
+            string += f"\n    > {x[0]} | {x[1]}"
+        return string
 
     def __str__(self) -> str:
         string = "PPVC(" + \
@@ -333,26 +350,24 @@ class PPVC(PPV):
 class MAX(FeatureSieve):
     """FeatureSieve: Maximal value
     
-    This FeatureSieve returns the maximal value for each slice of a time
+    This sieve returns the maximal value for each slice of a time
     series in a given dataset. The slices are determined by the option
-    'cut'.
+    ``cut``.
 
-    :param cut: If cut is an index of the time series array, the time
-        series will be cut at this point before calculating the maximum.
-        If it is a real number in (0,1), the corresponding coquantile
-        will be calculated first and the result will be treated as the
-        cutting index.
-        'cut' can also be a list of floats or integers which will be
-        treated in the same way., defaults to -1
-    :type cut: int or list of integers, optional
-    :param segments: If set to `True`, then the cutting indices will be
-        sorted and treated as interval borders and the maximum in each
-        interval will be sieved. The left interval border is reduced by
-        1 before slicing. This means that an input of `cut=[1,5,10]`
-        results in two features `max(X[k, 0:5])` and `max(X[k, 4:10])`
-        for every time series `X[k]`.
-        If set to `False`, then the left interval border is always 0.
-        This results in one more feature., defaults to `False`
+    :param cut: If ``cut`` is an index of the time series array, the
+        sieve searches for the maximum in ``X[:cut]``. If it is a real
+        number in (0,1), the corresponding 'coquantile' will be
+        calculated first. This option can also be a list of floats or
+        integers which will be treated in the same way., defaults to -1
+    :type cut: int/float or list of integers/floats, optional
+    :param segments: If set to ``True``, then the cutting indices will 
+        be sorted and treated as interval borders and the maximum in
+        each interval will be sieved. The left interval border is
+        reduced by 1 before slicing. This means that an input of
+        ``cut=[1,5,10]`` results in two features ``max(X[0:5])`` and
+        ``max(X[4:10])``.
+        If set to ``False``, then the left interval border is always 0.,
+        defaults to ``False``
     :type segments: bool, optional
     :param name: Name of the object, defaults to "Maximal value"
     :type name: str, optional
@@ -364,14 +379,13 @@ class MAX(FeatureSieve):
         super().__init__(name)
         self._cut = cut if isinstance(cut, list) else [cut]
         if segments and len(self._cut) == 1:
-            raise ValueError("If 'segments' is set to False, then 'cut'"+
+            raise ValueError("If 'segments' is set to True, then 'cut'"+
                              " has to be a list length >= 2.")
         self._segments = segments
 
     def nfeatures(self) -> int:
-        """Returns the number of features this FeatureSieve produces.
+        """Returns the number of features this sieve produces.
         
-        :returns: number of features per time series
         :rtype: int
         """
         if self._segments:
@@ -382,11 +396,9 @@ class MAX(FeatureSieve):
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
-
-        :param X: (onedimensional) time series dataset
+        
         :type X: np.ndarray
-        :returns: feature array (two dimensional if there are more than
-            one features per time series)
+        :returns: Array of features.
         :rtype: np.ndarray
         """
         if self._prereqs is not None:
@@ -432,6 +444,15 @@ class MAX(FeatureSieve):
                 break
         return fs
 
+    def summary(self) -> str:
+        string = f"MAX"
+        if self._segments:
+            string += " [segments]"
+        string += f" -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
+
     def copy(self):
         """Returns a copy of this object.
         
@@ -448,30 +469,28 @@ class MAX(FeatureSieve):
 
 
 class MIN(FeatureSieve):
-    """FeatureSieve: Minimum value
+    """FeatureSieve: Minimal value
     
-    This FeatureSieve returns the maximal value for each slice of a time
+    This sieve returns the minimal value for each slice of a time
     series in a given dataset. The slices are determined by the option
-    'cut'.
+    ``cut``.
 
-    :param cut: If cut is an index of the time series array, the time
-        series will be cut at this point before calculating the minimum.
-        If it is a real number in (0,1), the corresponding coquantile
-        will be calculated first and the result will be treated as the
-        cutting index.
-        'cut' can also be a list of floats or integers which will be
-        treated in the same way., defaults to -1
-    :type cut: int or list of integers, optional
-    :param segments: If set to `True`, then the cutting indices will be
-        sorted and treated as interval borders and the minimum in each
-        interval will be sieved. The left interval border is reduced by
-        1 before slicing. This means that an input of `cut=[1,5,10]`
-        results in two features `min(X[k, 0:5])` and `min(X[k, 4:10])`
-        for every time series `X[k]`.
-        If set to `False`, then the left interval border is always 0.
-        This results in one more feature., defaults to `False`
+    :param cut: If ``cut`` is an index of the time series array, the
+        sieve searches for the minimum in ``X[:cut]``. If it is a real
+        number in (0,1), the corresponding 'coquantile' will be
+        calculated first. This option can also be a list of floats or
+        integers which will be treated in the same way., defaults to -1
+    :type cut: int/float or list of integers/floats, optional
+    :param segments: If set to ``True``, then the cutting indices will 
+        be sorted and treated as interval borders and the minimum in
+        each interval will be sieved. The left interval border is
+        reduced by 1 before slicing. This means that an input of
+        ``cut=[1,5,10]`` results in two features ``min(X[0:5])`` and
+        ``min(X[5:10])``.
+        If set to ``False``, then the left interval border is always 0.,
+        defaults to ``False``
     :type segments: bool, optional
-    :param name: Name of the object, defaults to "Minimum value"
+    :param name: Name of the object, defaults to "Minimal value"
     :type name: str, optional
     """
     def __init__(self,
@@ -481,14 +500,13 @@ class MIN(FeatureSieve):
         super().__init__(name)
         self._cut = cut if isinstance(cut, list) else [cut]
         if segments and len(self._cut) == 1:
-            raise ValueError("If 'segments' is set to False, then 'cut'"+
+            raise ValueError("If 'segments' is set to True, then 'cut'"+
                              " has to be a list length >= 2.")
         self._segments = segments
 
     def nfeatures(self) -> int:
         """Returns the number of features this FeatureSieve produces.
         
-        :returns: number of features per time series
         :rtype: int
         """
         if self._segments:
@@ -499,11 +517,9 @@ class MIN(FeatureSieve):
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
-
-        :param X: (onedimensional) time series dataset
+        
         :type X: np.ndarray
-        :returns: feature array (two dimensional if there are more than
-            one features per time series)
+        :returns: Array of features.
         :rtype: np.ndarray
         """
         if self._prereqs is not None:
@@ -549,6 +565,15 @@ class MIN(FeatureSieve):
                 break
         return fs
 
+    def summary(self) -> str:
+        string = f"MIN"
+        if self._segments:
+            string += " [segments]"
+        string += f" -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
+
     def copy(self):
         """Returns a copy of this object.
         
@@ -569,16 +594,13 @@ class END(FeatureSieve):
     
     This FeatureSieve returns the last value of each time series in a
     given dataset.
-
-    :param cut: If cut is an index of the time series array, this sieve
-        will extract the value of the time series at this position. If
-        it is a real number in (0,1), the corresponding coquantile will
-        be calculated first and the result will be treated as the value
-        index.
-        It is also possible to pass a list of integers to this argument.
-        This will return the values at these positions(-1).,
-        defaults to -1
-    :type cut: int, optional
+    
+    :param cut: If ``cut`` is an index of the time series array, the
+        sieve returns ``X[cut-1]``. If it is a real number in (0,1), the
+        corresponding 'coquantile' will be calculated first. This option
+        can also be a list of floats or integers which will be treated
+        in the same way., defaults to -1
+    :type cut: int/float or list of integers/floats, optional
     :param name: Name of the object, defaults to "Last value"
     :type name: str, optional
     """
@@ -597,12 +619,11 @@ class END(FeatureSieve):
         return len(self._cut)
 
     def sieve(self, X: np.ndarray):
-        """Returns `np.array([X[i, c] for i in range(len(X))])`, where
-        `c` is based on the specified `cut`.
-
-        :param X: (onedimensional) time series dataset
+        """Returns the transformed data. See the class definition for
+        detailed information.
+        
         :type X: np.ndarray
-        :returns: feature array (one feature for each time series)
+        :returns: Array of features.
         :rtype: np.ndarray
         """
         if self._prereqs is not None:
@@ -639,6 +660,12 @@ class END(FeatureSieve):
                 fs.word = SimpleWord("[11]")
                 break
         return fs
+
+    def summary(self) -> str:
+        string = f"END -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
 
     def copy(self):
         """Returns a copy of this object.

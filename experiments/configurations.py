@@ -8,21 +8,38 @@ series data?
 import numpy as np
 
 from context import fruits
-from fruits.core.generation import simplewords_replace_letters
-from complex_words import (
-    sigmoid,
-    leaky_relu,
-    id_,
-    tanh,
-    simplewords_replace_letters_randomly,
-    simplewords_replace_letters_sequentially,
-)
+from fruits.core.generation import replace_letters
 
 np.random.seed(62)
+
+# word definitions
 
 simple_words_degree_2 = fruits.core.generation.simplewords_by_degree(2, 2, 1)
 simple_words_degree_3 = fruits.core.generation.simplewords_by_degree(3, 3, 1)
 simple_words_long = fruits.core.generation.simplewords_by_weight(4, 1)
+
+# complex letter definitions
+
+@fruits.core.complex_letter(name="SIGMOID")
+def sigmoid(X: np.ndarray, i: int):
+    return 1 / (1 + np.exp(-0.001*X[i, :]))
+
+@fruits.core.complex_letter(name="leakyRELU")
+def leaky_relu(X: np.ndarray, i: int):
+    out = np.zeros(X.shape[1], dtype=np.float64)
+    out += X[i, :] * (X[i, :]>0)
+    out += (X[i, :]*0.005) * (X[i, :]<=0)
+    return out
+
+@fruits.core.complex_letter(name="TANH")
+def tanh(X: np.ndarray, i: int):
+    pos = np.exp(0.001*X[i, :])
+    neg = np.exp(-0.001*X[i, :])
+    return (pos-neg) / (pos+neg)
+
+@fruits.core.complex_letter(name="ID")
+def id_(X: np.ndarray, i: int):
+    return X[i, :]
 
 # Configurations
 
@@ -47,30 +64,28 @@ apple03.add(fruits.preparation.INC)
 
 apple04 = apple01.deepcopy()
 apple04.name = "Apple [ID + INC]"
-apple04.add_branch(apple03.current_branch().deepcopy())
+apple04.fork(apple03.branch().deepcopy())
 
 # Banana
 # Q: MAX/MIN with 'segments' True or False
 # A: Mean accuracy with segments is better but the more important,
 #    bigger datasets classify better with 'segments' disabled.
-#    BUT: segments=True also produces less features
-#    (1 per sieve and iterator)
 
 banana01 = fruits.Fruit("Banana")
 banana01.add(simple_words_degree_2)
-banana01.add(fruits.sieving.MAX(cut=[1,0.2,0.4,0.6,0.8,-1], segments=False))
-banana01.add(fruits.sieving.MIN(cut=[1,0.2,0.4,0.6,0.8,-1], segments=False))
-banana01.start_new_branch()
+banana01.add(fruits.sieving.MAX(cut=[0.2,0.4,0.6,0.8,-1], segments=False))
+banana01.add(fruits.sieving.MIN(cut=[0.2,0.4,0.6,0.8,-1], segments=False))
+banana01.fork()
 banana01.add(fruits.preparation.INC)
 banana01.add(simple_words_degree_2)
-banana01.add(fruits.sieving.MAX(cut=[1,0.2,0.4,0.6,0.8,-1], segments=False))
-banana01.add(fruits.sieving.MIN(cut=[1,0.2,0.4,0.6,0.8,-1], segments=False))
+banana01.add(fruits.sieving.MAX(cut=[0.2,0.4,0.6,0.8,-1], segments=False))
+banana01.add(fruits.sieving.MIN(cut=[0.2,0.4,0.6,0.8,-1], segments=False))
 
 banana02 = fruits.Fruit("Banana [Segments]")
 banana02.add(simple_words_degree_2)
 banana02.add(fruits.sieving.MAX(cut=[1,0.2,0.4,0.6,0.8,-1], segments=True))
 banana02.add(fruits.sieving.MIN(cut=[1,0.2,0.4,0.6,0.8,-1], segments=True))
-banana02.start_new_branch()
+banana02.fork()
 banana02.add(fruits.preparation.INC)
 banana02.add(simple_words_degree_2)
 banana02.add(fruits.sieving.MAX(cut=[1,0.2,0.4,0.6,0.8,-1], segments=True))
@@ -86,7 +101,7 @@ kiwi01.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
                                constant=False,
                                sample_size=1,
                                segments=False))
-kiwi01.start_new_branch()
+kiwi01.fork()
 kiwi01.add(fruits.preparation.INC)
 kiwi01.add(simple_words_degree_2)
 kiwi01.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
@@ -100,7 +115,7 @@ kiwi02.add(fruits.sieving.PPV([0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
                                constant=False,
                                sample_size=1,
                                segments=True))
-kiwi02.start_new_branch()
+kiwi02.fork()
 kiwi02.add(fruits.preparation.INC)
 kiwi02.add(simple_words_degree_2)
 kiwi02.add(fruits.sieving.PPV([0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
@@ -108,103 +123,21 @@ kiwi02.add(fruits.sieving.PPV([0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
                                sample_size=1,
                                segments=True))
 
-# Orange
-# Q: Which function to choose for complex words, where each letter is
-#    the same word?
-# A: The pure SimpleWords seem to work best.
-
-orange01 = fruits.Fruit("Orange [id]")
-orange01.add(fruits.preparation.INC)
-orange01.add(simple_words_degree_2)
-orange01.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                                 constant=False,
-                                 sample_size=1,
-                                 segments=False))
-orange01.add(fruits.sieving.MAX)
-orange01.add(fruits.sieving.MIN)
-orange01.add(fruits.sieving.END)
-orange01.start_new_branch()
-orange01.add(simple_words_degree_2)
-orange01.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                                 constant=False,
-                                 sample_size=1,
-                                 segments=False))
-orange01.add(fruits.sieving.MAX)
-orange01.add(fruits.sieving.MIN)
-orange01.add(fruits.sieving.END)
-
-orange02 = fruits.Fruit("Orange [leaky_relu]")
-orange02.add(fruits.preparation.INC)
-orange02.add(simplewords_replace_letters(simple_words_degree_2, leaky_relu))
-orange02.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                                 constant=False,
-                                 sample_size=1,
-                                 segments=False))
-orange02.add(fruits.sieving.MAX)
-orange02.add(fruits.sieving.MIN)
-orange02.add(fruits.sieving.END)
-orange02.start_new_branch()
-orange02.add(simplewords_replace_letters(simple_words_degree_2, leaky_relu))
-orange02.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                                 constant=False,
-                                 sample_size=1,
-                                 segments=False))
-orange02.add(fruits.sieving.MAX)
-orange02.add(fruits.sieving.MIN)
-orange02.add(fruits.sieving.END)
-
-orange03 = fruits.Fruit("Orange [tanh]")
-orange03.add(fruits.preparation.INC)
-orange03.add(simplewords_replace_letters(simple_words_degree_2, tanh))
-orange03.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                                 constant=False,
-                                 sample_size=1,
-                                 segments=False))
-orange03.add(fruits.sieving.MAX)
-orange03.add(fruits.sieving.MIN)
-orange03.add(fruits.sieving.END)
-orange03.start_new_branch()
-orange03.add(simplewords_replace_letters(simple_words_degree_2, tanh))
-orange03.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                                 constant=False,
-                                 sample_size=1,
-                                 segments=False))
-orange03.add(fruits.sieving.MAX)
-orange03.add(fruits.sieving.MIN)
-orange03.add(fruits.sieving.END)
-
-orange04 = fruits.Fruit("Orange [sigmoid]")
-orange04.add(fruits.preparation.INC)
-orange04.add(simplewords_replace_letters(simple_words_degree_2, sigmoid))
-orange04.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                                 constant=False,
-                                 sample_size=1,
-                                 segments=False))
-orange04.add(fruits.sieving.MAX)
-orange04.add(fruits.sieving.MIN)
-orange04.add(fruits.sieving.END)
-orange04.start_new_branch()
-orange04.add(simplewords_replace_letters(simple_words_degree_2, sigmoid))
-orange04.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                                 constant=False,
-                                 sample_size=1,
-                                 segments=False))
-orange04.add(fruits.sieving.MAX)
-orange04.add(fruits.sieving.MIN)
-orange04.add(fruits.sieving.END)
-
 # Peach
-# Q: Are 'rotated' complex words useful? Which functions should we use?
-# A: Rotated complex words are useful! Especially if they are created
-#    on longer SimpleWords.
+# Q: Are complex words with sequentially replaced letters useful?
+#    Which letters should we use?
+# A: Longer words lead to better results.
+
+def letter_gen(letters: list):
+    i = 0
+    while i < 1000:
+        yield letters[i % len(letters)]
+        i += 1
 
 peach01 = fruits.Fruit("Peach [id, tanh, sigmoid, leaky_relu]")
 peach01.add(fruits.preparation.INC)
-peach01.add(simplewords_replace_letters_sequentially(simple_words_long,
-                                           [id_,
-                                            tanh,
-                                            sigmoid,
-                                            leaky_relu]))
+peach01.add(replace_letters(simple_words_long,
+                            letter_gen([id_, tanh, sigmoid, leaky_relu])))
 peach01.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
                                  constant=False,
                                  sample_size=1,
@@ -212,12 +145,9 @@ peach01.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
 peach01.add(fruits.sieving.MAX)
 peach01.add(fruits.sieving.MIN)
 peach01.add(fruits.sieving.END)
-peach01.start_new_branch()
-peach01.add(simplewords_replace_letters_sequentially(simple_words_long,
-                                           [id_,
-                                            tanh,
-                                            sigmoid,
-                                            leaky_relu]))
+peach01.fork()
+peach01.add(replace_letters(simple_words_long,
+                            letter_gen([id_, tanh, sigmoid, leaky_relu])))
 peach01.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
                                  constant=False,
                                  sample_size=1,
@@ -228,10 +158,8 @@ peach01.add(fruits.sieving.END)
 
 peach02 = fruits.Fruit("Peach [tanh, sigmoid, leaky_relu]")
 peach02.add(fruits.preparation.INC)
-peach02.add(simplewords_replace_letters_sequentially(simple_words_long,
-                                           [tanh,
-                                            sigmoid,
-                                            leaky_relu]))
+peach02.add(replace_letters(simple_words_long,
+                            letter_gen([tanh, sigmoid, leaky_relu])))
 peach02.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
                                  constant=False,
                                  sample_size=1,
@@ -239,11 +167,9 @@ peach02.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
 peach02.add(fruits.sieving.MAX)
 peach02.add(fruits.sieving.MIN)
 peach02.add(fruits.sieving.END)
-peach02.start_new_branch()
-peach02.add(simplewords_replace_letters_sequentially(simple_words_long,
-                                           [tanh,
-                                            sigmoid,
-                                            leaky_relu]))
+peach02.fork()
+peach02.add(replace_letters(simple_words_long,
+                            letter_gen([tanh, sigmoid, leaky_relu])))
 peach02.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
                                  constant=False,
                                  sample_size=1,
@@ -254,9 +180,8 @@ peach02.add(fruits.sieving.END)
 
 peach03 = fruits.Fruit("Peach [id, leaky_relu]")
 peach03.add(fruits.preparation.INC)
-peach03.add(simplewords_replace_letters_sequentially(simple_words_long,
-                                           [id_,
-                                            leaky_relu]))
+peach03.add(replace_letters(simple_words_long,
+                            letter_gen([id_, leaky_relu])))
 peach03.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
                                  constant=False,
                                  sample_size=1,
@@ -264,10 +189,9 @@ peach03.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
 peach03.add(fruits.sieving.MAX)
 peach03.add(fruits.sieving.MIN)
 peach03.add(fruits.sieving.END)
-peach03.start_new_branch()
-peach03.add(simplewords_replace_letters_sequentially(simple_words_long,
-                                           [id_,
-                                            leaky_relu]))
+peach03.fork()
+peach03.add(replace_letters(simple_words_long,
+                            letter_gen([id_, leaky_relu])))
 peach03.add(fruits.sieving.PPV([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
                                  constant=False,
                                  sample_size=1,
@@ -276,10 +200,58 @@ peach03.add(fruits.sieving.MAX)
 peach03.add(fruits.sieving.MIN)
 peach03.add(fruits.sieving.END)
 
+words = simple_words_degree_2
+papaya = fruits.Fruit("Papaya")
+
+papaya.add(words)
+papaya.add(fruits.preparation.INC)
+papaya.add(fruits.sieving.END())
+papaya.add(fruits.sieving.MAX())
+papaya.add(fruits.sieving.MIN())
+
+papaya.fork()
+papaya.add(words)
+papaya.add(fruits.sieving.END())
+papaya.add(fruits.sieving.MAX())
+papaya.add(fruits.sieving.MIN())
+
+for n_cuts in [2,4]:#,8,16]:
+    for i in range(0,n_cuts):
+
+        #papaya.fork()
+        #papaya.add(words)
+        #papaya.add(fruits.preparation.INC)
+        #papaya.add(fruits.preparation.VERTICAL(start=i * 1./n_cuts,end=(i+1) * 1./n_cuts,undo_inc=True))
+        #papaya.add(fruits.sieving.END())
+        #papaya.add(fruits.sieving.MAX())
+        #papaya.add(fruits.sieving.MIN())
+
+        #papaya.fork()
+        #papaya.add(words)
+        #papaya.add(fruits.preparation.VERTICAL(start=i * 1./n_cuts,end=(i+1) * 1./n_cuts,undo_inc=False))
+        #papaya.add(fruits.sieving.END())
+        #papaya.add(fruits.sieving.MAX())
+        #papaya.add(fruits.sieving.MIN())
+
+        papaya.fork()
+        papaya.add(words)
+        papaya.add(fruits.preparation.INC)
+        papaya.add(fruits.preparation.WINDOW(start=i * 1./n_cuts - 1./(2*n_cuts),end=(i+1) * 1./n_cuts + 1./(2*n_cuts), fn='abs(.)'))
+        papaya.add(fruits.sieving.END())
+        papaya.add(fruits.sieving.MAX())
+        papaya.add(fruits.sieving.MIN())
+
+        papaya.fork()
+        papaya.add(words)
+        papaya.add(fruits.preparation.WINDOW(start=i * 1./n_cuts - 1./(2*n_cuts),end=(i+1) * 1./n_cuts + 1./(2*n_cuts), calculate_increments=True, fn='abs(.)'))
+        papaya.add(fruits.sieving.END())
+        papaya.add(fruits.sieving.MAX())
+        papaya.add(fruits.sieving.MIN())
+
 CONFIGURATIONS = [
-    # apple01, apple02, apple03, apple04,
-    # kiwi01, kiwi02,
-    # banana01, banana02,
-    # orange01, orange02, orange03, orange04,
+    apple01, apple02, apple03, apple04,
+    kiwi01, kiwi02,
+    banana01, banana02,
     peach01, peach02, peach03,
+    papaya
 ]

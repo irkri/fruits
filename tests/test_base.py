@@ -14,7 +14,7 @@ def test_n_features():
 
     featex.add(fruits.core.generation.simplewords_by_degree(3, 5, 1))
 
-    assert len(featex.get_words()) == 363
+    assert len(featex.branch().get_words()) == 363
 
     featex.add(fruits.sieving.PPV(quantile=0, constant=True))
     featex.add(fruits.sieving.PPV(quantile=0.2, constant=False, 
@@ -44,7 +44,7 @@ def test_branches():
 
     featex.add(w1, w2, w3)
     featex.add(fruits.sieving.MAX)
-    featex.start_new_branch()
+    featex.fork()
     featex.add(w4, w5, w6)
     featex.add(fruits.sieving.MIN)
 

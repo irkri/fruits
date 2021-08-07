@@ -14,9 +14,29 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from sklearn.decomposition import PCA
-from sklearn.linear_model import RidgeClassifierCV
+from sklearn.linear_model import RidgeClassifierCV, SGDClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
 
 from context import fruits
+
+_CLASSIFIERS = [
+    (RidgeClassifierCV, {"alphas": np.logspace(-3, 3, 10),
+                         "normalize": True}),
+    (SVC, {"kernel": "poly",
+           "gamma": "auto",
+           "degree": 1},
+        "degree",
+        list(range(1, 6))),
+    (KNeighborsClassifier, {"n_neighbors": 1},
+        "n_neighbors",
+        list(range(1, 21))),
+    (SGDClassifier, {"penalty": "l1",
+                     "alpha": 0.0001,
+                     "max_iter": 10_000},
+        "max_iter",
+        [100, 1000, 10_000, 50_000, 100_000]),
+]
 
 def msplot(X: np.ndarray,
            y: np.ndarray,
@@ -73,32 +93,6 @@ def msplot(X: np.ndarray,
                         below, above, color=color, alpha=.1)
     ax.legend(loc="upper right")
     return ax
-
-def load_dataset(path: str) -> tuple:
-    """Returns a time series dataset that is formatted as a .txt file
-    and readable with numpy.
-    
-    :param path: Path to the dataset. The path has to point to a
-        folder 'name' with two files:
-        'name_TEST.txt' and 'name_TRAIN.txt' where 'name' is the name of
-        the dataset.
-    :type path: str
-    :returns: Tuple (X_train, y_train, X_test, y_test) where X_train
-        and X_test are 3-dimensional numpy arrays
-    :rtype: tuple
-    """
-    dataset = path.split("/")[-1]
-    train_raw = np.loadtxt(f"{path}/{dataset}_TRAIN.txt")
-    test_raw = np.loadtxt(f"{path}/{dataset}_TEST.txt")
-    X_train = train_raw[:, 1:]
-    y_train = train_raw[:, 0].astype(np.int32)
-    X_test = test_raw[:, 1:]
-    y_test =  test_raw[:, 0].astype(np.int32)
-
-    X_train = np.expand_dims(X_train, axis=1)
-    X_test = np.expand_dims(X_test, axis=1)
-
-    return X_train, y_train, X_test, y_test
 
 class TransformationCallback(fruits.callback.AbstractCallback):
     def __init__(self, branch: int = 0):
@@ -225,7 +219,8 @@ class Fruitalyser:
     def test_classifier(self,
                         classifier,
                         variable: str = None,
-                        test_cases: list = None):
+                        test_cases: list = None,
+                        **kwargs):
         """Tests a classifier for its accuracy on the features of the
         input data. The classifier is initialized with different
         configurations and a 2D-plot is created for visualisation of the
@@ -242,6 +237,8 @@ class Fruitalyser:
             with all of these values and the results (accuracy on test
             set) are plottet.
         :type test_cases: list
+        :param kwargs: Keyword arguments passed to the classifier.
+        :type kwargs: unfold dict
         :returns: Tuple (figure, axis) corresponding to the return value
             of ``matplotlib.pyplot.subplots()`` holding the inserted
             plot(s).
@@ -253,6 +250,7 @@ class Fruitalyser:
         accuracies = np.zeros(len(test_cases))
         for i, test_case in enumerate(test_cases):
             t = {variable: test_case}
+            t = dict(kwargs, **t)
             clssfr = classifier(**t)
             clssfr.fit(self.X_train_feat, self.y_train)
             accuracies[i] = clssfr.score(self.X_test_feat, self.y_test)
@@ -269,6 +267,26 @@ class Fruitalyser:
         ax.set_ylabel("Accuracy")
         ax.legend(loc="upper right")
         return fig, ax
+
+    def classifier_battery(self):
+        """Tests a bunch of classifiers for the already calculated
+        features. Returns a list of (figure, axis) tuples from
+        ``self.test_classifier()``.
+        This method can only be used if ``self.classify()`` was called
+        before.
+        """
+        figax = []
+        for clssfr in _CLASSIFIERS:
+            classifier = clssfr[0](**(clssfr[1]))
+            classifier.fit(self.X_train_feat, self.y_train)
+            score = classifier.score(self.X_test_feat, self.y_test)
+            print(f"Classifier: {str(classifier)}\n\t-> Accuracy: {score}")
+            if len(clssfr) > 2:
+                figax.append(self.test_classifier(clssfr[0],
+                                                  variable=clssfr[2],
+                                                  test_cases=clssfr[3],
+                                                  **(clssfr[1])))
+        return figax
 
     def print_fruit(self):
         """Prints a summary of the fruits.Fruit object this Fruitalyser

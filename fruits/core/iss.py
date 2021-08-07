@@ -4,13 +4,12 @@ import numpy as np
 from fruits.core.wording import AbstractWord, SimpleWord
 
 def ISS(Z: np.ndarray, words: list) -> np.ndarray:
-    """Takes in a number of time series and a list of AbstractWord
-    objects and calculated the iterated sums for each time series in
-    ``Z``.
+    """Takes in a number of time series and a list of words and
+    calculates the iterated sums for each time series in ``Z``.
 
-    For each given time series ``Z``, this function returns the
-    iteratively calulcated cummulative sums of the input data, which
-    will be stepwise transformed using the specified AbstractWord[s].
+    This function returns the iteratively calulcated cummulative sums of
+    the input data, which will be stepwise transformed using the
+    specified words.
 
     :param Z: Three dimensional numpy array containing a
         multidimensional time series dataset.

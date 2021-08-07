@@ -32,33 +32,33 @@ def test_ppv():
         fruits.sieving.PPVC(quantile=[0.5,2], constant=False)
 
     ppv_group_1 = fruits.sieving.PPV(quantile=[0.5,0.1,0.7],
-                                      constant=False,
-                                      sample_size=1,
-                                      segments=False)
+                                     constant=False,
+                                     sample_size=1,
+                                     segments=False)
 
     np.testing.assert_allclose(np.array([[1,1,3/5],[0,4/5,0]]),
                                ppv_group_1.fit_sieve(X_1[1]))
 
     ppv_group_2 = fruits.sieving.PPV(quantile=[0.5,0.1,0.7],
-                                      constant=False,
-                                      sample_size=1,
-                                      segments=True)
+                                     constant=False,
+                                     sample_size=1,
+                                     segments=True)
 
     np.testing.assert_allclose(np.array([[0,2/5],[4/5,0]]),
                                ppv_group_2.fit_sieve(X_1[1]))
 
     ppv_group_3 = fruits.sieving.PPV(quantile=[-5,0,2],
-                                      constant=True,
-                                      sample_size=1,
-                                      segments=False)
+                                     constant=True,
+                                     sample_size=1,
+                                     segments=False)
 
     np.testing.assert_allclose(np.array([[1,1,4/5],[4/5,0,0]]),
                                ppv_group_3.fit_sieve(X_1[1]))
 
     ppv_group_4 = fruits.sieving.PPV(quantile=[0,-5,2],
-                                      constant=True,
-                                      sample_size=1,
-                                      segments=True)
+                                     constant=True,
+                                     sample_size=1,
+                                     segments=True)
 
     np.testing.assert_allclose(np.array([[0,1/5],[4/5,0]]),
                                ppv_group_4.fit_sieve(X_1[1]))
@@ -80,13 +80,13 @@ def test_max():
     np.testing.assert_allclose(np.array([0.8,2]), max_cut_2.fit_sieve(X_1[0]))
 
     max_cut_group_1 = fruits.sieving.MAX(cut=[-1, 3, 1],
-                                          segments=False)
+                                         segments=False)
 
     np.testing.assert_allclose(np.array([[5,0.8,-4],[2,2,2]]),
                                max_cut_group_1.fit_sieve(X_1[0]))
 
     max_cut_group_2 = fruits.sieving.MAX(cut=[-1, 0.2, 0.7, 0.5],
-                                          segments=True)
+                                         segments=True)
 
     np.testing.assert_allclose(np.array([[0.8,5,5],[0,0,0]]),
                                max_cut_group_2.fit_sieve(X_1[0]))
@@ -108,13 +108,13 @@ def test_min():
     np.testing.assert_allclose(np.array([5,-5]), min_cut_2.fit_sieve(X_1[1]))
 
     min_cut_group_1 = fruits.sieving.MIN(cut=[-1, 3, 1],
-                                          segments=False)
+                                         segments=False)
 
     np.testing.assert_allclose(np.array([[0,2,5],[-8,-5,-5]]),
                                min_cut_group_1.fit_sieve(X_1[1]))
 
     min_cut_group_2 = fruits.sieving.MIN(cut=[-1, 0.2, 0.7, 0.5],
-                                          segments=True)
+                                         segments=True)
 
     np.testing.assert_allclose(np.array([[-4,0,-3],[0,0,-7]]),
                                min_cut_group_2.fit_sieve(X_1[0]))
@@ -142,3 +142,18 @@ def test_end():
 
     np.testing.assert_allclose(end_cut_group.fit_sieve(X_1[0]),
                                end_cut_group_copy.fit_sieve(X_1[0]))
+
+def test_fruitstrings():
+    sieve01 = fruits.sieving.MAX(cut=[1, 0.2, 0.4, 0.6, 0.8, -1],
+                                 segments=False)
+    sieve02 = fruits.sieving.MIN(cut=[1, 0.2, 0.4, 0.6, 0.8, -1],
+                                 segments=True)
+    sieve03 = fruits.sieving.PPV([0.1, 0.5], constant=False)
+    sieve04 = fruits.sieving.PPV([0.1, 0.5], constant=True)
+    sieve05 = fruits.sieving.MAX(cut=[5, 6, 20])
+
+    assert sieve01._prerequisites() == sieve02._prerequisites()
+    assert sieve03._prerequisites() == sieve04._prerequisites()
+    assert sieve04._prerequisites() == sieve05._prerequisites()
+    assert sieve01._prerequisites() != sieve04._prerequisites()
+    assert sieve02._prerequisites() != sieve03._prerequisites()
