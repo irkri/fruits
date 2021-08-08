@@ -73,8 +73,7 @@ def ISS(Z: np.ndarray, words: list) -> np.ndarray:
     elif complex_words:
         return ISS_slow
 
-def _slow_ISS(Z: np.ndarray,
-              words: list) -> np.ndarray:
+def _slow_ISS(Z: np.ndarray, words: list) -> np.ndarray:
     # calculates the iterated sums for Z and a given list of
     # general ComplexWords
     result = np.zeros((Z.shape[0], len(words), Z.shape[2]))
