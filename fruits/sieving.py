@@ -122,17 +122,13 @@ class PPV(FeatureSieve):
 
         with the same index rules., defaults to False
     :type segments: bool, optional
-    :param name: Name for the object.,
-        defaults to "Proportion of positive values"
-    :type name: str, optional
     """
     def __init__(self,
                  quantile: float = 0.5,
                  constant: bool = False,
                  sample_size: float = 1.0,
-                 segments: bool = False,
-                 name: str = "Proportion of positive values"):
-        super().__init__(name)
+                 segments: bool = False):
+        super().__init__("Proportion of positive values")
         if isinstance(quantile, list):
             if not isinstance(constant, list):
                 constant = [constant for i in range(len(quantile))]
@@ -233,8 +229,7 @@ class PPV(FeatureSieve):
         fs = PPV([x[0] for x in self._q_c_input],
                  [x[1] for x in self._q_c_input],
                  self._sample_size,
-                 self._segments,
-                 self.name)
+                 self._segments)
         return fs
 
     def summary(self) -> str:
@@ -279,21 +274,16 @@ class PPVC(PPV):
         This option can be ignored if ``constant`` is set to ``True``.,
         defaults to 0.05
     :type sample_size: float, optional
-    :param name: Name for the object.,
-        defaults to "Proportion of positive values"
-    :type name: str, optional
     """
     def __init__(self,
                  quantile: float = 0.5,
                  constant: bool = False,
-                 sample_size: float = 1.0,
-                 name:str = "Proportion of connected components of "+
-                            "positive values"):
+                 sample_size: float = 1.0):
         super().__init__(quantile,
                          constant,
                          sample_size,
-                         False,
-                         name)
+                         False)
+        self.name = "Proportion of connected components of positive values"
 
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
@@ -327,8 +317,7 @@ class PPVC(PPV):
         """
         fs = PPVC([x[0] for x in self._q_c_input],
                   [x[1] for x in self._q_c_input],
-                  self._sample_size,
-                  self.name)
+                  self._sample_size)
         return fs
 
     def summary(self) -> str:
@@ -369,14 +358,11 @@ class MAX(FeatureSieve):
         If set to ``False``, then the left interval border is always 0.,
         defaults to ``False``
     :type segments: bool, optional
-    :param name: Name of the object, defaults to "Maximal value"
-    :type name: str, optional
     """
     def __init__(self,
                  cut: int = -1,
-                 segments: bool = False,
-                 name: str = "Maximal value"):
-        super().__init__(name)
+                 segments: bool = False):
+        super().__init__("Maximal value")
         self._cut = cut if isinstance(cut, list) else [cut]
         if segments and len(self._cut) == 1:
             raise ValueError("If 'segments' is set to True, then 'cut'"+
@@ -458,7 +444,7 @@ class MAX(FeatureSieve):
         
         :rtype: MAX
         """
-        fs = MAX(self._cut, self._segments, self.name)
+        fs = MAX(self._cut, self._segments)
         return fs
 
     def __str__(self) -> str:
@@ -490,14 +476,11 @@ class MIN(FeatureSieve):
         If set to ``False``, then the left interval border is always 0.,
         defaults to ``False``
     :type segments: bool, optional
-    :param name: Name of the object, defaults to "Minimal value"
-    :type name: str, optional
     """
     def __init__(self,
                  cut: int = -1,
-                 segments: bool = False,
-                 name: str = "Minimum value"):
-        super().__init__(name)
+                 segments: bool = False):
+        super().__init__("Minimum value")
         self._cut = cut if isinstance(cut, list) else [cut]
         if segments and len(self._cut) == 1:
             raise ValueError("If 'segments' is set to True, then 'cut'"+
@@ -579,7 +562,7 @@ class MIN(FeatureSieve):
         
         :rtype: MIN
         """
-        fs = MIN(self._cut, self._segments, self.name)
+        fs = MIN(self._cut, self._segments)
         return fs
 
     def __str__(self) -> str:
@@ -601,13 +584,10 @@ class END(FeatureSieve):
         can also be a list of floats or integers which will be treated
         in the same way., defaults to -1
     :type cut: int/float or list of integers/floats, optional
-    :param name: Name of the object, defaults to "Last value"
-    :type name: str, optional
     """
     def __init__(self,
-                 cut: int = -1,
-                 name: str = "Last value"):
-        super().__init__(name)
+                 cut: int = -1):
+        super().__init__("Last value")
         self._cut = cut if isinstance(cut, list) else [cut]
 
     def nfeatures(self) -> int:
@@ -672,7 +652,7 @@ class END(FeatureSieve):
         
         :rtype: END
         """
-        fs = END(self._cut, self.name)
+        fs = END(self._cut)
         return fs
 
     def __str__(self) -> str:
