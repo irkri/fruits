@@ -81,29 +81,42 @@ def _slow_ISS(Z: np.ndarray,
     for i in range(Z.shape[0]):
         for j in range(len(words)):
             result[i, j, :] = np.ones(Z.shape[2], dtype=np.float64)
+            r = len(words[j])
             for k, el in enumerate(words[j]):
                 C = np.ones(Z.shape[2], dtype=np.float64)
                 for l in range(len(el)):
                     C = C * el[l](Z[i, :, :])
-                result[i, j, :] = np.cumsum(result[i, j, :] * C)
-
+                # without zero'th index:       ...              r-k
+                result[i, j, :] = _fast_CS(result[i, j, :] * C, r-(k+1))
     return result
 
-@numba.njit(parallel=True, fastmath=True, cache=True)
-def _fast_ISS(Z: np.ndarray, 
-              words: np.ndarray) -> np.ndarray:
+@numba.njit(parallel=True, cache=True)
+def _fast_ISS(Z: np.ndarray, words: np.ndarray) -> np.ndarray:
     # accelerated function for calculation of
     # fruits.core.ISS(X, [SimpleWord(...)])
     result = np.zeros((Z.shape[0], len(words), Z.shape[2]))
     for i in numba.prange(Z.shape[0]):
         for j in numba.prange(len(words)):
-            result[i, j, :] = np.ones(Z.shape[2], dtype=np.float64)
-            for k in range(len(words[j])):
-                if not np.any(words[j][k]):
-                    continue
-                C = np.ones(Z.shape[2], dtype=np.float64)
-                for l in range(len(words[j][k])):
-                    if words[j][k][l] != 0:
-                        C = C * Z[i, l, :]**words[j][k][l]
-                result[i, j, :] = np.cumsum(result[i, j, :] * C)
+            result[i, j, :] = _fast_single_ISS(Z[i, :, :], words[j])
     return result
+
+@numba.njit(fastmath=True, cache=True)
+def _fast_single_ISS(Z: np.ndarray, word: np.ndarray) -> np.ndarray:
+    result = np.ones(Z.shape[1], dtype=np.float64)
+    r = len(word)
+    for k in range(r):
+        if not np.any(word[k]):
+            continue
+        C = np.ones(Z.shape[1], dtype=np.float64)
+        for l in range(len(word[k])):
+            if word[k][l] != 0:
+                C = C * Z[l, :]**word[k][l]
+        # without zero'th index:      r-k)
+        result = _fast_CS(result * C, r-(k+1))
+    return result
+
+@numba.njit(cache=True)
+def _fast_CS(Z: np.ndarray, r: int):
+    Z = np.roll(np.cumsum(Z), r)
+    Z[:r] = 0
+    return Z
