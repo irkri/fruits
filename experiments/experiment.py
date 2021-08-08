@@ -211,6 +211,12 @@ class FRUITSExperiment:
                                                      tablefmt="grid",
                                                      numalign="center",
                                                      stralign="center"))
+                file.write("\n\nAverage FRUITS Accuracy: "+
+                           str(self._results[
+                               self.output_header_names[3]].to_numpy().mean()))
+                file.write("\nAverage ROCKET Accuracy: "+
+                           str(self._results[
+                               self.output_header_names[4]].to_numpy().mean()))
                 file.write("\n\n\n"+self._fruit.summary()+"\n")
         if csv:
             self._results.to_csv(filename+".csv", index=False)
