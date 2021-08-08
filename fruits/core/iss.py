@@ -49,7 +49,7 @@ def ISS(Z: np.ndarray, words: list) -> np.ndarray:
         max_word_length = max(len(els) for els in simple_words_raw)
         simple_words_tf = np.zeros((len(simple_words), 
                                     max_word_length,
-                                    max_dim + 1))
+                                    max_dim + 1), dtype=np.int32)
         for i in range(len(simple_words_raw)):
             for j in range(len(simple_words_raw[i])):
                 for k in range(len(simple_words_raw[i][j])):
@@ -89,17 +89,14 @@ def _slow_ISS(Z: np.ndarray, words: list) -> np.ndarray:
                 result[i, j, :] = _fast_CS(result[i, j, :] * C, r-(k+1))
     return result
 
-@numba.njit(parallel=True, cache=True)
-def _fast_ISS(Z: np.ndarray, words: np.ndarray) -> np.ndarray:
-    # accelerated function for calculation of
-    # fruits.core.ISS(X, [SimpleWord(...)])
-    result = np.zeros((Z.shape[0], len(words), Z.shape[2]))
-    for i in numba.prange(Z.shape[0]):
-        for j in numba.prange(len(words)):
-            result[i, j, :] = _fast_single_ISS(Z[i, :, :], words[j])
-    return result
+@numba.njit("float64[:](float64[:], int32)", cache=True)
+def _fast_CS(Z: np.ndarray, r: int):
+    Z = np.roll(np.cumsum(Z), r)
+    Z[:r] = 0
+    return Z
 
-@numba.njit(fastmath=True, cache=True)
+@numba.njit("float64[:](float64[:,:], int32[:,:])",
+            fastmath=True, cache=True)
 def _fast_single_ISS(Z: np.ndarray, word: np.ndarray) -> np.ndarray:
     result = np.ones(Z.shape[1], dtype=np.float64)
     r = len(word)
@@ -114,8 +111,15 @@ def _fast_single_ISS(Z: np.ndarray, word: np.ndarray) -> np.ndarray:
         result = _fast_CS(result * C, r-(k+1))
     return result
 
-@numba.njit(cache=True)
-def _fast_CS(Z: np.ndarray, r: int):
-    Z = np.roll(np.cumsum(Z), r)
-    Z[:r] = 0
-    return Z
+@numba.njit("float64[:,:,:](float64[:,:,:], int32[:,:,:])",
+            parallel=True, cache=True)
+def _fast_ISS(Z: np.ndarray, words: np.ndarray) -> np.ndarray:
+    # accelerated function for calculation of
+    # fruits.core.ISS(X, [SimpleWord(...)])
+    result = np.zeros((Z.shape[0], len(words), Z.shape[2]))
+    for i in numba.prange(Z.shape[0]):
+        for j in numba.prange(len(words)):
+            result[i, j, :] = _fast_single_ISS(Z[i, :, :], words[j])
+    return result
+
+
