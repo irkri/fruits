@@ -70,3 +70,30 @@ def test_window():
                                 [[10,20,30,0,0], [111,222,333,0,0]]
                                ]),
                                result)
+
+def test_dot():
+    d = fruits.preparation.DOT(0.4)
+
+    np.testing.assert_allclose(np.array([
+                                [[0,0.8,0,5,0], [0,1,0,0,0]],
+                                [[0,8,0,6,0], [0,-1,0,-0.5,0]]
+                               ]),
+                               d.fit_prepare(X_1))
+
+    d = fruits.preparation.DOT(0.9)
+
+    np.testing.assert_allclose(np.array([
+                                [[0,0,0,5,0], [0,0,0,0,0]],
+                                [[0,0,0,6,0], [0,0,0,-0.5,0]]
+                               ]),
+                               d.fit_prepare(X_1))
+
+    d = fruits.preparation.DOT(0.1)
+
+    X_2 = np.arange(100)
+    X_2 = X_2[np.newaxis, np.newaxis, :]
+
+    X_2_result = np.zeros(X_2.shape)
+    X_2_result[:, :, 9::10] = X_2[:, :, 9::10]
+
+    np.testing.assert_allclose(X_2_result, d.fit_prepare(X_2))

@@ -267,8 +267,9 @@ class WIN(DataPreparateur):
     :type end: float
     :param increments: If True, calculate increments first.
     :type increments: bool, defaults to True
-    :param word: What function to calculate
-    :type word: AbstractWord, defaults to SimpleWord("[11]")
+    :param word: What word to use for ISS calculation.,
+        defaults to SimpleWord("[11]")
+    :type word: AbstractWord or None, optional
     """
     def __init__(self,
                  start: float,
@@ -286,14 +287,16 @@ class WIN(DataPreparateur):
         
         :type X: np.ndarray
         :rtype: np.ndarray
-        :raises: RuntimeError if self.fit() wasn't called
         """
         pipeline = FruitString()
         if self._increments:
             pipeline.preparateur = INC(zero_padding=False)
-        pipeline.word = self._word
+        if self._word is not None:
+            pipeline.word = self._word
         pipeline.process(X)
-        Q = np.expand_dims(pipeline.get().copy(), axis=1)
+        Q = pipeline.get().copy()
+        if self._word is not None:
+            Q = np.expand_dims(Q, axis=1)
         del pipeline
 
         maxima = np.expand_dims(np.max(Q, axis=2), axis=-1)
@@ -306,7 +309,12 @@ class WIN(DataPreparateur):
         return WIN(self._start, self._end, self._increments, self._word)
 
     def __eq__(self, other) -> bool:
-        return False
+        if not isinstance(other, WIN):
+            raise TypeError(f"Cannot compare WIN with type {type(other)}")
+        return (self._start == other._start and
+                self._end == other._end and
+                self._increments == other._increments and
+                self._word == other._word)
 
     def __str__(self) -> str:
         return (f"WIN(start={self._start}, end={self._end}, " +
@@ -314,3 +322,50 @@ class WIN(DataPreparateur):
 
     def __repr__(self) -> str:
         return "fruits.preparation.WIN"
+
+
+class DOT(DataPreparateur):
+    """DataPreparateur: Dotting
+    
+    Keeps every n-th point of a time series while setting everything
+    else to a given value.
+    
+    :param n_prop: Used for calculation of ``n=n_prop*X.shape[2]``.
+        Has to be a float in (0, 1)., defaults to 0.1
+    :type n_prop: float, optional
+    :param value: New value for the other points., defaults to 0
+    :type value: float, optional
+    """
+    def __init__(self, n_prop: float = 0.1, value: float = 0):
+        super().__init__("Dotting")
+        if not 0 < n_prop < 1:
+            raise ValueError("Argument 'n_prop' has to be in interval (0, 1)")
+        self._n_prop = n_prop
+        self._value = value
+
+    def prepare(self, X: np.ndarray):
+        """Returns the transformed dataset.
+        
+        :type X: np.ndarray
+        :rtype: np.ndarray
+        """
+        out = np.ones(X.shape) * self._value
+        n = int(self._n_prop * X.shape[2])
+        if n <= 0:
+            n = 1
+        out[:, :, n-1::n] = X[:, :, n-1::n]
+        return out
+    
+    def copy(self):
+        return DOT(self._n_prop, self._value)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, DOT):
+            raise TypeError(f"Cannot compare DOT with type {type(other)}")
+        return (self._n_prop == other._n_prop and self._value == other._value)
+
+    def __str__(self) -> str:
+        return f"DOT(n_prop={self._n_prop}, value={self._value})"
+
+    def __repr__(self) -> str:
+        return "fruits.preparation.DOT"
