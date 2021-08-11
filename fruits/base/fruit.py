@@ -3,12 +3,12 @@ import inspect
 
 import numpy as np
 
+from fruits.base.scope import force_input_shape
 from fruits.base.callback import AbstractCallback
-from fruits.preparation import DataPreparateur
+from fruits.core.iss import ISS
 from fruits.core.wording import AbstractWord
-from fruits.sieving import FeatureSieve
-from fruits.base import scope
-from fruits import core
+from fruits.sieving.abstract import FeatureSieve
+from fruits.preparation.abstract import DataPreparateur
 
 class Fruit:
     """Feature Extractor using iterated sums.
@@ -406,13 +406,13 @@ class FruitBranch:
         """
         self._compile()
 
-        prepared_data = scope.force_input_shape(X)
+        prepared_data = force_input_shape(X)
         for prep in self._preparateurs:
             prepared_data = prep.fit_prepare(prepared_data)
 
         self._sieves_extended = []
         for i in range(len(self._words)):
-            iterated_data = core.iss.ISS(prepared_data, self._words[i])
+            iterated_data = ISS(prepared_data, self._words[i])
             sieves_copy = [sieve.copy() for sieve in self._sieves]
             for sieve in sieves_copy:
                 sieve.fit(iterated_data[:, 0, :])
@@ -438,7 +438,7 @@ class FruitBranch:
         if not self._fitted:
             raise RuntimeError("Missing call of FruitBranch.fit")
 
-        input_data = scope.force_input_shape(X)
+        input_data = force_input_shape(X)
 
         # calculates prerequisites for feature sieves
         _sieve_prerequisites = []
@@ -466,7 +466,7 @@ class FruitBranch:
                                 self.nfeatures()))
         k = 0
         for i in range(len(self._words)):
-            iterated_data = core.iss.ISS(prepared_data, self._words[i])
+            iterated_data = ISS(prepared_data, self._words[i])
             for callback in callbacks:
                 callback.on_iterated_sum(iterated_data)
             for j, sieve in enumerate(self._sieves_extended[i]):

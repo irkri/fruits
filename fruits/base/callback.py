@@ -1,6 +1,6 @@
-import numpy as np
-
 from abc import ABC
+
+import numpy as np
 
 class AbstractCallback(ABC):
     """Another class inheriting ``AbstractCallback`` can overwrite one
