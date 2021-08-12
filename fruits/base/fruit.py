@@ -3,6 +3,7 @@ import inspect
 
 import numpy as np
 
+from fruits.requisites import RequisiteContainer
 from fruits.base.scope import force_input_shape
 from fruits.base.callback import AbstractCallback
 from fruits.core.iss import ISS
@@ -55,6 +56,7 @@ class Fruit:
         self._branches = []
         # pointer for the current branch index
         self._cbi = None
+        self._fitted = False
 
     @property
     def name(self) -> str:
@@ -75,6 +77,7 @@ class Fruit:
             branch = FruitBranch()
         self._branches.append(branch)
         self._cbi = len(self._branches) - 1
+        self._fitted = False
 
     def branch(self, index: int = None):
         """Returns the currently selected branch or the branch with the
@@ -120,6 +123,7 @@ class Fruit:
         if len(self._branches) == 0:
             self.fork()
         self._branches[self._cbi].add(objects)
+        self._fitted = False
 
     def nfeatures(self) -> int:
         """Returns the total number of features of all branches 
@@ -139,6 +143,7 @@ class Fruit:
         """
         for branch in self._branches:
             branch.fit(X)
+        self._fitted = True
 
     def transform(self, X: np.ndarray, callbacks: list = []) -> np.ndarray:
         """Returns a two dimensional array of all features from all
@@ -155,6 +160,8 @@ class Fruit:
         :rtype: np.ndarray
         :raises: RuntimeError if Fruit.fit wasn't called
         """
+        if not self._fitted:
+            raise RuntimeError("Missing call of self.fit")
         result = np.zeros((X.shape[0], self.nfeatures()))
         index = 0
         for branch in self._branches:
@@ -174,13 +181,8 @@ class Fruit:
         :returns: Two dimensional feature array
         :rtype: np.ndarray
         """
-        result = np.zeros((X.shape[0], self.nfeatures()))
-        index = 0
-        for branch in self._branches:
-            k = branch.nfeatures()
-            result[:, index:index+k] = branch.fit_transform(X)
-            index += k
-        return result
+        self.fit(X)
+        return self.transform(X)
 
     def summary(self) -> str:
         """Returns a summary of this object. The summary contains a
@@ -394,6 +396,17 @@ class FruitBranch:
         if not self._sieves:
             raise RuntimeError("No FeatureSieve objects specified")
 
+    def _collect_requisites(self):
+        # collects requisites of all added preparateurs and sieves
+        for prep in self._preparateurs:
+            if (req := prep._requisite) is not None:
+                self._requisite_container.register(req)
+                prep._set_requisite_container(self._requisite_container)
+        for sieve in self._sieves:
+            if (req := sieve._requisite) is not None:
+                self._requisite_container.register(req)
+                sieve._set_requisite_container(self._requisite_container)
+
     def fit(self, X: np.ndarray):
         """Fits the branch to the given dataset. What this action
         explicitly does depends on the FruitBranch configuration.
@@ -406,9 +419,13 @@ class FruitBranch:
         """
         self._compile()
 
+        self._requisite_container = RequisiteContainer()
+        self._collect_requisites()
+        self._requisite_container.process(X)
         prepared_data = force_input_shape(X)
         for prep in self._preparateurs:
-            prepared_data = prep.fit_prepare(prepared_data)
+            prep.fit(prepared_data)
+            prepared_data = prep.prepare(prepared_data)
 
         self._sieves_extended = []
         for i in range(len(self._words)):
@@ -436,25 +453,11 @@ class FruitBranch:
         :raises: RuntimeError if FruitBranch.fit wasn't called
         """
         if not self._fitted:
-            raise RuntimeError("Missing call of FruitBranch.fit")
+            raise RuntimeError("Missing call of self.fit")
 
-        input_data = force_input_shape(X)
-
-        # calculates prerequisites for feature sieves
-        _sieve_prerequisites = []
-        for i, sieve in enumerate(self._sieves):
-            prereq = sieve._prerequisites()
-            for j in range(i):
-                if prereq == _sieve_prerequisites[j]:
-                    _sieve_prerequisites.append(_sieve_prerequisites[j])
-                    break
-            else:
-                _sieve_prerequisites.append(prereq)
-        for i in range(len(self._sieves)):
-            if not _sieve_prerequisites[i].is_processed():
-                _sieve_prerequisites[i].process(input_data)
-
-        prepared_data = input_data
+        self._requisite_container.clear()
+        self._requisite_container.process(X)
+        prepared_data = force_input_shape(X)
         for prep in self._preparateurs:
             prepared_data = prep.prepare(prepared_data)
             for callback in callbacks:
@@ -470,7 +473,6 @@ class FruitBranch:
             for callback in callbacks:
                 callback.on_iterated_sum(iterated_data)
             for j, sieve in enumerate(self._sieves_extended[i]):
-                sieve._load_prerequisites(_sieve_prerequisites[j])
                 new_features = sieve.nfeatures()
                 if new_features == 1:
                     sieved_data[:, k] = sieve.sieve(iterated_data[:, 0, :])

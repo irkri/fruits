@@ -152,8 +152,8 @@ def test_fruitstrings():
     sieve04 = fruits.sieving.PPV([0.1, 0.5], constant=True)
     sieve05 = fruits.sieving.MAX(cut=[5, 6, 20])
 
-    assert sieve01._prerequisites() == sieve02._prerequisites()
-    assert sieve03._prerequisites() == sieve04._prerequisites()
-    assert sieve04._prerequisites() == sieve05._prerequisites()
-    assert sieve01._prerequisites() != sieve04._prerequisites()
-    assert sieve02._prerequisites() != sieve03._prerequisites()
+    assert sieve01._requisite == sieve02._requisite
+    assert sieve03._requisite == sieve04._requisite
+    assert sieve04._requisite == sieve05._requisite
+    assert sieve01._requisite != sieve04._requisite
+    assert sieve02._requisite != sieve03._requisite

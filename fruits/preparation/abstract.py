@@ -1,8 +1,10 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 import numpy as np
 
-class DataPreparateur(ABC):
+from fruits.node import FruitNode
+
+class DataPreparateur(FruitNode):
     """Abstract class for a data preparateur.
     
     A preparateur can be fitted on a three dimensional numpy array
@@ -25,10 +27,6 @@ class DataPreparateur(ABC):
     def name(self, name: str):
         self._name = name
 
-    @abstractmethod
-    def copy(self):
-        pass
-
     def fit(self, X: np.ndarray):
         """Fits the DataPreparateur to the given dataset.
         
@@ -49,6 +47,10 @@ class DataPreparateur(ABC):
         """
         self.fit(X)
         return self.prepare(X)
+
+    @abstractmethod
+    def copy(self):
+        pass
 
     def __copy__(self):
         return self.copy()

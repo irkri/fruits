@@ -2,9 +2,9 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from fruits.cache import FruitString
+from fruits.node import FruitNode
 
-class FeatureSieve(ABC):
+class FeatureSieve(FruitNode):
     """Abstract class for a feature sieve. Sieves are the last part of a
     FRUITS pipeline.
     
@@ -19,7 +19,6 @@ class FeatureSieve(ABC):
     def __init__(self, name: str = ""):
         super().__init__()
         self._name = name
-        self._prereqs = None
 
     @property
     def name(self) -> str:
@@ -61,17 +60,11 @@ class FeatureSieve(ABC):
         return self.sieve(X)
 
     @abstractmethod
-    def _prerequisites(self) -> FruitString:
-        pass
-
-    def _load_prerequisites(self, fs: FruitString):
-        self._prereqs = fs
-
-    @abstractmethod
     def copy(self):
         pass
 
     def summary(self) -> str:
+        """Returns a better formatted summary string for the sieve."""
         return "FeatureSieve('" + self._name + "')"
 
     def __copy__(self):

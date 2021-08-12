@@ -1,9 +1,6 @@
 import numpy as np
 
-from fruits.cache import FruitString
-from fruits.core.wording import SimpleWord, AbstractWord
 from fruits.preparation.abstract import DataPreparateur
-from fruits.preparation.transform import INC
 
 class DIL(DataPreparateur):
     """DataPreparateur: Dilation
@@ -94,14 +91,11 @@ class WIN(DataPreparateur):
     """
     def __init__(self,
                  start: float,
-                 end: float,
-                 increments: bool = True,
-                 word: AbstractWord = SimpleWord("[11]")):
+                 end: float):
         super().__init__("Window")
         self._start = start
         self._end = end
-        self._increments = increments
-        self._word = word
+        self._requisite = "INC -> [11]"
             
     def prepare(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed dataset.
@@ -109,16 +103,7 @@ class WIN(DataPreparateur):
         :type X: np.ndarray
         :rtype: np.ndarray
         """
-        pipeline = FruitString()
-        if self._increments:
-            pipeline.preparateur = INC(zero_padding=False)
-        if self._word is not None:
-            pipeline.word = self._word
-        pipeline.process(X)
-        Q = pipeline.get().copy()
-        if self._word is not None:
-            Q = np.expand_dims(Q, axis=1)
-        del pipeline
+        Q = self._get_requisite(X)
 
         maxima = np.expand_dims(np.max(Q, axis=2), axis=-1)
         Q = Q / maxima
@@ -127,19 +112,16 @@ class WIN(DataPreparateur):
         return X * mask
     
     def copy(self):
-        return WIN(self._start, self._end, self._increments, self._word)
+        return WIN(self._start, self._end)
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, WIN):
             raise TypeError(f"Cannot compare WIN with type {type(other)}")
         return (self._start == other._start and
-                self._end == other._end and
-                self._increments == other._increments and
-                self._word == other._word)
+                self._end == other._end)
 
     def __str__(self) -> str:
-        return (f"WIN(start={self._start}, end={self._end}, " +
-                f"increments={self._increments}, word={str(self._word)})")
+        return (f"WIN(start={self._start}, end={self._end})")
 
     def __repr__(self) -> str:
         return "fruits.preparation.WIN"

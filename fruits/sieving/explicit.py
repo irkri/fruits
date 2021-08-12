@@ -1,9 +1,6 @@
 import numpy as np
 
-from fruits.cache import FruitString
-from fruits.core.wording import SimpleWord
 from fruits.sieving.abstract import FeatureSieve
-from fruits.preparation.transform import INC
 
 class MAX(FeatureSieve):
     """FeatureSieve: Maximal value
@@ -33,6 +30,9 @@ class MAX(FeatureSieve):
                  segments: bool = False):
         super().__init__("Maximal value")
         self._cut = cut if isinstance(cut, list) else [cut]
+        for c in self._cut:
+            if 0 < c < 1:
+                self._requisite = "INC -> [11]"
         if segments and len(self._cut) == 1:
             raise ValueError("If 'segments' is set to True, then 'cut'"+
                              " has to be a list length >= 2.")
@@ -56,19 +56,14 @@ class MAX(FeatureSieve):
         :returns: Array of features.
         :rtype: np.ndarray
         """
-        if self._prereqs is not None:
-            prereq = self._prereqs.get()
-        else:
-            pq = self._prerequisites()
-            pq.process(np.expand_dims(X, axis=1))
-            prereq = pq.get()
+        req = self._get_requisite(X)[:, 0, :]
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
             new_cuts = []
             for j in range(len(self._cut)):
                 cut = self._cut[j]
                 if 0 < cut < 1:
-                    cut = np.sum((prereq[i] <= (prereq[i, -1] * cut)))
+                    cut = np.sum((req[i] <= (req[i, -1] * cut)))
                     if cut == 0:
                         cut = 1
                 elif not isinstance(cut, int):
@@ -90,16 +85,8 @@ class MAX(FeatureSieve):
             return result[:, 0]
         return result
 
-    def _prerequisites(self) -> FruitString:
-        fs = FruitString()
-        for c in self._cut:
-            if 0 < c < 1:
-                fs.preparateur = INC(zero_padding=False)
-                fs.word = SimpleWord("[11]")
-                break
-        return fs
-
     def summary(self) -> str:
+        """Returns a better formatted summary string for the sieve."""
         string = f"MAX"
         if self._segments:
             string += " [segments]"
@@ -151,6 +138,9 @@ class MIN(FeatureSieve):
                  segments: bool = False):
         super().__init__("Minimum value")
         self._cut = cut if isinstance(cut, list) else [cut]
+        for c in self._cut:
+            if 0 < c < 1:
+                self._requisite = "INC -> [11]"
         if segments and len(self._cut) == 1:
             raise ValueError("If 'segments' is set to True, then 'cut'"+
                              " has to be a list length >= 2.")
@@ -174,19 +164,14 @@ class MIN(FeatureSieve):
         :returns: Array of features.
         :rtype: np.ndarray
         """
-        if self._prereqs is not None:
-            prereq = self._prereqs.get()
-        else:
-            pq = self._prerequisites()
-            pq.process(np.expand_dims(X, axis=1))
-            prereq = pq.get()
+        req = self._get_requisite(X)[:, 0, :]
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
             new_cuts = []
             for j in range(len(self._cut)):
                 cut = self._cut[j]
                 if 0 < cut < 1:
-                    cut = np.sum((prereq[i] <= (prereq[i, -1] * cut)))
+                    cut = np.sum((req[i] <= (req[i, -1] * cut)))
                     if cut == 0:
                         cut = 1
                 elif not isinstance(cut, int):
@@ -208,16 +193,8 @@ class MIN(FeatureSieve):
             return result[:, 0]
         return result
 
-    def _prerequisites(self) -> FruitString:
-        fs = FruitString()
-        for c in self._cut:
-            if 0 < c <  1:
-                fs.preparateur = INC(zero_padding=False)
-                fs.word = SimpleWord("[11]")
-                break
-        return fs
-
     def summary(self) -> str:
+        """Returns a better formatted summary string for the sieve."""
         string = f"MIN"
         if self._segments:
             string += " [segments]"
@@ -258,6 +235,9 @@ class END(FeatureSieve):
                  cut: int = -1):
         super().__init__("Last value")
         self._cut = cut if isinstance(cut, list) else [cut]
+        for c in self._cut:
+            if 0 < c < 1:
+                self._requisite = "INC -> [11]"
 
     def nfeatures(self) -> int:
         """Returns the number of features this FeatureSieve produces.
@@ -275,18 +255,13 @@ class END(FeatureSieve):
         :returns: Array of features.
         :rtype: np.ndarray
         """
-        if self._prereqs is not None:
-            prereq = self._prereqs.get()
-        else:
-            pq = self._prerequisites()
-            pq.process(np.expand_dims(X, axis=1))
-            prereq = pq.get()
+        req = self._get_requisite(X)[:, 0, :]
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
             for j in range(len(self._cut)):
                 cut = self._cut[j]
                 if 0 < cut < 1:
-                    cut = np.sum((prereq[i] <= (prereq[i, -1] * cut)))
+                    cut = np.sum((req[i] <= (req[i, -1] * cut)))
                     if cut == 0:
                         cut = 1
                 elif not isinstance(cut, int):
@@ -301,16 +276,8 @@ class END(FeatureSieve):
             return result[:, 0]
         return result
 
-    def _prerequisites(self) -> FruitString:
-        fs = FruitString()
-        for c in self._cut:
-            if 0 < c <  1:
-                fs.preparateur = INC(zero_padding=False)
-                fs.word = SimpleWord("[11]")
-                break
-        return fs
-
     def summary(self) -> str:
+        """Returns a better formatted summary string for the sieve."""
         string = f"END -> {self.nfeatures()}:"
         for x in self._cut:
             string += f"\n   > {x}"

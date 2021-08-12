@@ -63,7 +63,13 @@ def test_window():
     el.append(fruits.core.letters.absolute)
     abs1.multiply(el)
 
-    w = fruits.preparation.WIN(0.0, 0.7, word=abs1)
+    requisite = fruits.requisites.Requisite("INC -> ABS")
+    requisite.configure(preparateur=fruits.preparation.INC(zero_padding=False),
+                        word=abs1)
+    fruits.requisites.log(requisite)
+
+    w = fruits.preparation.WIN(0.0, 0.7)
+    w.set_requisite("INC -> ABS")
     result = w.fit_prepare(X)
     np.testing.assert_allclose(np.array([
                                 [[1,2,4,0,0], [11,22,33,0,0]],

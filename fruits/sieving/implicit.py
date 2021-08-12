@@ -1,6 +1,5 @@
 import numpy as np
 
-from fruits.cache import FruitString
 from fruits.sieving.abstract import FeatureSieve
 from fruits.preparation.backend import _increments
 
@@ -139,9 +138,6 @@ class PPV(FeatureSieve):
             return result[:, 0]
         return result
 
-    def _prerequisites(self) -> FruitString:
-        return FruitString()
-
     def copy(self):
         """Returns a copy of this object.
         
@@ -154,6 +150,7 @@ class PPV(FeatureSieve):
         return fs
 
     def summary(self) -> str:
+        """Returns a better formatted summary string for the sieve."""
         string = f"PPV [sampling={self._sample_size}"
         if self._segments:
             string += ", segments"
@@ -228,9 +225,6 @@ class PPVC(PPV):
             return result[:, 0]
         return result
 
-    def _prerequisites(self) -> FruitString:
-        return FruitString()
-
     def copy(self):
         """Returns a copy of this object.
         
@@ -242,6 +236,7 @@ class PPVC(PPV):
         return fs
 
     def summary(self) -> str:
+        """Returns a better formatted summary string for the sieve."""
         string = f"PPVC [sampling={self._sample_size}"
         string += f"] -> {self.nfeatures()}:"
         for x in self._q_c_input:
