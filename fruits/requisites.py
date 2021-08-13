@@ -7,7 +7,7 @@ from fruits.core.wording import AbstractWord, SimpleWord
 
 class Requisite:
     """A class used to calculate requisites for objects that can be
-    added to a :class:`~fruits.core.fruit.Fruit`. A requisite then takes
+    added to a :class:`~fruits.base.fruit.Fruit`. A requisite then takes
     a time series dataset and calculates up to the first two steps of a
     FRUITS pipeline.
     It can be configured by specifying which
@@ -94,6 +94,11 @@ _AVAILABLE = {
 }
 
 def get_available() -> list:
+    """Returns a list of all available requisites. Add new ones by
+    using :meth:`~fruits.requisites.log`.
+    
+    :rtype: list
+    """
     return _AVAILABLE.items()
 
 def get(requisite_ident: str) -> Requisite:
