@@ -7,12 +7,12 @@ from fruits.core.wording import AbstractWord, SimpleWord
 
 class Requisite:
     """A class used to calculate requisites for objects that can be
-    added to a :class:~`fruits.core.fruit.Fruit`. A requisite then takes
+    added to a :class:`~fruits.core.fruit.Fruit`. A requisite then takes
     a time series dataset and calculates up to the first two steps of a
     FRUITS pipeline.
     It can be configured by specifying which
-    :class:~`fruits.preparation.abstract.DataPreparateur` and
-    :class:~`fruits.preparation.wording.AbstractWord` to use.
+    :class:`~fruits.preparation.abstract.DataPreparateur` and
+    :class:`~fruits.preparation.wording.AbstractWord` to use.
 
     .. code-block::python
         req = Requisite("monotone")
@@ -29,7 +29,7 @@ class Requisite:
     :param ident: Identification of the object. This value has to be
         unique under all used Requisite objects. Have a look at all
         defined Requisite objects in
-        :func:~`fruits.requisites.get_available`.
+        :func:`~fruits.requisites.get_available`.
     :type ident: str
     """
     def __init__(self, ident: str):
@@ -116,7 +116,7 @@ def log(requisite: Requisite):
 
 
 class RequisiteContainer:
-    """Class that is used in a :class:~`fruits.base.fruit.Fruit`.
+    """Class that is used in a :class:`~fruits.base.fruit.Fruit`.
     It processes every requisite the configuration needs.
     """
     def __init__(self):
@@ -126,7 +126,7 @@ class RequisiteContainer:
         """Registers a requisite by its string to the container.
         If the requisite already is registered, do nothing.
         Get possible requisites by calling
-        :func:~`fruits.requisites.get_available`.
+        :func:`~fruits.requisites.get_available`.
         
         :type req_identification: str
         """

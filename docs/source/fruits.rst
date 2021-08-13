@@ -1,10 +1,18 @@
 fruits
 ------
 
-fruits.cache
-^^^^^^^^^^^^
+fruits.node
+^^^^^^^^^^^
 
-.. automodule:: fruits.cache
+.. automodule:: fruits.node
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+fruits.requisites
+^^^^^^^^^^^^^^^^^
+
+.. automodule:: fruits.requisites
    :members:
    :undoc-members:
    :show-inheritance:

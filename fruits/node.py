@@ -7,7 +7,7 @@ from fruits.base.scope import force_input_shape
 
 class FruitNode(ABC):
     """A FruitNode is the parent class for everything that can be added
-    to a :class:~`fruits.base.fruit.Fruit`.
+    to a :class:`~fruits.base.fruit.Fruit`.
     """
     def __init__(self):
         super().__init__()
@@ -16,7 +16,7 @@ class FruitNode(ABC):
 
     def set_requisite(self, requisite_ident: str):
         """Sets the requisite for this object. The identification has
-        to be logged with :func:~`fruits.requisites.log`.
+        to be logged with :func:`~fruits.requisites.log`.
         
         :type requisite_ident: str
         """
