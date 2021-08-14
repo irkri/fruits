@@ -54,7 +54,7 @@ def ISS(Z: np.ndarray, words: list) -> np.ndarray:
             for j in range(len(simple_words_raw[i])):
                 for k in range(len(simple_words_raw[i][j])):
                     simple_words_tf[i, j, k] = simple_words_raw[i][j][k]
-        ISS_fast = _fast_ISS(Z, simple_words_tf)
+        ISS_fast = _fast_ISS(Z.astype(np.float64), simple_words_tf)
 
     # get solution for AbstractWords that are not of type SimpleWord
     if complex_words:
@@ -85,8 +85,8 @@ def _slow_ISS(Z: np.ndarray, words: list) -> np.ndarray:
                 C = np.ones(Z.shape[2], dtype=np.float64)
                 for l in range(len(el)):
                     C = C * el[l](Z[i, :, :])
-                # without zero'th index:       ...              r-k
-                result[i, j, :] = _fast_CS(result[i, j, :] * C, r-(k+1))
+                result[i, j, :] = _fast_CS(result[i, j, :] * C,
+                                           int(bool(r-(k+1))))
     return result
 
 @numba.njit("float64[:](float64[:], int32)", cache=True)
@@ -107,8 +107,7 @@ def _fast_single_ISS(Z: np.ndarray, word: np.ndarray) -> np.ndarray:
         for l in range(len(word[k])):
             if word[k][l] != 0:
                 C = C * Z[l, :]**word[k][l]
-        # without zero'th index:      r-k)
-        result = _fast_CS(result * C, r-(k+1))
+        result = _fast_CS(result * C, int(bool(r-(k+1))))
     return result
 
 @numba.njit("float64[:,:,:](float64[:,:,:], int32[:,:,:])",
@@ -121,5 +120,3 @@ def _fast_ISS(Z: np.ndarray, words: np.ndarray) -> np.ndarray:
         for j in numba.prange(len(words)):
             result[i, j, :] = _fast_single_ISS(Z[i, :, :], words[j])
     return result
-
-
