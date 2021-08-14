@@ -82,7 +82,7 @@ def msplot(X: np.ndarray,
         mean = X_class.mean(axis=0)
         std = X_class.std(axis=0)
         color = next(ax._get_lines.prop_cycler)['color']
-        ax.plot(mean, label=f"class {i+1}", color=color);
+        ax.plot(mean, label=f"Class {i+1}", color=color);
         above = mean
         below = mean
         if above_error:
