@@ -59,14 +59,16 @@ def test_fast_slow_iss():
     sit1 = fruits.core.SimpleWord("[11122][122222][11]")
     sit2 = fruits.core.SimpleWord("[22][112][2221]")
 
-    result_fast = fruits.core.ISS(X_1, [sit1, sit2])
-    result_slow = fruits.core.ISS(X_1, [word1, word2])
+    X = np.random.random_sample((100,2,100))
+
+    result_fast = fruits.core.ISS(X, [sit1, sit2])
+    result_slow = fruits.core.ISS(X, [word1, word2])
 
     np.testing.assert_allclose(result_slow, result_fast)
 
     word1_copy = word1.copy()
     word2_copy = word2.copy()
-    result_slow_copy = fruits.core.ISS(X_1, [word1_copy, word2_copy])
+    result_slow_copy = fruits.core.ISS(X, [word1_copy, word2_copy])
 
     np.testing.assert_allclose(result_slow, result_slow_copy)
 
@@ -101,13 +103,13 @@ def test_simpleword_iss():
                                ]),
                                r1[:,3,:])
     np.testing.assert_allclose(np.array([
-                                    [16,13.44,13.44,22.44,26.04],
-                                    [25,129,159,285,285]
+                                    [0,-3.2,-3.2,-19.2,-24.6],
+                                    [0,40,66,156,156]
                                ]),
                                r1[:,4,:])
     np.testing.assert_allclose(np.array([
-                                    [-8,-11.2,-11.2,-11.2,-2.8],
-                                    [-25,-38,-98,-108.5,-276.5]
+                                    [0,-4,-4,-4,-16.6],
+                                    [0,-5,-57,-64.5,-232.5]
                                ]),
                                r1[:,5,:])
 
@@ -122,21 +124,31 @@ def test_complex_words():
         return X[i, :] * (X[i, :]>0)
 
     # word: [relu(0)][relu(1)]
-    relu_iterator = fruits.core.ComplexWord("relu collection")
-    relu_iterator.multiply(fruits.core.ExtendedLetter((relu, 0)))
-    relu_iterator.multiply(fruits.core.ExtendedLetter((relu, 1)))
+    relu_word = fruits.core.ComplexWord("relu collection")
+    relu_word.multiply(fruits.core.ExtendedLetter((relu, 0)))
+    relu_word.multiply(fruits.core.ExtendedLetter((relu, 1)))
                                    
-    mix = [relu_iterator, fruits.core.SimpleWord("[111]")]
+    mix = [relu_word, fruits.core.SimpleWord("[111]")]
 
     mix_result = fruits.core.ISS(X_1, mix)
 
     np.testing.assert_allclose(np.array([
-                                    [[0,0.8,0.8,0.8,0.8],
+                                    [[0,0,0,0,0],
                                      [-64,-63.488,-63.488,61.512,34.512]],
                                     [[0,0,0,0,0],
                                      [125,637,645,861,861]]
                                ]),
                                mix_result)
+
+def test_theoretical_cases():
+    X = np.random.random_sample((25, 1, 100))
+    for i in range(X.shape[0]):
+        X[i, 0, :] = (X[i, 0, :] - X[i].mean(axis=-1)) / X[i].std(axis=-1)
+
+    result = fruits.core.ISS(X, fruits.core.SimpleWord("[1][1]"))
+
+    np.testing.assert_allclose(np.ones((25,))*-50,
+                               result[:,0,-1])
 
 def test_word_generation():
     for n in range(1, 7):

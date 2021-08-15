@@ -2,6 +2,17 @@ import numpy as np
 
 from fruits.base.callback import AbstractCallback
 
+def check_input_shape(X: np.ndarray) -> bool:
+    """Checks if the given time series dataset has the correct input
+    shape.
+    
+    :type X: np.ndarray
+    :rtype: bool
+    """
+    if X.ndim == 3:
+        return True
+    return False
+
 def force_input_shape(X: np.ndarray):
     """Makes the attempt to format the input shape of the
     multidimensional time series dataset ``X``.
@@ -25,9 +36,9 @@ def force_input_shape(X: np.ndarray):
     return out
 
 def check_callbacks(callbacks: list):
-    """For a given list of objects, checks if all objects are inherited
-    from ``fruits.base.callback.AbstractCallback``. If not, a
-    ``TypeError`` will be rased.
+    """For a given list of objects, checks if all objects are inheriting
+    from :class:`~fruits.base.callback.AbstractCallback`. If not, a
+    ``TypeError`` will be raised.
     
     :type callbacks: list
     """
