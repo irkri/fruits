@@ -139,6 +139,9 @@ class ComplexWord(AbstractWord):
             return self._extended_letters[self._el_iterator_index]
         raise StopIteration()
 
+    def __len__(self) -> int:
+        return len(self._extended_letters)
+
     def __eq__(self, other):
         return False
 
@@ -248,6 +251,9 @@ class SimpleWord(AbstractWord):
             self._el_iterator_index += 1
             return self._extended_letters[self._el_iterator_index]
         raise StopIteration()
+
+    def __len__(self) -> int:
+        return len(self._extended_letters)
 
     def __eq__(self, other):
         if not isinstance(other, SimpleWord):

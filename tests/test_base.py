@@ -55,7 +55,7 @@ def test_branches():
     assert features.shape == (2, 6)
 
     np.testing.assert_allclose(np.array([
-                                    [1.8,3,50.64,-8,13.44,-11.2],
-                                    [21,-5,129,-44,25,-276.5]
+                                    [1.8,3,50.64,-8,-24.6,-16.6],
+                                    [21,-5,129,-44,0,-232.5]
                                ]),
                                features)

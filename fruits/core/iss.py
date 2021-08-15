@@ -1,25 +1,95 @@
-import numba
+from typing import List, Union
+
 import numpy as np
 
+from fruits.base.scope import force_input_shape, check_input_shape
 from fruits.core.wording import AbstractWord, SimpleWord
+from fruits.core.backend import _fast_ISS, _slow_ISS
 
-def ISS(Z: np.ndarray, words: list) -> np.ndarray:
+class ISSCalculator:
+    """Class that is responsible for managing the calculation of
+    iterated sums.
+
+    :param X: Time series dataset as numpy array of three dimensions.
+    :type X: np.ndarray
+    :param words: List of words used to calculate the iterated sums.
+    :type words: List[AbstractWord]
+    """
+    def __init__(self, X: np.ndarray, words: List[AbstractWord]):
+        self._X = X
+        if not check_input_shape(X):
+            self._X = force_input_shape(X)
+        self._split_words(words)
+
+    def _split_words(self, words: List[AbstractWord]):
+        # splits the list of words into seperate ones for simple and 
+        # complex words and saves the indices of their original
+        # position in the given list
+        if len(words) == 0:
+            raise ValueError("At least one word for ISS calculation needed")
+        self._simple_words = []
+        self._simple_words_index = []
+        self._complex_words = []
+        self._complex_words_index = []
+        for i, word in enumerate(words):
+            if isinstance(word, SimpleWord):
+                self._simple_words.append(word)
+                self._simple_words_index.append(i)
+            elif isinstance(word, AbstractWord):
+                self._complex_words.append(word)
+                self._complex_words_index.append(i)
+            else:
+                raise TypeError("Given words have to be objects of a "
+                                "class that inherits from AbstractWord")
+
+    def _transform_simple_word(self, word: SimpleWord):
+        # transforms all simplewords for faster calculation with a
+        # backend function
+        simple_word_raw = [el for el in word]
+        word_transformed = np.zeros((len(word), word._max_dim), dtype=np.int32)
+        for i in range(len(simple_word_raw)):
+            for j in range(len(simple_word_raw[i])):
+                word_transformed[i, j] = simple_word_raw[i][j]
+        return word_transformed
+
+    def calculate(self) -> np.ndarray:
+        """Does the already initilialized calculation and returns the
+        results.
+
+        :rtype: np.ndarray
+        """
+        results = np.zeros((self._X.shape[0],
+                            len(self._simple_words) + len(self._complex_words),
+                            self._X.shape[2]))
+
+        for i, index in enumerate(self._simple_words_index):
+            results[:, index, :] = _fast_ISS(self._X,
+                self._transform_simple_word(self._simple_words[i]))
+        for i, index in enumerate(self._complex_words_index):
+            results[:, index, :] = _slow_ISS(self._X, self._complex_words[i])
+
+        return results
+
+
+def ISS(X: np.ndarray,
+        words: Union[List[AbstractWord], AbstractWord]) -> np.ndarray:
     """Takes in a number of time series and a list of words and
-    calculates the iterated sums for each time series in ``Z``.
+    calculates the iterated sums for each time series in ``X``.
 
     This function returns the iteratively calulcated cummulative sums of
     the input data, which will be stepwise transformed using the
     specified words.
 
-    :param Z: Three dimensional numpy array containing a
+    :param X: Three dimensional numpy array containing a
         multidimensional time series dataset.
-    :type Z: numpy.ndarray
+    :type X: numpy.ndarray
     :param words: List of AbstractWord objects or a single AbstractWord.
-    :type words: list or AbstractWord
+    :type words: List[AbstractWord] or AbstractWord
     :returns: Numpy array of shape
-        ``(Z.shape[0], len(words), Z.shape[2])``.
+        ``(X.shape[0], len(words), X.shape[2])``.
     :rtype: numpy.ndarray
     """
+<<<<<<< Updated upstream
     if isinstance(words, AbstractWord):
         words = [words]
 
@@ -120,3 +190,10 @@ def _fast_ISS(Z: np.ndarray, words: np.ndarray) -> np.ndarray:
         for j in numba.prange(len(words)):
             result[i, j, :] = _fast_single_ISS(Z[i, :, :], words[j])
     return result
+=======
+    words = [words] if isinstance(words, AbstractWord) else words
+
+    calculator = ISSCalculator(X, words)
+
+    return calculator.calculate()
+>>>>>>> Stashed changes
