@@ -1,19 +1,20 @@
+from abc import abstractmethod
+
 import numpy as np
 
 from fruits.sieving.abstract import FeatureSieve
 
-class MAX(FeatureSieve):
-    """FeatureSieve: Maximal value
+class ExplicitSieve(FeatureSieve):
+    """Abstract class that has the ability to calculate cutting points
+    as indices in the time series based on a given 'coquantile'.
+    A (non-scaled) value returned by an explicit sieve always also is a
+    value in the original time series.
     
-    This sieve returns the maximal value for each slice of a time
-    series in a given dataset. The slices are determined by the option
-    ``cut``.
-
-    :param cut: If ``cut`` is an index of the time series array, the
-        sieve searches for the maximum in ``X[:cut]``. If it is a real
-        number in (0,1), the corresponding 'coquantile' will be
-        calculated first. This option can also be a list of floats or
-        integers which will be treated in the same way., defaults to -1
+    :param cut: If ``cut`` is an index in the time series array, the
+        features are sieved from ``X[:cut]``. If it is a real number in
+        ``(0,1)``, the corresponding 'coquantile' will be calculated
+        first. This option can also be a list of floats or integers
+        which will be treated the same way., defaults to -1
     :type cut: int/float or list of integers/floats, optional
     :param segments: If set to ``True``, then the cutting indices will 
         be sorted and treated as interval borders and the maximum in
@@ -27,16 +28,42 @@ class MAX(FeatureSieve):
     """
     def __init__(self,
                  cut: int = -1,
-                 segments: bool = False):
-        super().__init__("Maximal value")
+                 segments: bool = False,
+                 name: str = "Abstract Explicit Sieve"):
+        super().__init__(name)
         self._cut = cut if isinstance(cut, list) else [cut]
         for c in self._cut:
             if 0 < c < 1:
                 self._requisite = "INC -> [11]"
+            elif not (c == -1 or (c > 0 and isinstance(c, int))):
+                raise ValueError("Unsupported input for option 'cut'")
         if segments and len(self._cut) == 1:
             raise ValueError("If 'segments' is set to True, then 'cut'"+
-                             " has to be a list length >= 2.")
+                             " has to be a list of length >= 2.")
         self._segments = segments
+
+    def _transform_cuts(self, X: np.ndarray) -> list:
+        # transforms the input cuts based on the given time series
+        req = self._get_requisite(X)[0, 0, :]
+        new_cuts = []
+        for j in range(len(self._cut)):
+            cut = self._cut[j]
+            if 0 < cut < 1:
+                cut = np.sum((req <= (req[-1] * cut)))
+                if cut == 0:
+                    cut = 1
+            elif not isinstance(cut, int):
+                raise TypeError("Cut has to be a float in (0,1) or an " +
+                                "integer")
+            elif cut == -1:
+                cut = X.shape[0]
+                print(f"{cut=}")
+            elif cut > X.shape[0]:
+                raise IndexError("Cutting index out of range")
+            new_cuts.append(cut)
+        if self._segments:
+            new_cuts = sorted(list(new_cuts))
+        return new_cuts
 
     def nfeatures(self) -> int:
         """Returns the number of features this sieve produces.
@@ -47,6 +74,28 @@ class MAX(FeatureSieve):
             return len(self._cut) - 1
         else:
             return len(self._cut)
+
+    @abstractmethod
+    def sieve(self, X: np.ndarray) -> np.ndarray:
+        pass
+
+
+class MAX(ExplicitSieve):
+    """FeatureSieve: Maximal value
+    
+    This sieve returns the maximal value for each slice of a time
+    series in a given dataset. The slices are determined by the option
+    ``cut``.
+    For more information on the available arguments, have a look at the
+    definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
+    
+    :type cut: int/float or list of integers/floats, optional
+    :type segments: bool, optional
+    """
+    def __init__(self,
+                 cut: int = -1,
+                 segments: bool = False):
+        super().__init__(cut, segments, "Maximal value")
 
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
@@ -59,23 +108,8 @@ class MAX(FeatureSieve):
         req = self._get_requisite(X)[:, 0, :]
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
-            new_cuts = []
-            for j in range(len(self._cut)):
-                cut = self._cut[j]
-                if 0 < cut < 1:
-                    cut = np.sum((req[i] <= (req[i, -1] * cut)))
-                    if cut == 0:
-                        cut = 1
-                elif not isinstance(cut, int):
-                    raise TypeError("Cut has to be a float in (0,1) or an " +
-                                    "integer")
-                elif cut < 0:
-                    cut = X.shape[1]
-                elif cut > X.shape[1]:
-                    raise IndexError("Cutting index out of range")
-                new_cuts.append(cut)
+            new_cuts = self._transform_cuts(X[i])
             if self._segments:
-                new_cuts = sorted(list(new_cuts))
                 for j in range(1, len(new_cuts)):
                     result[i, j-1] = np.max(X[i, new_cuts[j-1]-1:new_cuts[j]])
             else:
@@ -110,51 +144,22 @@ class MAX(FeatureSieve):
         return string
 
 
-class MIN(FeatureSieve):
+class MIN(ExplicitSieve):
     """FeatureSieve: Minimal value
     
     This sieve returns the minimal value for each slice of a time
     series in a given dataset. The slices are determined by the option
     ``cut``.
-
-    :param cut: If ``cut`` is an index of the time series array, the
-        sieve searches for the minimum in ``X[:cut]``. If it is a real
-        number in (0,1), the corresponding 'coquantile' will be
-        calculated first. This option can also be a list of floats or
-        integers which will be treated in the same way., defaults to -1
+    For more information on the available arguments, have a look at the
+    definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
+    
     :type cut: int/float or list of integers/floats, optional
-    :param segments: If set to ``True``, then the cutting indices will 
-        be sorted and treated as interval borders and the minimum in
-        each interval will be sieved. The left interval border is
-        reduced by 1 before slicing. This means that an input of
-        ``cut=[1,5,10]`` results in two features ``min(X[0:5])`` and
-        ``min(X[5:10])``.
-        If set to ``False``, then the left interval border is always 0.,
-        defaults to ``False``
     :type segments: bool, optional
     """
     def __init__(self,
                  cut: int = -1,
                  segments: bool = False):
-        super().__init__("Minimum value")
-        self._cut = cut if isinstance(cut, list) else [cut]
-        for c in self._cut:
-            if 0 < c < 1:
-                self._requisite = "INC -> [11]"
-        if segments and len(self._cut) == 1:
-            raise ValueError("If 'segments' is set to True, then 'cut'"+
-                             " has to be a list length >= 2.")
-        self._segments = segments
-
-    def nfeatures(self) -> int:
-        """Returns the number of features this FeatureSieve produces.
-        
-        :rtype: int
-        """
-        if self._segments:
-            return len(self._cut) - 1
-        else:
-            return len(self._cut)
+        super().__init__(cut, segments, "Minimum value")
 
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
@@ -167,21 +172,7 @@ class MIN(FeatureSieve):
         req = self._get_requisite(X)[:, 0, :]
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
-            new_cuts = []
-            for j in range(len(self._cut)):
-                cut = self._cut[j]
-                if 0 < cut < 1:
-                    cut = np.sum((req[i] <= (req[i, -1] * cut)))
-                    if cut == 0:
-                        cut = 1
-                elif not isinstance(cut, int):
-                    raise TypeError("Cut has to be a float in (0,1) or an " +
-                                    "integer")
-                elif cut < 0:
-                    cut = X.shape[1]
-                elif cut > X.shape[1]:
-                    raise IndexError("Cutting index out of range")
-                new_cuts.append(cut)
+            new_cuts = self._transform_cuts(X[i])
             if self._segments:
                 new_cuts = sorted(list(new_cuts))
                 for j in range(1, len(new_cuts)):
@@ -218,36 +209,22 @@ class MIN(FeatureSieve):
         return string
 
 
-class END(FeatureSieve):
+class END(ExplicitSieve):
     """FeatureSieve: Last value
     
     This FeatureSieve returns the last value of each time series in a
     given dataset.
+    For more information on the available arguments, have a look at the
+    definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
+    The option 'segments' will be ignored in this sieve.
     
-    :param cut: If ``cut`` is an index of the time series array, the
-        sieve returns ``X[cut-1]``. If it is a real number in (0,1), the
-        corresponding 'coquantile' will be calculated first. This option
-        can also be a list of floats or integers which will be treated
-        in the same way., defaults to -1
     :type cut: int/float or list of integers/floats, optional
     """
     def __init__(self,
                  cut: int = -1):
-        super().__init__("Last value")
-        self._cut = cut if isinstance(cut, list) else [cut]
-        for c in self._cut:
-            if 0 < c < 1:
-                self._requisite = "INC -> [11]"
+        super().__init__(cut, False, "Last value")
 
-    def nfeatures(self) -> int:
-        """Returns the number of features this FeatureSieve produces.
-        
-        :returns: number of features per time series
-        :rtype: int
-        """
-        return len(self._cut)
-
-    def sieve(self, X: np.ndarray):
+    def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
         
@@ -258,20 +235,9 @@ class END(FeatureSieve):
         req = self._get_requisite(X)[:, 0, :]
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
-            for j in range(len(self._cut)):
-                cut = self._cut[j]
-                if 0 < cut < 1:
-                    cut = np.sum((req[i] <= (req[i, -1] * cut)))
-                    if cut == 0:
-                        cut = 1
-                elif not isinstance(cut, int):
-                    raise TypeError("Cut has to be a float in (0,1) or an " +
-                                    "integer")
-                elif cut < 0:
-                    cut = X.shape[1]
-                elif cut > X.shape[1]:
-                    raise IndexError("Cutting index out of range")
-                result[i, j] = X[i, cut-1]
+            new_cuts = self._transform_cuts(X[i])
+            for j in range(len(new_cuts)):
+                result[i, j] = X[i, new_cuts[j]-1]
         if self.nfeatures() == 1:
             return result[:, 0]
         return result

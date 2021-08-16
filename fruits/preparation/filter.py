@@ -108,7 +108,7 @@ class WIN(DataPreparateur):
         maxima = np.expand_dims(np.max(Q, axis=2), axis=-1)
         Q = Q / maxima
 
-        mask = (Q > self._start) & (Q <= self._end)
+        mask = (Q >= self._start) & (Q <= self._end)
         return X * mask
     
     def copy(self):

@@ -35,7 +35,7 @@ def test_standardization():
 
 def test_window():
     X = np.array([
-                  [[1,2,4,5, 6],
+                  [[1,2,4,5,6],
                    [11,22,33,44,55]],
 
                   [[10,20,30,40,50],

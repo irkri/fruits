@@ -86,7 +86,7 @@ class Requisite:
 # definition of standard requisites
 
 _Monotone = Requisite("INC -> [11]")
-_Monotone.configure(preparateur=INC(zero_padding=False),
+_Monotone.configure(preparateur=INC(),
                     word=SimpleWord("[11]"))
 
 _AVAILABLE = {
