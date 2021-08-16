@@ -42,9 +42,8 @@ class ExplicitSieve(FeatureSieve):
                              " has to be a list of length >= 2.")
         self._segments = segments
 
-    def _transform_cuts(self, X: np.ndarray) -> list:
+    def _transform_cuts(self, X: np.ndarray, req: np.ndarray) -> list:
         # transforms the input cuts based on the given time series
-        req = self._get_requisite(X)[0, 0, :]
         new_cuts = []
         for j in range(len(self._cut)):
             cut = self._cut[j]
@@ -107,7 +106,7 @@ class MAX(ExplicitSieve):
         req = self._get_requisite(X)[:, 0, :]
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
-            new_cuts = self._transform_cuts(X[i])
+            new_cuts = self._transform_cuts(X[i], req[i])
             if self._segments:
                 for j in range(1, len(new_cuts)):
                     result[i, j-1] = np.max(X[i, new_cuts[j-1]-1:new_cuts[j]])
@@ -171,7 +170,7 @@ class MIN(ExplicitSieve):
         req = self._get_requisite(X)[:, 0, :]
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
-            new_cuts = self._transform_cuts(X[i])
+            new_cuts = self._transform_cuts(X[i], req[i])
             if self._segments:
                 new_cuts = sorted(list(new_cuts))
                 for j in range(1, len(new_cuts)):
@@ -234,7 +233,7 @@ class END(ExplicitSieve):
         req = self._get_requisite(X)[:, 0, :]
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(X.shape[0]):
-            new_cuts = self._transform_cuts(X[i])
+            new_cuts = self._transform_cuts(X[i], req[i])
             for j in range(len(new_cuts)):
                 result[i, j] = X[i, new_cuts[j]-1]
         if self.nfeatures() == 1:
