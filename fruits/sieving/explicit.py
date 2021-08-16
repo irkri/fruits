@@ -57,7 +57,6 @@ class ExplicitSieve(FeatureSieve):
                                 "integer")
             elif cut == -1:
                 cut = X.shape[0]
-                print(f"{cut=}")
             elif cut > X.shape[0]:
                 raise IndexError("Cutting index out of range")
             new_cuts.append(cut)
