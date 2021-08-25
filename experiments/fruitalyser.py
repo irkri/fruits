@@ -11,6 +11,7 @@ from timeit import default_timer as Timer
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.linear_model import RidgeClassifierCV, SGDClassifier
@@ -46,7 +47,12 @@ _COLORS = [
 ]
 
 def _get_color(i: int):
-    return [x/255 for x in _COLORS[i % len(_COLORS)]]
+    if i < 5:
+        return [x/255 for x in _COLORS[i]]
+    elif i < 20:
+        return mpl.cm.get_cmap("tab20b").colors[2:][i-5]
+    else:
+        return [x/255 for x in _COLORS[i % len(_COLORS)]]
 
 
 class TransformationCallback(fruits.callback.AbstractCallback):
@@ -302,7 +308,8 @@ class Fruitalyser:
                         mean: bool = False,
                         bounds: bool = False,
                         nseries: int = 1,
-                        per_class: bool = True) -> tuple:
+                        per_class: bool = True,
+                        on_axis = None) -> tuple:
         """Plots the unchanged input data.
         
         :param dim: Dimension of each time series to plot.,
@@ -324,23 +331,28 @@ class Fruitalyser:
         :param per_class: If ``True``, plots ``nseries`` time series
             of each class in the dataset., defaults to True
         :type per_class: bool, optional
+        :param on_axis: Matplotlib axis to plot the data on. If ``None``
+            is given, a seperate figure and axis will be created.
+        :type on_axis: Axis from matplotlib
         :returns: Tuple (figure, axis) corresponding to the return value
             of ``matplotlib.pyplot.subplots()`` holding the inserted
-            plot(s).
+            plot(s) or None if ``on_axis`` is provided.
         :rtype: tuple
         """
-        fig, ax = self._get_plot_template(1, 1)
-        self._plot(self.X[:, dim, :], self.y, ax, mean, bounds, nseries,
+        if on_axis is None:
+            fig, on_axis = self._get_plot_template(1, 1)
+        self._plot(self.X[:, dim, :], self.y, on_axis, mean, bounds, nseries,
                    per_class)
-        fig.suptitle("Input Data")
-        return fig, ax
+        if on_axis is None:
+            return fig, on_axis
 
     def plot_prepared_data(self,
                            dim: int = 0,
                            mean: bool = False,
                            bounds: bool = False,
                            nseries: int = 1,
-                           per_class: bool = True) -> tuple:
+                           per_class: bool = True,
+                           on_axis = None) -> tuple:
         """Plots specified dimension of the prepared data.
         This method can only be used if ``self.classify()`` was
         called before.
@@ -364,23 +376,28 @@ class Fruitalyser:
         :param per_class: If ``True``, plots ``nseries`` time series
             of each class in the dataset., defaults to True
         :type per_class: bool, optional
+        :param on_axis: Matplotlib axis to plot the data on. If ``None``
+            is given, a seperate figure and axis will be created.
+        :type on_axis: Axis from matplotlib
         :returns: Tuple (figure, axis) corresponding to the return value
             of ``matplotlib.pyplot.subplots()`` holding the inserted
-            plot(s).
+            plot(s) or None if ``on_axis`` is provided.
         :rtype: tuple
         """
-        fig, ax = self._get_plot_template(1, 1)
-        self._plot(self.callback.prepared_data[:, dim, :], self.y, ax,
+        if on_axis is None:
+            fig, on_axis = self._get_plot_template(1, 1)
+        self._plot(self.callback.prepared_data[:, dim, :], self.y, on_axis,
                    mean, bounds, nseries, per_class)
-        fig.suptitle("Prepared Data")
-        return fig, ax
+        if on_axis is None:
+            return fig, on_axis
 
     def plot_iterated_sums(self,
                            word_indices: list = None,
                            mean: bool = False,
                            bounds: bool = False,
                            nseries: int = 1,
-                           per_class: bool = True) -> tuple:
+                           per_class: bool = True,
+                           on_axes = None) -> tuple:
         """Plots the iterated sums calculated in the specified
         fruits.Fruit object with ``fruitalyser.msplot()``.
         This method can only be used if ``self.classify()`` was called
@@ -408,22 +425,29 @@ class Fruitalyser:
         :param per_class: If ``True``, plots ``nseries`` time series
             of each class in the dataset., defaults to True
         :type per_class: bool, optional
-        :returns: Tuple (figure, axis) corresponding to the return value
-            of ``matplotlib.pyplot.subplots(1, len(word_indices))``
-            holding the inserted plot(s).
+        :param on_axes: List of matplotlib axes to plot the data on.
+            The list has to have the at least the same length as
+            ``word_indices``. If ``None`` is given, a seperate figure
+            and axes will be created.
+        :type on_axes: List of axes from matplotlib
+        :returns: Tuple (figure, axes) corresponding to the return value
+            of ``matplotlib.pyplot.subplots()`` holding the inserted
+            plot(s) or None if ``on_axes`` is provided.
         :rtype: tuple
         """
         if word_indices is None:
             word_indices = list(range(len(self.words)))
-        fig, axs = self._get_plot_template(len(word_indices), 1, sharex=True)
-        if len(word_indices) == 1:
-            axs = [axs]
-        fig.suptitle("Iterated Sums")
+        if on_axes is None:
+            fig, on_axes = self._get_plot_template(len(word_indices), 1,
+                                                   sharex=True)
+            if len(word_indices) == 1:
+                on_axes = [on_axes]
         for i, index in enumerate(word_indices):
             self._plot(self.callback.iterated_sums[index][:, 0, :], self.y,
-                       axs[i], mean, bounds, nseries, per_class)
-            axs[i].set_title(str(self.words[index]))
-        return fig, axs
+                       on_axes[i], mean, bounds, nseries, per_class)
+            on_axes[i].set_title(str(self.words[index]))
+        if on_axes is None:
+            return fig, on_axes
 
     def plot_features(self,
                       sieve_index: int,
@@ -449,13 +473,16 @@ class Fruitalyser:
                           hue="Class",
                           diag_kind="hist",
                           markers="+",
-                          palette=sns.color_palette("tab10",
-                                                    len(set(self.y))))
+                          palette=[_get_color(i)
+                                   for i in range(len(set(self.y)))])
 
         if isinstance(sieve_index, int):
-            pp.fig.suptitle(f"Features from sieve {sieve_index}")
+            string = repr(self.sieves[self.sieve_index_to_sieve(sieve_index)])
+            string = string.split(".")[-1]
+            pp.fig.suptitle(f"Features of Sieve {string}", y=1.01)
         else:
-            pp.fig.suptitle(f"Features from word {word_index}")
+            pp.fig.suptitle(f"Features of Word {self.words[word_index]}",
+                            y=1.08)
 
         return pp
 
@@ -479,9 +506,9 @@ class Fruitalyser:
             feat_table = np.array([self.callback.sieved_data[:,
                                     self.get_feature_index(sieve_index, i)]
                                    for i in word_index], dtype=np.float64)
-            column_names = [str(self.words[i]) + " : " + str(i+1)
+            column_names = [str(self.words[i]) + ":" + str(i+1)
                             if len(str(self.words[i]))<8
-                            else str(self.words[i])[:5]+"..."+" : "+str(i)
+                            else str(self.words[i])[:5] + "..." + ":" + str(i)
                             for i in word_index]
             feats = pd.DataFrame(feat_table.T, columns=column_names)
             feats["Class"] = self.y
@@ -491,14 +518,14 @@ class Fruitalyser:
             feat_table = np.array([self.callback.sieved_data[:,
                                     self.get_feature_index(i, word_index)]
                                    for i in sieve_index], dtype=np.float64)
-            column_names = [repr(self.sieves[self.sieve_index_to_sieve(i)])
-                            + " : " + str(i+1)
-                            if len(repr(self.sieves[
-                                    self.sieve_index_to_sieve(i)])) < 8
-                            else repr(self.sieves[
-                                    self.sieve_index_to_sieve(i)])[:5]
-                            + "..." + " : " + str(i)
-                            for i in sieve_index]
+            column_names = []
+            for i in sieve_index:
+                string = repr(self.sieves[self.sieve_index_to_sieve(i)])
+                string = string.split(".")[-1]
+                if len(string) < 8:
+                    column_names.append(string + ":" + str(i))
+                else:
+                    column_names.append(string[:5] + "..." + ":" + str(i))
             feats = pd.DataFrame(feat_table.T,
                                  columns=column_names)
             feats["Class"] = self.y
