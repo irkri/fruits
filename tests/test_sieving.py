@@ -77,7 +77,7 @@ def test_max():
     max_cut_2 = fruits.sieving.MAX(cut=0.5)
 
     np.testing.assert_allclose(np.array([0.8,2]), max_cut_1.fit_sieve(X_1[0]))
-    np.testing.assert_allclose(np.array([0.8,2]), max_cut_2.fit_sieve(X_1[0]))
+    np.testing.assert_allclose(np.array([5,2]), max_cut_2.fit_sieve(X_1[0]))
 
     max_cut_group_1 = fruits.sieving.MAX(cut=[-1, 3, 1],
                                          segments=False)
@@ -88,7 +88,7 @@ def test_max():
     max_cut_group_2 = fruits.sieving.MAX(cut=[-1, 0.2, 0.7, 0.5],
                                          segments=True)
 
-    np.testing.assert_allclose(np.array([[0.8,5,5],[0,0,0]]),
+    np.testing.assert_allclose(np.array([[5,5,5],[0,0,0]]),
                                max_cut_group_2.fit_sieve(X_1[0]))
 
     max_cut_group_2_copy = max_cut_group_2.copy()
@@ -105,7 +105,7 @@ def test_min():
     min_cut_2 = fruits.sieving.MIN(cut=0.5)
 
     np.testing.assert_allclose(np.array([-4,0]), min_cut_1.fit_sieve(X_1[0]))
-    np.testing.assert_allclose(np.array([5,-5]), min_cut_2.fit_sieve(X_1[1]))
+    np.testing.assert_allclose(np.array([2,-5]), min_cut_2.fit_sieve(X_1[1]))
 
     min_cut_group_1 = fruits.sieving.MIN(cut=[-1, 3, 1],
                                          segments=False)
@@ -116,8 +116,8 @@ def test_min():
     min_cut_group_2 = fruits.sieving.MIN(cut=[-1, 0.2, 0.7, 0.5],
                                          segments=True)
 
-    np.testing.assert_allclose(np.array([[-4,0,-3],[0,0,-7]]),
-                               min_cut_group_2.fit_sieve(X_1[0]))
+    np.testing.assert_allclose(np.array([[2,2,0],[-4,-0.5,-8]]),
+                               min_cut_group_2.fit_sieve(X_1[1]))
 
     min_cut_group_2_copy = min_cut_group_2.copy()
 
@@ -152,8 +152,8 @@ def test_fruitstrings():
     sieve04 = fruits.sieving.PPV([0.1, 0.5], constant=True)
     sieve05 = fruits.sieving.MAX(cut=[5, 6, 20])
 
-    assert sieve01._prerequisites() == sieve02._prerequisites()
-    assert sieve03._prerequisites() == sieve04._prerequisites()
-    assert sieve04._prerequisites() == sieve05._prerequisites()
-    assert sieve01._prerequisites() != sieve04._prerequisites()
-    assert sieve02._prerequisites() != sieve03._prerequisites()
+    assert sieve01._requisite == sieve02._requisite
+    assert sieve03._requisite == sieve04._requisite
+    assert sieve04._requisite == sieve05._requisite
+    assert sieve01._requisite != sieve04._requisite
+    assert sieve02._requisite != sieve03._requisite

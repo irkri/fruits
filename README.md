@@ -20,7 +20,7 @@ To initialize the data one has to create a `fruits.Fruit` object. This object ca
 - Data Preparation: `DataPreparateur` objects are used to preprocess the data. This is an optional step.
 - Calculation of Iterated Sums: "Words" (instances of classes inheriting from `AbstractWord`) specify which Iterated Sums should be calculated<br>
   For example:<br>`<[11], ISS(X)>=numpy.cumsum([x^2 for x in X])` is the result of `fruits.core.ISS(X, [fruits.iterators.SimpleWord("[11]")])`
-- Feature Sieving: `FeatureSieve` objects have to be specified in order to extract the actual results of this pipeline from the results of the previous step(s).<br>
+- Feature Sieving: `FeatureSieve` extract single numbers, i.e. the features, from the new arrays calculated in the previous step.<br>
   The total number of features per time series is the number of sieves times the number of words added to the Fruit.
   
 ## Example
@@ -59,9 +59,9 @@ X_test_features = myfruit.transform(X_test)
 ```
 
 ## UCR-Experiments
-We test the pipeline for accuracy by doing classification experiments of some UCR-datasets for different `fruits.Fruit` objects. You can [download](https://www.timeseriesclassification.com/Downloads/Archives/Univariate2018_arff.zip) the datasets from [timeseriesclassification.com](https://timeseriesclassification.com).
-
-For detailed instructions on how to perform some of these experiments, have a look at the file [configurations_on_ucr.py](experiments/configurations_on_ucr.py). This python script can be executed in a terminal/command line.
+Predefined __FRUITS__ configurations are available to test in [configurations.py](experiments/configurations.py).
+Have a look at the file [experiment.py](experiments/experiment.py) for details on performing the experiments.
+Data sets for testing can be downloaded from [timeseriesclassification.com](https://timeseriesclassification.com).
 
 ## Unit tests
 There are a bunch of [tests](tests) for __FRUITS__ available to execute. To do this, enter the command
