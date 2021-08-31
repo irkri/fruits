@@ -150,6 +150,24 @@ def test_theoretical_cases():
     np.testing.assert_allclose(np.ones((25,))*-50,
                                result[:,0,-1])
 
+def test_weighted_iss():
+    X = np.random.random_sample((10, 3, 40))
+    word = fruits.core.SimpleWord("[12][2][33]")
+    word.alpha = [0.5, -0.2]
+    result = fruits.core.ISS(X, word)[:, 0, -1]
+    the_result = np.zeros((X.shape[0]))
+    for m in range(X.shape[0]):
+        for k in range(X.shape[2]):
+            for j in range(k):
+                for i in range(j):
+                    the_result[m] += X[m, 0, i]*X[m, 1, i] \
+                                     * X[m, 1, j] \
+                                     * X[m, 2, k]**2 \
+                                     * np.exp(-0.5*(j-i)) \
+                                     * np.exp(0.2*(k-j))
+
+    np.testing.assert_allclose(the_result, result, rtol=1e-02)
+
 def test_word_generation():
     for n in range(1, 7):
         assert len(fruits.core.generation.simplewords_by_weight(n, dim=1)) \

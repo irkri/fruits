@@ -27,6 +27,8 @@ class AbstractWord(ABC):
     """
     def __init__(self, name: str = ""):
         self.name = name
+        self._alpha = 0.0
+        self._extended_letters = []
 
     @property
     def name(self) -> str:
@@ -40,6 +42,31 @@ class AbstractWord(ABC):
     def name(self, name: str):
         self._name = name
 
+    @property
+    def alpha(self) -> list:
+        """Penalization term for the calculation of iterated sums.
+        Sums that use multiplication of indices that are further away
+        are scaled down. The ammount of downscaling depends on this
+        alpha.
+        Its default value is 0. The value can be changed for each
+        contiguous extended letter pair in the word respectively
+        (given as a list of length ``len(word)-1``) or by choosing the
+        same value once for the whole list.
+        """
+        if isinstance(self._alpha, float):
+            return [self._alpha] * (len(self) - 1)
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, alpha: list):
+        if isinstance(alpha, list):
+            if len(alpha) != len(self) - 1:
+                raise ValueError("alpha has to have the same length as " +
+                                 "number of extended letters in the word - 1")
+        elif not isinstance(alpha, float):
+            raise ValueError("alpha has to be a float or list of floats")
+        self._alpha = alpha
+
     @abstractmethod
     def multiply(self, other):
         pass
@@ -48,13 +75,18 @@ class AbstractWord(ABC):
     def copy(self):
         pass
 
-    @abstractmethod
-    def __iter__(self):
-        pass
+    def __len__(self) -> int:
+        return len(self._extended_letters)
 
-    @abstractmethod
+    def __iter__(self):
+        self._el_iterator_index = -1
+        return self
+
     def __next__(self):
-        pass
+        if self._el_iterator_index < len(self._extended_letters)-1:
+            self._el_iterator_index += 1
+            return self._extended_letters[self._el_iterator_index]
+        raise StopIteration()
 
     def __copy__(self):
         return self.copy()
@@ -105,7 +137,6 @@ class ComplexWord(AbstractWord):
     """
     def __init__(self, name: str = ""):
         super().__init__(name)
-        self._extended_letters = []
 
     def multiply(self, other):
         """Appends ExtendedLetter objects to this word.
@@ -128,19 +159,6 @@ class ComplexWord(AbstractWord):
         sw = ComplexWord(self.name)
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
-
-    def __iter__(self):
-        self._el_iterator_index = -1
-        return self
-
-    def __next__(self):
-        if self._el_iterator_index < len(self._extended_letters)-1:
-            self._el_iterator_index += 1
-            return self._extended_letters[self._el_iterator_index]
-        raise StopIteration()
-
-    def __len__(self) -> int:
-        return len(self._extended_letters)
 
     def __eq__(self, other):
         return False
@@ -203,7 +221,6 @@ class SimpleWord(AbstractWord):
     """
     def __init__(self, string: str):
         super().__init__()
-        self._extended_letters = []
         self._max_dim = 0
         self.multiply(string)
 
@@ -241,19 +258,6 @@ class SimpleWord(AbstractWord):
         sw = SimpleWord(self.name)
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
-
-    def __iter__(self):
-        self._el_iterator_index = -1
-        return self
-
-    def __next__(self):
-        if self._el_iterator_index < len(self._extended_letters)-1:
-            self._el_iterator_index += 1
-            return self._extended_letters[self._el_iterator_index]
-        raise StopIteration()
-
-    def __len__(self) -> int:
-        return len(self._extended_letters)
 
     def __eq__(self, other):
         if not isinstance(other, SimpleWord):

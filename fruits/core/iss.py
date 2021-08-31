@@ -15,7 +15,9 @@ class ISSCalculator:
     :param words: List of words used to calculate the iterated sums.
     :type words: List[AbstractWord]
     """
-    def __init__(self, X: np.ndarray, words: List[AbstractWord]):
+    def __init__(self,
+                 X: np.ndarray,
+                 words: List[AbstractWord]):
         self._X = X
         if not check_input_shape(X):
             self._X = force_input_shape(X)
@@ -42,7 +44,7 @@ class ISSCalculator:
                 raise TypeError("Given words have to be objects of a "
                                 "class that inherits from AbstractWord")
 
-    def _transform_simple_word(self, word: SimpleWord):
+    def _transform_simple_word(self, word: SimpleWord) -> np.ndarray:
         # transforms all simplewords for faster calculation with a
         # backend function
         simple_word_raw = [el for el in word]
@@ -64,10 +66,13 @@ class ISSCalculator:
 
         for i, index in enumerate(self._simple_words_index):
             results[:, index, :] = _fast_ISS(self._X,
-                self._transform_simple_word(self._simple_words[i]))
+                self._transform_simple_word(self._simple_words[i]),
+                np.array([0] + self._simple_words[i].alpha + [0],
+                         dtype=np.float32))
         for i, index in enumerate(self._complex_words_index):
-            results[:, index, :] = _slow_ISS(self._X, self._complex_words[i])
-
+            results[:, index, :] = _slow_ISS(self._X, self._complex_words[i],
+                np.array([0] + self._complex_words[i].alpha + [0],
+                         dtype=np.float32))
         return results
 
 
