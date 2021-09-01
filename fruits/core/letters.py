@@ -17,10 +17,10 @@ class ExtendedLetter:
     functions that were decorated with
     :meth:`~fruits.core.letters.letter`.
 
-    :param *letter_dims: Any number of tuples ``(letter, dim)`` where
+    :param letter_dims: Any number of tuples ``(letter, dim)`` where
         ``dim`` is the dimension the function (integer) ``letter`` will
         extract from a time series.
-    :type *letter_dims: Tuple[Callable, int]
+    :type letter_dims: one or more Tuple[Callable, int]
     """
     def __init__(self, *letter_dims: Tuple[FREE_LETTER_TYPE, int]):
         self._letters = []
