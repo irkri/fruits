@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 
 from fruits.preparation.abstract import DataPreparateur
@@ -42,7 +44,7 @@ class Requisite:
                   word: Word = None):
         """Specifies which preparateur and word to use for future
         processing.
-        
+
         :type preparateur: DataPreparateur, optional
         :type word: Word, optional
         """
@@ -64,7 +66,7 @@ class Requisite:
     def is_empty(self) -> bool:
         """Returns ``True`` if no preparateur and word are specified,
         else ``False``.
-        
+
         :rtype: bool
         """
         if self._preparateur is None and self._word is None:
@@ -93,17 +95,19 @@ _AVAILABLE = {
     str(_Monotone): _Monotone,
 }
 
-def get_available() -> list:
-    """Returns a list of all available requisites. Add new ones by
-    using :meth:`~fruits.requisites.log`.
-    
-    :rtype: list
+def get_available() -> List[str]:
+    """Returns all available requisites as a list of their
+    identification strings. Add new ones by using
+    :meth:`~fruits.requisites.log` and get the actual Requisite object
+    from its string with :meth:`~fruits.requisites.get`.
+
+    :rtype: List[str]
     """
-    return _AVAILABLE.items()
+    return _AVAILABLE.keys()
 
 def get(requisite_ident: str) -> Requisite:
     """Returns the Requisite object for the given identification string.
-    
+
     :type requisite_ident: str
     :rtype: Requisite
     """
@@ -111,6 +115,8 @@ def get(requisite_ident: str) -> Requisite:
 
 def log(requisite: Requisite):
     """Logs a given requisite as 'available' for later usage.
+    Get a list of available requisites with
+    :meth:`~fruits.requisites.get_available`.
 
     :type requisite: Requisite
     """

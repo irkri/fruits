@@ -6,7 +6,7 @@ from fruits.node import FruitNode
 
 class DataPreparateur(FruitNode):
     """Abstract class for a data preparateur.
-    
+
     A preparateur can be fitted on a three dimensional numpy array
     (preferably containing time series data). The output of
     ``self.prepare`` is a numpy array that matches the shape of the
@@ -15,21 +15,11 @@ class DataPreparateur(FruitNode):
     ``fruits.Fruit`` object for the preprocessing step.
     """
     def __init__(self, name: str = ""):
-        super().__init__()
-        self.name = name
-
-    @property
-    def name(self) -> str:
-        """Simple identifier for this object."""
-        return self._name
-
-    @name.setter
-    def name(self, name: str):
-        self._name = name
+        super().__init__(name)
 
     def fit(self, X: np.ndarray):
         """Fits the DataPreparateur to the given dataset.
-        
+
         :type X: np.ndarray
         """
         pass
@@ -41,7 +31,7 @@ class DataPreparateur(FruitNode):
     def fit_prepare(self, X: np.ndarray) -> np.ndarray:
         """Fits the given dataset to the DataPreparateur and returns
         the preparated results.
-        
+
         :param X: A (multidimensional) time series dataset.
         :type X: np.ndarray
         """
@@ -49,14 +39,14 @@ class DataPreparateur(FruitNode):
         return self.prepare(X)
 
     @abstractmethod
-    def copy(self):
+    def copy(self) -> "DataPreparateur":
         pass
 
-    def __copy__(self):
+    def __copy__(self) -> "DataPreparateur":
         return self.copy()
 
     def __eq__(self, other) -> bool:
         return False
 
     def __repr__(self) -> str:
-        return "fruits.preparation.DataPreparateur"
+        return f"fruits.preparation.abstract.DataPreparateur('{self.name}')"

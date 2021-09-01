@@ -4,7 +4,7 @@ from fruits.preparation.abstract import DataPreparateur
 
 class DIL(DataPreparateur):
     """DataPreparateur: Dilation
-    
+
     This preparateur sets some slices in each time series in the
     given dataset to zero. The indices and lengths for those zero
     sequences are chosen randomly.
@@ -24,7 +24,7 @@ class DIL(DataPreparateur):
     def fit(self, X: np.ndarray):
         """Fits the preparateur to the given dataset by randomizing the
         starting points and lengths of the zero strips.
-        
+
         :type X: np.ndarray
         """
         nclusters = int(self._clusters * X.shape[2])
@@ -39,7 +39,7 @@ class DIL(DataPreparateur):
             
     def prepare(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed dataset.
-        
+
         :type X: np.ndarray
         :rtype: np.ndarray
         :raises: RuntimeError if self.fit() wasn't called
@@ -53,9 +53,9 @@ class DIL(DataPreparateur):
             X_new[:, :, start:start+length] = 0
         return X_new
     
-    def copy(self):
+    def copy(self) -> "DIL":
         """Returns a copy of this preparateur.
-        
+
         :rtype: DIL
         """
         return DIL(self._clusters)
@@ -67,27 +67,22 @@ class DIL(DataPreparateur):
         return f"DIL(clusters={self._clusters})"
 
     def __repr__(self) -> str:
-        return "fruits.preparation.DIL"
+        return "fruits.preparation.filter.DIL"
 
 
 class WIN(DataPreparateur):
     """DataPreparateur: Window
-    
+
     Outside of a certain window the time series is set to zero.
     The window is obtained according to 'quantiles' of a certain
     function of each time series, for example its quadratic variation by
     calculating increments and getting results from
     ``fruits.core.ISS(X, [SimpleWord("[11]")])``.
-    
+
     :param start: Quantile start; float value between 0 and 1 (incl.).
     :type start: float
     :param end: Quantile end; float value between 0 and 1 (incl.).
     :type end: float
-    :param increments: If True, calculate increments first.
-    :type increments: bool, defaults to True
-    :param word: What word to use for ISS calculation.,
-        defaults to SimpleWord("[11]")
-    :type word: AbstractWord or None, optional
     """
     def __init__(self,
                  start: float,
@@ -99,7 +94,7 @@ class WIN(DataPreparateur):
             
     def prepare(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed dataset.
-        
+
         :type X: np.ndarray
         :rtype: np.ndarray
         """
@@ -111,7 +106,11 @@ class WIN(DataPreparateur):
         mask = (Q >= self._start) & (Q <= self._end)
         return X * mask
     
-    def copy(self):
+    def copy(self) -> "WIN":
+        """Returns a copy of this preparateur.
+
+        :rtype: WIN
+        """
         return WIN(self._start, self._end)
 
     def __eq__(self, other) -> bool:
@@ -121,18 +120,18 @@ class WIN(DataPreparateur):
                 self._end == other._end)
 
     def __str__(self) -> str:
-        return (f"WIN(start={self._start}, end={self._end})")
+        return f"WIN(start={self._start}, end={self._end})"
 
     def __repr__(self) -> str:
-        return "fruits.preparation.WIN"
+        return "fruits.preparation.filter.WIN"
 
 
 class DOT(DataPreparateur):
     """DataPreparateur: Dotting
-    
+
     Keeps every n-th point of a time series while setting everything
     else to a given value.
-    
+
     :param n_prop: Used for calculation of ``n=n_prop*X.shape[2]``.
         Has to be a float in (0, 1)., defaults to 0.1
     :type n_prop: float, optional
@@ -148,7 +147,7 @@ class DOT(DataPreparateur):
 
     def prepare(self, X: np.ndarray):
         """Returns the transformed dataset.
-        
+
         :type X: np.ndarray
         :rtype: np.ndarray
         """
@@ -159,7 +158,11 @@ class DOT(DataPreparateur):
         out[:, :, n-1::n] = X[:, :, n-1::n]
         return out
     
-    def copy(self):
+    def copy(self) -> "DOT":
+        """Returns a copy of this preparateur.
+
+        :rtype: DOT
+        """
         return DOT(self._n_prop, self._value)
 
     def __eq__(self, other) -> bool:
@@ -171,4 +174,4 @@ class DOT(DataPreparateur):
         return f"DOT(n_prop={self._n_prop}, value={self._value})"
 
     def __repr__(self) -> str:
-        return "fruits.preparation.DOT"
+        return "fruits.preparation.filter.DOT"

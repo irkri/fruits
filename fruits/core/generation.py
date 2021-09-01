@@ -20,7 +20,7 @@ def simplewords_by_degree(max_letters: int,
         SimpleWord("[1]"), SimpleWord("[1][1]"), SimpleWord("[11]"),
         SimpleWord("[11][1]"), SimpleWord("[1][11]"),
         SimpleWord("[11][11]")
-    
+
     :param max_letters: Maximal number of letters in any extended
         letter.
     :type max_letters: int
@@ -55,7 +55,7 @@ def simplewords_by_weight(w: int,
 
         SimpleWord("[11]"), SimpleWord("[12]"), SimpleWord("[22]"),
         SimpleWord("[1][1]"), SimpleWord("[1][2]"), SimpleWord("[2][2]")
-    
+
     :param w: Weight of the words, i.e. number of letters.
     :type w: int
     :param dim: Highest dimension of a letter., defaults to 1
@@ -132,7 +132,7 @@ def replace_letters(word: Union[Word, List[Word]],
                      -> Union[Word, List[Word]]:
     """Replaces the letters in the given word(s) by the iteration
     results from the supplied generator.
-    
+
     :type word: Union[Word, List[Word]]
     :param letter_gen: Generator that returns functions correctly
         decorated with :meth:`~fruits.core.letters.letter``.

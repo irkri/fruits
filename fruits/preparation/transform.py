@@ -5,13 +5,13 @@ from fruits.preparation.backend import _increments
 
 class INC(DataPreparateur):
     """DataPreparateur: Increments
-    
+
     For one dimension of a time series::
 
         X = [x_1, x_2, ..., x_n]
 
     this class produces the output::
-        
+
         X_inc = [0, x_2-x_1, x_3-x_2, ..., x_n-x_{n-1}].
 
     :param zero_padding: If set to True, then the first entry in each
@@ -25,9 +25,8 @@ class INC(DataPreparateur):
         self._zero_padding = zero_padding
 
     def prepare(self, X: np.ndarray) -> np.ndarray:
-        """Returns the increments of all time series in ``X``. This is
-        the equivalent to the convolution of ``X`` and ``[-1, 1]``.
-        
+        """Returns the increments of all time series in ``X``.
+
         :type X: np.ndarray
         :rtype: np.ndarray
         """
@@ -36,9 +35,9 @@ class INC(DataPreparateur):
             out[:, :, 0] = 0
         return out
 
-    def copy(self):
+    def copy(self) -> "INC":
         """Returns a copy of this preparateur.
-        
+
         :rtype: INC
         """
         dp = INC(self._zero_padding)
@@ -57,12 +56,12 @@ class INC(DataPreparateur):
         return string
 
     def __repr__(self) -> str:
-        return "fruits.preparation.INC"
+        return "fruits.preparation.transform.INC"
 
 
 class STD(DataPreparateur):
     """DataPreparateur: Standardization
-    
+
     Used for standardization of a given time series dataset.
     """
     def __init__(self):
@@ -73,7 +72,7 @@ class STD(DataPreparateur):
     def fit(self, X: np.ndarray):
         """Fits the STD object to the given dataset by calculating the
         mean and standard deviation of the flattened dataset.
-        
+
         :type X: np.ndarray
         """
         self._mean = np.mean(X)
@@ -82,7 +81,7 @@ class STD(DataPreparateur):
     def prepare(self, X: np.ndarray) -> np.ndarray:
         """Returns the standardized dataset ``(X-mu)/std`` where ``mu``
         and ``std`` are the parameters calculated in :meth:`STD.fit`.
-        
+
         :type X: np.ndarray
         :returns: Standardized dataset.
         :rtype: np.ndarray
@@ -93,9 +92,9 @@ class STD(DataPreparateur):
         out = (X - self._mean) / self._std
         return out
 
-    def copy(self):
+    def copy(self) -> "STD":
         """Returns a copy of this preparateur.
-        
+
         :rtype: STD
         """
         return STD()
@@ -107,4 +106,4 @@ class STD(DataPreparateur):
         return "STD"
 
     def __repr__(self) -> str:
-        return "fruits.preparation.STD"
+        return "fruits.preparation.transform.STD"

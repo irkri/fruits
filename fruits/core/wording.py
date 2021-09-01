@@ -179,9 +179,9 @@ class SimpleWord(Word):
     Each bracket pair is interpreted as an extended letter. Each
     extended letter is equal to all of its letter-permutations.
     This means that::
-        
+
         SimpleWord("[12][122]") == SimpleWord("[21][212]")
-    
+
     is true.
 
     The extended letters are saved internally as lists with a length
@@ -205,7 +205,7 @@ class SimpleWord(Word):
         """Multiplies another word with the SimpleWord object.
         The word is given as a string matching the regular expression
         ``([d+])+`` where ``d+`` denotes one or more digits.
-        
+
         :type string: str
         """
         if (not isinstance(string, str) or
@@ -229,7 +229,7 @@ class SimpleWord(Word):
 
     def copy(self) -> "SimpleWord":
         """Returns a copy of this SimpleWord.
-        
+
         :rtype: SimpleWord
         """
         sw = SimpleWord(self.name)

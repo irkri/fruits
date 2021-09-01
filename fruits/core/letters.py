@@ -16,7 +16,7 @@ class ExtendedLetter:
     An extended letter is a container that only allows appending
     functions that were decorated with
     :meth:`~fruits.core.letters.letter`.
-    
+
     :param *letter_dims: Any number of tuples ``(letter, dim)`` where
         ``dim`` is the dimension the function (integer) ``letter`` will
         extract from a time series.
@@ -34,7 +34,7 @@ class ExtendedLetter:
 
     def append(self, letter: FREE_LETTER_TYPE, dim: int = 0):
         """Appends a letter to the ExtendedLetter object.
-        
+
         :param letter: Function that was decorated with
             :meth:`~fruits.core.letters.letter`.
         :type letter: callable
@@ -55,7 +55,7 @@ class ExtendedLetter:
 
     def copy(self) -> "ExtendedLetter":
         """Returns a copy of this extended letter.
-        
+
         :rtype: ExtendedLetter
         """
         el = ExtendedLetter()
@@ -115,10 +115,10 @@ def letter(*args, name: str = None):
         @fruits.core.letter
 
     Available predefined letters are:
-    
+
         - ``simple``: Extracts a single dimension
         - ``absolute``: Extracts the absolute value of a single dim.
-        
+
     :param name: You can supply a name to the function. This name will
         be used for documentation in an ``ExtendedLetter`` object. If
         no name is supplied, then the name of the function is used.,

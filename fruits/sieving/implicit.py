@@ -5,7 +5,7 @@ from fruits.preparation.backend import _increments
 
 class PPV(FeatureSieve):
     """FeatureSieve: Proportion of positive values
-    
+
     For a calculated quantile with ``PPV.fit``, this feature sieve
     calculates the proportion of values in a time series that are
     greater than the calculated quantile(s).
@@ -84,7 +84,7 @@ class PPV(FeatureSieve):
 
     def nfeatures(self) -> int:
         """Returns the number of features this sieve produces.
-        
+
         :rtype: int
         """
         if self._segments:
@@ -94,7 +94,7 @@ class PPV(FeatureSieve):
 
     def fit(self, X: np.ndarray):
         """Calculates and remembers the quantile(s) of the input data.
-        
+
         :type X: np.ndarray
         """
         self._q = [x[0] for x in self._q_c_input]
@@ -114,7 +114,7 @@ class PPV(FeatureSieve):
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
-        
+
         :type X: np.ndarray
         :returns: array of features
         :rtype: np.ndarray
@@ -138,9 +138,9 @@ class PPV(FeatureSieve):
             return result[:, 0]
         return result
 
-    def copy(self):
+    def copy(self) -> "PPV":
         """Returns a copy of this object.
-        
+
         :rtype: PPV
         """
         fs = PPV([x[0] for x in self._q_c_input],
@@ -170,13 +170,13 @@ class PPV(FeatureSieve):
 class PPVC(PPV):
     """FeatureSieve: Proportion of connected components of positive
     values
-    
+
     For a calculated quantile with ``PPVC.fit``, this FeatureSieve
     calculates the connected components of the proportion of values in
     a time series that is greater than the calculated quantile.
     This is equivalent to the number of consecutive strips of 1's in
     the array ``X>=quantile``.
-    
+
     :param quantile: Quantile or list of quantiles ``[q_1, ..., q_n]``
         as actual value(s) or probability for quantile calculation
         (e.g. 0.5 for the 0.5-quantile)., defaults to 0.5
@@ -206,7 +206,7 @@ class PPVC(PPV):
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
-        
+
         :type X: np.ndarray
         :returns: Array of features.
         :rtype: np.ndarray
@@ -225,9 +225,9 @@ class PPVC(PPV):
             return result[:, 0]
         return result
 
-    def copy(self):
+    def copy(self) -> "PPVC":
         """Returns a copy of this object.
-        
+
         :rtype: PPVC
         """
         fs = PPVC([x[0] for x in self._q_c_input],

@@ -9,7 +9,7 @@ class ExplicitSieve(FeatureSieve):
     as indices in the time series based on a given 'coquantile'.
     A (non-scaled) value returned by an explicit sieve always also is a
     value in the original time series.
-    
+
     :param cut: If ``cut`` is an index in the time series array, the
         features are sieved from ``X[:cut]``. If it is a real number in
         ``(0,1)``, the corresponding 'coquantile' will be calculated
@@ -65,7 +65,7 @@ class ExplicitSieve(FeatureSieve):
 
     def nfeatures(self) -> int:
         """Returns the number of features this sieve produces.
-        
+
         :rtype: int
         """
         if self._segments:
@@ -80,13 +80,13 @@ class ExplicitSieve(FeatureSieve):
 
 class MAX(ExplicitSieve):
     """FeatureSieve: Maximal value
-    
+
     This sieve returns the maximal value for each slice of a time
     series in a given dataset. The slices are determined by the option
     ``cut``.
     For more information on the available arguments, have a look at the
     definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
-    
+
     :type cut: int/float or list of integers/floats, optional
     :type segments: bool, optional
     """
@@ -98,7 +98,7 @@ class MAX(ExplicitSieve):
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
-        
+
         :type X: np.ndarray
         :returns: Array of features.
         :rtype: np.ndarray
@@ -127,9 +127,9 @@ class MAX(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self):
+    def copy(self) -> "MAX":
         """Returns a copy of this object.
-        
+
         :rtype: MAX
         """
         fs = MAX(self._cut, self._segments)
@@ -144,13 +144,13 @@ class MAX(ExplicitSieve):
 
 class MIN(ExplicitSieve):
     """FeatureSieve: Minimal value
-    
+
     This sieve returns the minimal value for each slice of a time
     series in a given dataset. The slices are determined by the option
     ``cut``.
     For more information on the available arguments, have a look at the
     definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
-    
+
     :type cut: int/float or list of integers/floats, optional
     :type segments: bool, optional
     """
@@ -162,7 +162,7 @@ class MIN(ExplicitSieve):
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
-        
+
         :type X: np.ndarray
         :returns: Array of features.
         :rtype: np.ndarray
@@ -192,9 +192,9 @@ class MIN(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self):
+    def copy(self) -> "MIN":
         """Returns a copy of this object.
-        
+
         :rtype: MIN
         """
         fs = MIN(self._cut, self._segments)
@@ -209,13 +209,13 @@ class MIN(ExplicitSieve):
 
 class END(ExplicitSieve):
     """FeatureSieve: Last value
-    
+
     This FeatureSieve returns the last value of each time series in a
     given dataset.
     For more information on the available arguments, have a look at the
     definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
     The option 'segments' will be ignored in this sieve.
-    
+
     :type cut: int/float or list of integers/floats, optional
     """
     def __init__(self,
@@ -225,7 +225,7 @@ class END(ExplicitSieve):
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
-        
+
         :type X: np.ndarray
         :returns: Array of features.
         :rtype: np.ndarray
@@ -247,9 +247,9 @@ class END(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self):
+    def copy(self) -> "END":
         """Returns a copy of this object.
-        
+
         :rtype: END
         """
         fs = END(self._cut)
