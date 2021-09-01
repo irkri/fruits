@@ -1,38 +1,42 @@
 from functools import wraps
+from typing import Tuple, Callable
 
 import numpy as np
 
-COMPLEX_LETTER_SIGNATURE = "fruits_letter"
-COMPLEX_LETTER_NAME = "fruits_name"
+LETTER_SIGNATURE = "fruits_letter"
+LETTER_NAME = "fruits_name"
+
+BOUND_LETTER_TYPE = Callable[[np.ndarray, int], np.ndarray]
+FREE_LETTER_TYPE = Callable[[int], BOUND_LETTER_TYPE]
 
 class ExtendedLetter:
     """Class for an extended letter used in words.
-    A word (see :class:`~fruits.core.wording.AbstractWord`) consists of
-    a number of extended letters.
-    An ExtendedLetter object is a container that only allows
-    appending functions that were decorated with
-    :meth:`~fruits.core.letters.complex_letter`.
+    A :class:`~fruits.core.wording.Word` consists of a number of
+    extended letters.
+    An extended letter is a container that only allows appending
+    functions that were decorated with
+    :meth:`~fruits.core.letters.letter`.
     
-    :param letters: Any number of tuples ``(letter, dim)`` where ``dim``
-        is the dimension the function ``letter`` will extract from a
-        time series.
-    :type letters: tuple(s)
+    :param *letter_dims: Any number of tuples ``(letter, dim)`` where
+        ``dim`` is the dimension the function (integer) ``letter`` will
+        extract from a time series.
+    :type *letter_dims: Tuple[Callable, int]
     """
-    def __init__(self, *letters):
+    def __init__(self, *letter_dims: Tuple[FREE_LETTER_TYPE, int]):
         self._letters = []
         self._dimensions = []
         self._string_repr = ""
-        for letter in letters:
+        for letter in letter_dims:
             if not isinstance(letter, tuple) or len(letter) != 2:
                 raise TypeError("ExtendedLetter can only be initialized " +
-                                "using tupels")
+                                "using tuples")
             self.append(*letter)
 
-    def append(self, letter: callable, dim: int = 0):
+    def append(self, letter: FREE_LETTER_TYPE, dim: int = 0):
         """Appends a letter to the ExtendedLetter object.
         
         :param letter: Function that was decorated with
-            :meth:`~fruits.core.letters.complex_letter`.
+            :meth:`~fruits.core.letters.letter`.
         :type letter: callable
         :param int: Dimension of the letter that is going to be used as
             its second argument, if it has one., defaults to 0
@@ -46,10 +50,10 @@ class ExtendedLetter:
         else:
             self._letters.append(letter)
             self._dimensions.append(dim)
-            self._string_repr += letter.__dict__[COMPLEX_LETTER_NAME]
+            self._string_repr += letter.__dict__[LETTER_NAME]
             self._string_repr += "(" + str(dim+1) + ")"
 
-    def copy(self):
+    def copy(self) -> "ExtendedLetter":
         """Returns a copy of this extended letter.
         
         :rtype: ExtendedLetter
@@ -73,10 +77,10 @@ class ExtendedLetter:
     def __len__(self) -> int:
         return len(self._letters)
 
-    def __getitem__(self, i: int) -> callable:
+    def __getitem__(self, i: int) -> BOUND_LETTER_TYPE:
         return self._letters[i](self._dimensions[i])
 
-    def __copy__(self):
+    def __copy__(self) -> "ExtendedLetter":
         return self.copy()
 
     def __str__(self) -> str:
@@ -86,22 +90,21 @@ class ExtendedLetter:
         return "fruits.core.letters.ExtendedLetter"
 
 
-def complex_letter(*args, name: str = None):
-    """Decorator for the implementation of a complex letter appendable
-    to an :class:`fruits.core.letters.ExtendedLetter` object.
-    
-    It is possible to implement your own complex letters by using this
-    decorator. Your complex letter has to be a function (e.g. called
-    'myletter') that has two arguments: ``X: np.ndarray`` and
-    ``i: int``, where ``X`` is a multidimensional time series and ``i``
-    is the dimension index that can (but doesn't need to) be used in the
-    decorated function.
+def letter(*args, name: str = None):
+    """Decorator for the implementation of a letter appendable to an
+    :class:`fruits.core.letters.ExtendedLetter` object.
+
+    It is possible to implement a new letter by using this decorator.
+    This callable (e.g. called ``myletter``) has to have two arguments:
+    ``X: np.ndarray`` and ``i: int``, where ``X`` is a multidimensional
+    time series and ``i`` is the dimension index that can
+    (but doesn't need to) be used in the decorated function.
     The function has to return a numpy array. ``X`` has exactly two
     dimensions and the returned array has one dimension.
 
     .. code-block:: python
 
-        @fruits.core.complex_letter(name="ReLU")
+        @fruits.core.letter(name="ReLU")
         def myletter(X: np.ndarray, i: int) -> np.ndarray:
             return X[i, :] * (X[i, :]>0)
 
@@ -109,13 +112,13 @@ def complex_letter(*args, name: str = None):
 
     .. code-block:: python
 
-        @fruits.core.complex_letter
+        @fruits.core.letter
 
     Available predefined letters are:
     
-        - ``simple``: Extracting a single dimension
-        - ``absolute``: Extracting the absolute value of a single dimension
-    
+        - ``simple``: Extracts a single dimension
+        - ``absolute``: Extracts the absolute value of a single dim.
+        
     :param name: You can supply a name to the function. This name will
         be used for documentation in an ``ExtendedLetter`` object. If
         no name is supplied, then the name of the function is used.,
@@ -139,7 +142,7 @@ def complex_letter(*args, name: str = None):
             if not isinstance(args[0], str):
                 raise TypeError("Unknown argument type")
             name = args[0]
-        def complex_letter_decorator(func):
+        def letter_decorator(func):
             _configure_letter(func, name=name)
             @wraps(func)
             def wrapper(i: int):
@@ -147,28 +150,30 @@ def complex_letter(*args, name: str = None):
                     return func(X, i)
                 return index_manipulation
             return wrapper
-        return complex_letter_decorator
+        return letter_decorator
 
-def _configure_letter(func: callable, name: str = None):
+def _configure_letter(func: BOUND_LETTER_TYPE, name: str = None):
+    # marks the input callable as a letter
     if func.__code__.co_argcount != 2:
         raise RuntimeError("Wrong number of arguments at decorated function " +
                            str(func.__name__) + ". Should be 2.")
-    func.__dict__[COMPLEX_LETTER_SIGNATURE] = "complex_letter"
+    func.__dict__[LETTER_SIGNATURE] = "letter"
     if name is None:
-        func.__dict__[COMPLEX_LETTER_NAME] = func.__name__
+        func.__dict__[LETTER_NAME] = func.__name__
     else:
-        func.__dict__[COMPLEX_LETTER_NAME] = name
+        func.__dict__[LETTER_NAME] = name
 
-def _letter_configured(func: callable) -> bool:
-    if (COMPLEX_LETTER_SIGNATURE in func.__dict__ and
-        COMPLEX_LETTER_NAME in func.__dict__):
+def _letter_configured(func: BOUND_LETTER_TYPE) -> bool:
+    # checks if the given callable is a letter
+    if (LETTER_SIGNATURE in func.__dict__ and
+        LETTER_NAME in func.__dict__):
         return True
     return False
 
-@complex_letter(name="SIMPLE")
+@letter(name="SIMPLE")
 def simple(X: np.ndarray, i: int) -> np.ndarray:
     return X[i, :]
 
-@complex_letter(name="ABS")
+@letter(name="ABS")
 def absolute(X: np.ndarray, i: int) -> np.ndarray:
     return np.abs(X[i, :])

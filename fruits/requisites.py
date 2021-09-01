@@ -3,7 +3,7 @@ import numpy as np
 from fruits.preparation.abstract import DataPreparateur
 from fruits.preparation.transform import INC
 from fruits.core.iss import ISS
-from fruits.core.wording import AbstractWord, SimpleWord
+from fruits.core.wording import Word, SimpleWord
 
 class Requisite:
     """A class used to calculate requisites for objects that can be
@@ -12,7 +12,7 @@ class Requisite:
     FRUITS pipeline.
     It can be configured by specifying which
     :class:`~fruits.preparation.abstract.DataPreparateur` and
-    :class:`~fruits.preparation.wording.AbstractWord` to use.
+    :class:`~fruits.preparation.wording.Word` to use.
 
     .. code-block::python
         req = Requisite("monotone")
@@ -39,12 +39,12 @@ class Requisite:
 
     def configure(self,
                   preparateur: DataPreparateur = None,
-                  word: AbstractWord = None):
+                  word: Word = None):
         """Specifies which preparateur and word to use for future
         processing.
         
         :type preparateur: DataPreparateur, optional
-        :type word: AbstractWord, optional
+        :type word: Word, optional
         """
         self._preparateur = preparateur
         self._word = word

@@ -58,7 +58,7 @@ def test_window():
                                ]),
                                result)
 
-    abs1 = fruits.core.wording.ComplexWord()
+    abs1 = fruits.core.wording.Word()
     el = fruits.core.letters.ExtendedLetter()
     el.append(fruits.core.letters.absolute)
     abs1.multiply(el)

@@ -8,7 +8,7 @@ X_1 = np.array([
                ])
 
 def test_fast_slow_iss():
-    @fruits.core.complex_letter
+    @fruits.core.letter
     def dim_letter(X, i):
         return X[i, :]
 
@@ -29,7 +29,7 @@ def test_fast_slow_iss():
     for i in range(2):
         el_1_3.append(dim_letter, 0)
     
-    word1 = fruits.core.ComplexWord("Word 1")
+    word1 = fruits.core.Word("Word 1")
     word1.multiply(el_1_1)
     word1.multiply(el_1_2)
     word1.multiply(el_1_3)
@@ -51,7 +51,7 @@ def test_fast_slow_iss():
     for i in range(3):
         el_2_3.append(dim_letter, 1)
     
-    word2 = fruits.core.ComplexWord("Word 2")
+    word2 = fruits.core.Word("Word 2")
     word2.multiply(el_2_1)
     word2.multiply(el_2_2)
     word2.multiply(el_2_3)
@@ -118,13 +118,13 @@ def test_simpleword_iss():
     np.testing.assert_allclose(r1[:,0,:],
                                fruits.core.ISS(X_1, [w1_copy])[:,0,:])
 
-def test_complex_words():
-    @fruits.core.complex_letter(name="ReLU")
+def test_general_words():
+    @fruits.core.letter(name="ReLU")
     def relu(X, i):
         return X[i, :] * (X[i, :]>0)
 
     # word: [relu(0)][relu(1)]
-    relu_word = fruits.core.ComplexWord("relu collection")
+    relu_word = fruits.core.Word("relu collection")
     relu_word.multiply(fruits.core.ExtendedLetter((relu, 0)))
     relu_word.multiply(fruits.core.ExtendedLetter((relu, 1)))
                                    

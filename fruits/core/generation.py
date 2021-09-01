@@ -1,16 +1,17 @@
 import itertools
+from typing import Generator, Union, List
 
+from fruits.core.wording import SimpleWord, Word
 from fruits.core.letters import (
     ExtendedLetter,
     _letter_configured,
     simple,
+    BOUND_LETTER_TYPE,
 )
-                                
-from fruits.core.wording import SimpleWord, ComplexWord, AbstractWord
 
 def simplewords_by_degree(max_letters: int,
                           max_extended_letters: int,
-                          dim: int = 1) -> list:
+                          dim: int = 1) -> List[SimpleWord]:
     """Returns all possible and unique SimpleWords up to the given 
     boundaries.
     For ``max_letters=2``, ``max_extended_letters=2`` and ``dim=1``
@@ -29,8 +30,7 @@ def simplewords_by_degree(max_letters: int,
     :param dim: Maximal dimensionality of the letters in any extended
         letter and any SimpleWord., defaults to 1
     :type dim: int, optional
-    :returns: List of SimpleWord objects.
-    :rtype: list
+    :rtype: List[SimpleWord]
     """
     ext_letters = []
     for l in range(1, max_letters+1):
@@ -48,7 +48,7 @@ def simplewords_by_degree(max_letters: int,
     return words
 
 def simplewords_by_weight(w: int,
-                          dim: int = 1) -> list:
+                          dim: int = 1) -> List[SimpleWord]:
     """Returns a list of all possible and unique SimpleWords that have
     exactly the given number of letters.
     For ``w=2`` and ``dim=2`` this will return a list containing::
@@ -60,6 +60,7 @@ def simplewords_by_weight(w: int,
     :type w: int
     :param dim: Highest dimension of a letter., defaults to 1
     :type dim: int, optional
+    :rtype: List[SimpleWord]
     """
     # generate all extended_letters that can occured in a word with
     # exactly w letters
@@ -92,7 +93,7 @@ def simplewords_by_weight(w: int,
     return words
 
 def _replace_letters_simpleword(word, letter_gen):
-    complexword = ComplexWord()
+    complexword = Word()
     for el in word:
         new_el = ExtendedLetter()
         for dim, ndim in enumerate(el):
@@ -110,7 +111,7 @@ def _replace_letters_simpleword(word, letter_gen):
     return complexword
 
 def _replace_letters_complexword(word, letter_gen):
-    complexword = ComplexWord()
+    complexword = Word()
     for el in word:
         new_el = ExtendedLetter()
         for l, dim in zip(el._letters, el._dimensions):
@@ -126,17 +127,19 @@ def _replace_letters_complexword(word, letter_gen):
         complexword.multiply(new_el)
     return complexword
 
-def replace_letters(word, letter_gen):
+def replace_letters(word: Union[Word, List[Word]],
+                    letter_gen: Generator[BOUND_LETTER_TYPE, None, None]) \
+                     -> Union[Word, List[Word]]:
     """Replaces the letters in the given word(s) by the iteration
     results from the supplied generator.
     
-    :type word: Object inherited from Abstractword or a list of them.
+    :type word: Union[Word, List[Word]]
     :param letter_gen: Generator that returns functions correctly
-        decorated with ``fruits.core.complex_letter``. If the iteration
-        through the generator is stopped, all left letters in the word
-        will not be changed.
+        decorated with :meth:`~fruits.core.letters.letter``.
+        If the iteration through the generator is stopped, all left
+        letters in the word will not be changed.
     :type letter_gen: generator
-    :rtype: ComplexWord or list of ComplexWords
+    :rtype: Union[Word, List[Word]]
     """
     if isinstance(word, list):
         complexwords = []
@@ -144,7 +147,7 @@ def replace_letters(word, letter_gen):
             if isinstance(word[i], SimpleWord):
                 complexwords.append(_replace_letters_simpleword(word[i],
                                                                 letter_gen))
-            elif isinstance(word[i], ComplexWord):
+            elif isinstance(word[i], Word):
                 complexwords.append(_replace_letters_complexword(word[i],
                                                                  letter_gen))
             else:
@@ -153,7 +156,7 @@ def replace_letters(word, letter_gen):
     else:
         if isinstance(word, SimpleWord):
             return _replace_letters_simpleword(word, letter_gen)
-        elif isinstance(word, ComplexWord):
+        elif isinstance(word, Word):
             return _replace_letters_complexword(word, letter_gen)
         else:
             raise TypeError(f"Unknown word type: {type(word)}")

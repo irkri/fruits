@@ -3,7 +3,7 @@ import numpy as np
 
 def _slow_ISS(Z: np.ndarray, word: list, alphas: np.ndarray) -> np.ndarray:
     # calculates the iterated sums for Z and a given list of
-    # general ComplexWords
+    # general Words
     result = np.zeros((Z.shape[0], Z.shape[2]))
     for i in range(Z.shape[0]):
         result[i, :] = np.ones(Z.shape[2], dtype=np.float64)

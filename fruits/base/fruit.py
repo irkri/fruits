@@ -7,7 +7,7 @@ from fruits.requisites import RequisiteContainer
 from fruits.base.scope import force_input_shape
 from fruits.base.callback import AbstractCallback
 from fruits.core.iss import ISS
-from fruits.core.wording import AbstractWord
+from fruits.core.wording import Word
 from fruits.sieving.abstract import FeatureSieve
 from fruits.preparation.abstract import DataPreparateur
 
@@ -113,7 +113,7 @@ class Fruit:
         
         - :class:`~fruits.preparateurs.DataPreparateur`
         - classes that inherit from
-          :class:`~fruits.core.wording.AbstractWord`
+          :class:`~fruits.core.wording.Word`
         - :class:`~fruits.features.FeatureSieve`
         
         :type objects: Object of mentioned type(s) or iterable object
@@ -293,12 +293,12 @@ class FruitBranch:
         self._preparateurs = []
         self._fitted = False
 
-    def add_word(self, word: AbstractWord):
+    def add_word(self, word: Word):
         """Adds a word to the branch.
         
-        :type preparateur: AbstractWord
+        :type preparateur: Word
         """
-        if not isinstance(word, AbstractWord):
+        if not isinstance(word, Word):
             raise TypeError
         self._words.append(word)
         self._fitted = False
@@ -349,7 +349,7 @@ class FruitBranch:
         
         - :class:`~fruits.preparateurs.DataPreparateur`
         - classes that inherit from
-          :class:`~fruits.core.wording.AbstractWord`
+          :class:`~fruits.core.wording.Word`
         - :class:`~fruits.features.FeatureSieve`
         
         :type objects: Object(s) of mentioned type(s) or iterable object
@@ -362,7 +362,7 @@ class FruitBranch:
                 obj = obj()
             if isinstance(obj, DataPreparateur):
                 self.add_preparateur(obj)
-            elif isinstance(obj, AbstractWord):
+            elif isinstance(obj, Word):
                 self.add_word(obj)
             elif isinstance(obj, FeatureSieve):
                 self.add_sieve(obj)
