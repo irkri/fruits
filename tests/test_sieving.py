@@ -13,8 +13,10 @@ def test_ppv():
     ppv_2 = fruits.sieving.PPV(quantile=0.5, constant=False,
                                 sample_size=1)
 
-    np.testing.assert_allclose(np.array([3/5,4/5]), ppv_1.fit_sieve(X_1[0]))
-    np.testing.assert_allclose(np.array([1,0]), ppv_2.fit_sieve(X_1[1]))
+    np.testing.assert_allclose(np.array([[3/5],[4/5]]),
+                               ppv_1.fit_sieve(X_1[0]))
+    np.testing.assert_allclose(np.array([[1],[0]]),
+                               ppv_2.fit_sieve(X_1[1]))
 
     ppv_1_copy = ppv_1.copy()
 
@@ -23,7 +25,7 @@ def test_ppv():
 
     ppvc_1 = fruits.sieving.PPVC(quantile=0, constant=True)
 
-    np.testing.assert_allclose([0.4,0.4], ppvc_1.fit_sieve(X_1[0]))
+    np.testing.assert_allclose([[0.4],[0.4]], ppvc_1.fit_sieve(X_1[0]))
 
     with pytest.raises(ValueError):
         fruits.sieving.PPV(quantile=[0.5,0.1,-1], constant=[False,True,False])
@@ -71,13 +73,15 @@ def test_ppv():
 def test_max():
     max_ = fruits.sieving.MAX()
 
-    np.testing.assert_allclose(np.array([5,2]), max_.fit_sieve(X_1[0]))
+    np.testing.assert_allclose(np.array([[5],[2]]), max_.fit_sieve(X_1[0]))
 
     max_cut_1 = fruits.sieving.MAX(cut=3)
     max_cut_2 = fruits.sieving.MAX(cut=0.5)
 
-    np.testing.assert_allclose(np.array([0.8,2]), max_cut_1.fit_sieve(X_1[0]))
-    np.testing.assert_allclose(np.array([5,2]), max_cut_2.fit_sieve(X_1[0]))
+    np.testing.assert_allclose(np.array([[0.8],[2]]),
+                               max_cut_1.fit_sieve(X_1[0]))
+    np.testing.assert_allclose(np.array([[5],[2]]),
+                               max_cut_2.fit_sieve(X_1[0]))
 
     max_cut_group_1 = fruits.sieving.MAX(cut=[-1, 3, 1],
                                          segments=False)
@@ -99,13 +103,15 @@ def test_max():
 def test_min():
     min_ = fruits.sieving.MIN()
 
-    np.testing.assert_allclose(np.array([0,-8]), min_.fit_sieve(X_1[1]))
+    np.testing.assert_allclose(np.array([[0],[-8]]), min_.fit_sieve(X_1[1]))
 
     min_cut_1 = fruits.sieving.MIN(cut=3)
     min_cut_2 = fruits.sieving.MIN(cut=0.5)
 
-    np.testing.assert_allclose(np.array([-4,0]), min_cut_1.fit_sieve(X_1[0]))
-    np.testing.assert_allclose(np.array([2,-5]), min_cut_2.fit_sieve(X_1[1]))
+    np.testing.assert_allclose(np.array([[-4],[0]]),
+                               min_cut_1.fit_sieve(X_1[0]))
+    np.testing.assert_allclose(np.array([[2],[-5]]),
+                               min_cut_2.fit_sieve(X_1[1]))
 
     min_cut_group_1 = fruits.sieving.MIN(cut=[-1, 3, 1],
                                          segments=False)
@@ -127,11 +133,11 @@ def test_min():
 def test_end():
     end = fruits.sieving.END()
 
-    np.testing.assert_allclose(np.array([-3,-7]), end.fit_sieve(X_1[0]))
+    np.testing.assert_allclose(np.array([[-3],[-7]]), end.fit_sieve(X_1[0]))
 
     end_cut = fruits.sieving.END(cut=0.2)
 
-    np.testing.assert_allclose(np.array([-4,0]), end_cut.fit_sieve(X_1[0]))
+    np.testing.assert_allclose(np.array([[-4],[0]]), end_cut.fit_sieve(X_1[0]))
 
     end_cut_group = fruits.sieving.END(cut=[1, 0.2, 0.8, 4, -1])
 

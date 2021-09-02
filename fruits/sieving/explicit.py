@@ -113,8 +113,6 @@ class MAX(ExplicitSieve):
             else:
                 for j in range(len(new_cuts)):
                     result[i, j] = np.max(X[i, :new_cuts[j]])
-        if self.nfeatures() == 1:
-            return result[:, 0]
         return result
 
     def summary(self) -> str:
@@ -178,8 +176,6 @@ class MIN(ExplicitSieve):
             else:
                 for j in range(len(new_cuts)):
                     result[i, j] = np.min(X[i, :new_cuts[j]])
-        if self.nfeatures() == 1:
-            return result[:, 0]
         return result
 
     def summary(self) -> str:
@@ -236,8 +232,6 @@ class END(ExplicitSieve):
             new_cuts = self._transform_cuts(X[i], req[i])
             for j in range(len(new_cuts)):
                 result[i, j] = X[i, new_cuts[j]-1]
-        if self.nfeatures() == 1:
-            return result[:, 0]
         return result
 
     def summary(self) -> str:

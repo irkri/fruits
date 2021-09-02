@@ -1,21 +1,47 @@
 import numba
 import numpy as np
 
-def _slow_ISS(Z: np.ndarray, word: list, alphas: np.ndarray) -> np.ndarray:
-    # calculates the iterated sums for Z and a given list of
-    # general Words
-    result = np.ones((Z.shape[0], Z.shape[2]))
-    for i in range(Z.shape[0]):
-        for k, el in enumerate(word):
-            C = np.ones(Z.shape[2], dtype=np.float64)
-            for l in range(len(el)):
-                C = C * el[l](Z[i, :, :])
-            tmp = result[i, :] * C
-            tmp = tmp * np.exp(np.arange(Z.shape[2]) * (alphas[k+1]-alphas[k]))
-            result[i, :] = _fast_CS(tmp)
+from fruits.core.wording import Word
+
+def _slow_single_ISS(Z: np.ndarray,
+                     word: Word,
+                     alphas: np.ndarray,
+                     extended: bool) -> np.ndarray:
+    if extended:
+        result = np.ones((len(word), Z.shape[1]), dtype=np.float64)
+    else:
+        result = np.ones((1, Z.shape[1]), dtype=np.float64)
+    for k, ext_letter in enumerate(word):
+        C = np.ones(Z.shape[1], dtype=np.float64)
+        for l in range(len(ext_letter)):
+            C = C * ext_letter[l](Z[:, :])
+        if k == 0 or not extended:
+            tmp = result[0] * C
+        else:
+            tmp = np.roll(result[k-1], 1)
+            tmp[0] = 0
+            tmp = tmp * C
+        tmp = tmp * np.exp(np.arange(Z.shape[1]) * (alphas[k+1]-alphas[k]))
+        if extended:
+            result[k] = _fast_CS(tmp)
+        else:
+            result[0] = _fast_CS(tmp)
             if k < len(word)-1:
-                result[i, :] = np.roll(result[i, :], 1)
-                result[i, 0] = 0
+                result[0] = np.roll(result[0], 1)
+                result[0, 0] = 0
+    return result
+
+def _slow_ISS(Z: np.ndarray,
+              word: Word,
+              alphas: np.ndarray,
+              extended: bool) -> np.ndarray:
+    # calculates iterated sums of Z for a list of general words
+    if extended:
+        result = np.zeros((Z.shape[0], len(word), Z.shape[2]))
+    else:
+        result = np.ones((Z.shape[0], 1, Z.shape[2]))
+    for i in range(Z.shape[0]):
+        result[i] = _slow_single_ISS(Z[i], word, alphas, extended)
     return result
 
 @numba.njit("float64[:](float64[:])", cache=True)

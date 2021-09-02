@@ -134,8 +134,6 @@ class PPV(FeatureSieve):
                 for j in range(len(self._q)):
                     result[i, j] = np.sum((X[i] >= self._q[j]))
                     result[i, j] /= X.shape[1]
-        if self.nfeatures() == 1:
-            return result[:, 0]
         return result
 
     def copy(self) -> "PPV":
@@ -221,8 +219,6 @@ class PPVC(PPV):
                                 axis=1))[:, 0, :]
             # at most X.shape[1]/2 connected components are possible
             result[:, i] = 2*np.sum(diff == 1, axis=-1) / X.shape[1]
-        if self.nfeatures() == 1:
-            return result[:, 0]
         return result
 
     def copy(self) -> "PPVC":

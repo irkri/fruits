@@ -7,7 +7,7 @@ import numpy as np
 from fruits.requisites import RequisiteContainer
 from fruits.base.scope import force_input_shape
 from fruits.base.callback import AbstractCallback
-from fruits.core.iss import ISS
+from fruits.core.iss import ISSCalculator
 from fruits.core.wording import Word
 from fruits.sieving.abstract import FeatureSieve
 from fruits.preparation.abstract import DataPreparateur
@@ -195,7 +195,7 @@ class Fruit:
         summary += f"\nBranches: {len(self.branches())}"
         summary += f"\nFeatures: {self.nfeatures()}"
         for branch in self.branches():
-            summary += "\n\n"+branch.summary()
+            summary += "\n\n" + branch.summary()
         summary += "\n{:=^80}".format(f"End of Summary")
         return summary
 
@@ -260,6 +260,9 @@ class FruitBranch:
         self._words = []
         self._sieves = []
 
+        # calculator used for the ISS calculation
+        self._calculator = ISSCalculator()
+
         # list with inner lists containing sieves
         # all sieves in one list are trained on one specific output
         # of an ISS-result
@@ -270,6 +273,15 @@ class FruitBranch:
 
         # list of calculations that are shared among sieves
         self._sieve_prerequisites = None
+
+    @property
+    def calculator(self):
+        """Returns the used calculator for the iterated sums. This
+        for example allows setting the mode used in the calculation.
+
+        :rtype: ISSCalculator
+        """
+        return self._calculator
 
     def add_preparateur(self, preparateur: DataPreparateur):
         """Adds a preparateur to the branch.
@@ -384,7 +396,8 @@ class FruitBranch:
 
         :rtype: int
         """
-        return sum([s.nfeatures() for s in self._sieves])*len(self._words)
+        return (sum([s.nfeatures() for s in self._sieves])
+                * self.calculator._n_iterated_sums(self._words))
 
     def _compile(self):
         # checks if the FruitBranch is configured correctly and ready
@@ -405,13 +418,18 @@ class FruitBranch:
                 self._requisite_container.register(req)
                 sieve._set_requisite_container(self._requisite_container)
 
+    def _select_fit_sample(self, X: np.ndarray) -> np.ndarray:
+        # returns a sample of the data used for fitting
+        ind = np.random.randint(0, X.shape[0])
+        return X[ind:ind+1, :, :]
+
     def fit(self, X: np.ndarray):
         """Fits the branch to the given dataset. What this action
         explicitly does depends on the FruitBranch configuration.
 
         :param X: (Multidimensional) time series dataset as an array
             of three dimensions. Have a look at
-            ``fruits.base.scope.force_input_shape``.
+            :meth:`fruits.base.scope.force_input_shape`.
         :type X: np.ndarray
         :raises: ValueError if ``X.ndims > 3``
         """
@@ -419,18 +437,22 @@ class FruitBranch:
 
         self._requisite_container = RequisiteContainer()
         self._collect_requisites()
-        self._requisite_container.process(X)
-        prepared_data = force_input_shape(X)
+        self._requisite_container.process(force_input_shape(X))
+        prepared_data = self._select_fit_sample(X)
         for prep in self._preparateurs:
             prep.fit(prepared_data)
             prepared_data = prep.prepare(prepared_data)
 
         self._sieves_extended = []
         for i in range(len(self._words)):
-            iterated_data = ISS(prepared_data, self._words[i])
+            iterated_data = self.calculator.calculate(prepared_data,
+                                                      [self._words[i]])
+            iterated_data = iterated_data.reshape(iterated_data.shape[0]
+                                                  * iterated_data.shape[1],
+                                                  iterated_data.shape[2])
             sieves_copy = [sieve.copy() for sieve in self._sieves]
             for sieve in sieves_copy:
-                sieve.fit(iterated_data[:, 0, :])
+                sieve.fit(iterated_data[:, :])
             self._sieves_extended.append(sieves_copy)
         self._fitted = True
 
@@ -468,16 +490,16 @@ class FruitBranch:
                                 self.nfeatures()))
         k = 0
         for i in range(len(self._words)):
-            iterated_data = ISS(prepared_data, self._words[i])
+            iterated_data = self.calculator.calculate(prepared_data,
+                                                      [self._words[i]])
             for callback in callbacks:
                 callback.on_iterated_sum(iterated_data)
             for j, sieve in enumerate(self._sieves_extended[i]):
-                new_features = sieve.nfeatures()
-                if new_features == 1:
-                    sieved_data[:, k] = sieve.sieve(iterated_data[:, 0, :])
-                else:
-                    sieved_data[:, k:k+new_features] = \
-                            sieve.sieve(iterated_data[:, 0, :])
+                nf = sieve.nfeatures()
+                new_features = nf * iterated_data.shape[1]
+                for it in range(iterated_data.shape[1]):
+                    sieved_data[:, k+it*nf:k+(it+1)*nf] = \
+                            sieve.sieve(iterated_data[:, it, :])
                 for callback in callbacks:
                     callback.on_sieve(sieved_data[k:k+new_features])
                 k += new_features
@@ -564,6 +586,7 @@ class FruitBranch:
             copy_.add(iterator.copy())
         for sieve in self._sieves:
             copy_.add(sieve.copy())
+        copy_._calculator = self.calculator.copy()
         return copy_
 
     def __copy__(self) -> "FruitBranch":

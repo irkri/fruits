@@ -10,10 +10,6 @@ class ISSCalculator:
     """Class that is responsible for managing the calculation of
     iterated sums.
 
-    :param X: Time series dataset as numpy array of three dimensions.
-    :type X: np.ndarray
-    :param words: List of words used to calculate the iterated sums.
-    :type words: List[Word]
     :param mode: Mode used for the calculation. Has to be either 'whole'
         or 'extended'. It is a public property of the calculator.
         Specifying the mode used in a :class:`~fruits.base.fruit.Fruit`
@@ -21,15 +17,8 @@ class ISSCalculator:
         defaults to "whole"
     :type mode: str, optional
     """
-    def __init__(self,
-                 X: np.ndarray,
-                 words: List[Word],
-                 mode: str = "whole"):
+    def __init__(self, mode: str = "whole"):
         self.mode = mode
-        self._X = X
-        if not check_input_shape(X):
-            self._X = force_input_shape(X)
-        self._split_words(words)
 
     @property
     def mode(self) -> str:
@@ -57,22 +46,26 @@ class ISSCalculator:
         # splits the list of words into seperate ones for simple and 
         # complex words and saves the indices of their original
         # position in the given list
+        simple_words = []
+        general_words = []
+        simple_words_index = []
+        general_words_index = []
         if len(words) == 0:
             raise ValueError("At least one word for ISS calculation needed")
-        self._simple_words = []
-        self._simple_words_index = []
-        self._complex_words = []
-        self._complex_words_index = []
         for i, word in enumerate(words):
             if isinstance(word, SimpleWord):
-                self._simple_words.append(word)
-                self._simple_words_index.append(i)
+                simple_words.append(word)
+                simple_words_index.append(i)
             elif isinstance(word, Word):
-                self._complex_words.append(word)
-                self._complex_words_index.append(i)
+                general_words.append(word)
+                general_words_index.append(i)
             else:
                 raise TypeError("Given words have to be objects of a "
                                 "class that inherits from Word")
+        return (simple_words,
+                simple_words_index,
+                general_words,
+                general_words_index)
 
     def _transform_simple_word(self, word: SimpleWord) -> np.ndarray:
         # transforms all simplewords for faster calculation with a
@@ -84,40 +77,56 @@ class ISSCalculator:
                 word_transformed[i, j] = simple_word_raw[i][j]
         return word_transformed
 
-    def _n_iterated_sums(self) -> int:
+    def _n_iterated_sums(self, words: List[Word]) -> int:
         # returns the number of iterated sums to be calulated
         s = 0
-        for word in self._simple_words:
+        for word in words:
             if self.mode == "extended":
                 s += len(word)
             else:
                 s += 1
-        for word in self._complex_words:
-            s += 1
         return s
 
-    def calculate(self) -> np.ndarray:
+    def calculate(self, X: np.ndarray, words: List[Word]) -> np.ndarray:
         """Does the already initilialized calculation and returns the
         results.
 
+        :param X: Input time series dataset.
+        :type X: np.ndarray
+        :param words: Words used for the calculation.
+        :type: words: List[Words]
         :rtype: np.ndarray
         """
-        results = np.zeros((self._X.shape[0],
-                            self._n_iterated_sums(),
-                            self._X.shape[2]))
+        if not check_input_shape(X):
+            X = force_input_shape(X)
+        simple_words, simple_words_ind, general_words, general_words_ind = \
+            self._split_words(words)
+        results = np.zeros((X.shape[0],
+                            self._n_iterated_sums(words),
+                            X.shape[2]))
         ext = (self.mode == "extended")
-        for i, index in enumerate(self._simple_words_index):
-            l = len(self._simple_words[i])
-            results[:, index:index+l, :] = _fast_ISS(self._X,
-                self._transform_simple_word(self._simple_words[i]),
-                np.array([0] + self._simple_words[i].alpha + [0],
+        for i, index in enumerate(simple_words_ind):
+            l = len(simple_words[i]) if ext else 1
+            results[:, index:index+l, :] = _fast_ISS(X,
+                self._transform_simple_word(simple_words[i]),
+                np.array([0] + simple_words[i].alpha + [0],
                          dtype=np.float32), ext)
-        for i, index in enumerate(self._complex_words_index):
-            results[:, index, :] = _slow_ISS(self._X,
-                self._complex_words[i],
-                np.array([0] + self._complex_words[i].alpha + [0],
-                         dtype=np.float32))
+        for i, index in enumerate(general_words_ind):
+            l = len(general_words[i]) if ext else 1
+            results[:, index:index+l, :] = _slow_ISS(X,
+                general_words[i],
+                np.array([0] + general_words[i].alpha + [0],
+                         dtype=np.float32), ext)
         return results
+
+    def copy(self) -> "ISSCalculator":
+        """Returns a copy of this calculator.
+
+        :rtype: ISSCalculator
+        """
+        calc = ISSCalculator(mode=self.mode)
+        return calc
+
 
 def ISS(X: np.ndarray,
         words: Union[List[Word], Word],
@@ -142,6 +151,6 @@ def ISS(X: np.ndarray,
     """
     words = [words] if isinstance(words, Word) else words
 
-    calculator = ISSCalculator(X, words, mode)
+    calculator = ISSCalculator(mode)
 
-    return calculator.calculate()
+    return calculator.calculate(X, words)

@@ -32,6 +32,45 @@ def test_n_features():
 
     del featex
 
+def test_mode_in_branches():
+    featex = fruits.Fruit()
+
+    featex.add(fruits.preparation.INC)
+
+    featex.add(fruits.core.SimpleWord("[11][1][221]"))
+    featex.add(fruits.core.SimpleWord("[11][1][2][1]"))
+    featex.add(fruits.core.SimpleWord("[12]"))
+    featex.add(fruits.core.SimpleWord("[22]"))
+
+    featex.add(fruits.sieving.PPV)
+    featex.add(fruits.sieving.MAX)
+    featex.add(fruits.sieving.MIN)
+
+    featex.fork()
+
+    featex.add(fruits.core.SimpleWord("[111][2]"))
+    featex.add(fruits.core.SimpleWord("[1][22]"))
+    featex.add(fruits.core.SimpleWord("[112][2]"))
+    featex.add(fruits.core.SimpleWord("[1]"))
+    featex.add(fruits.core.SimpleWord("[2]"))
+
+    featex.add(fruits.sieving.PPV)
+    featex.add(fruits.sieving.MAX)
+    featex.add(fruits.sieving.MIN)
+
+    assert featex.nfeatures() == 27
+
+    featex.branch(0).calculator.mode = "extended"
+
+    assert featex.nfeatures() == 42
+
+    X = np.random.random_sample((100, 2, 1000))
+
+    featex.fit(X)
+    X_transform = featex.transform(X)
+
+    assert X_transform.shape == (100, 42)
+
 def test_branches():
     featex = fruits.Fruit()
 

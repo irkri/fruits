@@ -127,7 +127,7 @@ def test_general_words():
     relu_word = fruits.core.Word("relu collection")
     relu_word.multiply(fruits.core.ExtendedLetter((relu, 0)))
     relu_word.multiply(fruits.core.ExtendedLetter((relu, 1)))
-                                   
+
     mix = [relu_word, fruits.core.SimpleWord("[111]")]
 
     mix_result = fruits.core.ISS(X_1, mix)
@@ -168,7 +168,7 @@ def test_weighted_iss():
 
     np.testing.assert_allclose(the_result, result, rtol=1e-02)
 
-def test_extented_mode():
+def test_extented_mode_simple_1():
     X = np.random.random_sample((10, 3, 100))
 
     word = fruits.core.SimpleWord("[11][21][331][22]")
@@ -189,6 +189,9 @@ def test_extented_mode():
 
     np.testing.assert_allclose(result_single, result_extended)
 
+def test_extended_mode_simple_2():
+    X = np.random.random_sample((10, 3, 100))
+
     word = fruits.core.SimpleWord("[1][11][111][1111]")
 
     result_extended = fruits.core.ISS(X, word, mode="extended")
@@ -204,6 +207,48 @@ def test_extented_mode():
     result_single[:, 1:2, :] = fruits.core.ISS(X, word2, mode="whole")
     result_single[:, 2:3, :] = fruits.core.ISS(X, word3, mode="whole")
     result_single[:, 3:4, :] = fruits.core.ISS(X, word4, mode="whole")
+
+    np.testing.assert_allclose(result_single, result_extended)
+
+def test_extended_mode_general_1():
+    X = np.random.random_sample((10, 3, 100))
+
+    @fruits.core.letter(name="ReLU")
+    def relu(X, i):
+        return X[i, :] * (X[i, :]>0)
+
+    @fruits.core.letter(name="EXP")
+    def exp(X, i):
+        return np.exp(-X[i, :]/100)
+
+    el1 = fruits.core.ExtendedLetter((relu, 0), (relu, 0))
+    el2 = fruits.core.ExtendedLetter((relu, 1), (exp, 0))
+    el3 = fruits.core.ExtendedLetter((exp, 1), (exp, 2))
+
+    relu_word = fruits.core.Word()
+    relu_word.multiply(el1)
+    relu_word.multiply(el2)
+    relu_word.multiply(el3)
+
+    relu_word1 = fruits.core.Word()
+    relu_word1.multiply(el1)
+
+    relu_word2 = fruits.core.Word()
+    relu_word2.multiply(el1)
+    relu_word2.multiply(el2)
+
+    relu_word3 = fruits.core.Word()
+    relu_word3.multiply(el1)
+    relu_word3.multiply(el2)
+    relu_word3.multiply(el3)
+
+    result_extended = fruits.core.ISS(X, relu_word, mode="extended")
+
+    result_single = np.zeros((10, 3, 100))
+
+    result_single[:, 0:1, :] = fruits.core.ISS(X, relu_word1, mode="whole")
+    result_single[:, 1:2, :] = fruits.core.ISS(X, relu_word2, mode="whole")
+    result_single[:, 2:3, :] = fruits.core.ISS(X, relu_word3, mode="whole")
 
     np.testing.assert_allclose(result_single, result_extended)
 
