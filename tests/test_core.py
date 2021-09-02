@@ -168,6 +168,45 @@ def test_weighted_iss():
 
     np.testing.assert_allclose(the_result, result, rtol=1e-02)
 
+def test_extented_mode():
+    X = np.random.random_sample((10, 3, 100))
+
+    word = fruits.core.SimpleWord("[11][21][331][22]")
+
+    result_extended = fruits.core.ISS(X, word, mode="extended")
+
+    word1 = fruits.core.SimpleWord("[11]")
+    word2 = fruits.core.SimpleWord("[11][12]")
+    word3 = fruits.core.SimpleWord("[11][12][133]")
+    word4 = fruits.core.SimpleWord("[11][12][133][22]")
+
+    result_single = np.zeros((10, 4, 100))
+
+    result_single[:, 0:1, :] = fruits.core.ISS(X, word1, mode="whole")
+    result_single[:, 1:2, :] = fruits.core.ISS(X, word2, mode="whole")
+    result_single[:, 2:3, :] = fruits.core.ISS(X, word3, mode="whole")
+    result_single[:, 3:4, :] = fruits.core.ISS(X, word4, mode="whole")
+
+    np.testing.assert_allclose(result_single, result_extended)
+
+    word = fruits.core.SimpleWord("[1][11][111][1111]")
+
+    result_extended = fruits.core.ISS(X, word, mode="extended")
+
+    word1 = fruits.core.SimpleWord("[1]")
+    word2 = fruits.core.SimpleWord("[1][11]")
+    word3 = fruits.core.SimpleWord("[1][11][111]")
+    word4 = fruits.core.SimpleWord("[1][11][111][1111]")
+
+    result_single = np.zeros((10, 4, 100))
+
+    result_single[:, 0:1, :] = fruits.core.ISS(X, word1, mode="whole")
+    result_single[:, 1:2, :] = fruits.core.ISS(X, word2, mode="whole")
+    result_single[:, 2:3, :] = fruits.core.ISS(X, word3, mode="whole")
+    result_single[:, 3:4, :] = fruits.core.ISS(X, word4, mode="whole")
+
+    np.testing.assert_allclose(result_single, result_extended)
+
 def test_word_generation():
     for n in range(1, 7):
         assert len(fruits.core.generation.simplewords_by_weight(n, dim=1)) \
