@@ -62,14 +62,14 @@ def test_mode_in_branches():
 
     featex.branch(0).calculator.mode = "extended"
 
-    assert featex.nfeatures() == 42
+    assert featex.nfeatures() == 36
 
     X = np.random.random_sample((100, 2, 1000))
 
     featex.fit(X)
     X_transform = featex.transform(X)
 
-    assert X_transform.shape == (100, 42)
+    assert X_transform.shape == (100, 36)
 
 def test_branches():
     featex = fruits.Fruit()

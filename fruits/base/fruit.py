@@ -262,6 +262,7 @@ class FruitBranch:
 
         # calculator used for the ISS calculation
         self._calculator = ISSCalculator()
+        self._calculator.batch_size = 1
 
         # list with inner lists containing sieves
         # all sieves in one list are trained on one specific output
@@ -444,9 +445,8 @@ class FruitBranch:
             prepared_data = prep.prepare(prepared_data)
 
         self._sieves_extended = []
-        for i in range(len(self._words)):
-            iterated_data = self.calculator.calculate(prepared_data,
-                                                      [self._words[i]])
+        self.calculator.start(prepared_data, self._words)
+        for iterated_data in self.calculator:
             iterated_data = iterated_data.reshape(iterated_data.shape[0]
                                                   * iterated_data.shape[1],
                                                   iterated_data.shape[2])
@@ -489,9 +489,8 @@ class FruitBranch:
         sieved_data = np.zeros((prepared_data.shape[0],
                                 self.nfeatures()))
         k = 0
-        for i in range(len(self._words)):
-            iterated_data = self.calculator.calculate(prepared_data,
-                                                      [self._words[i]])
+        self.calculator.start(prepared_data, self._words)
+        for i, iterated_data in enumerate(self.calculator):
             for callback in callbacks:
                 callback.on_iterated_sum(iterated_data)
             for j, sieve in enumerate(self._sieves_extended[i]):

@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Tuple, Callable
+from typing import List, Tuple, Callable
 
 import numpy as np
 
@@ -17,20 +17,17 @@ class ExtendedLetter:
     functions that were decorated with
     :meth:`~fruits.core.letters.letter`.
 
-    :param letter_dims: Any number of tuples ``(letter, dim)`` where
-        ``dim`` is the dimension the function (integer) ``letter`` will
-        extract from a time series.
-    :type letter_dims: one or more Tuple[Callable, int]
+    :param letter_string: A string like ``f1(i)f2(j)f3(k)``, where
+        ``f1,f2,f3`` are the names of decorated letters and ``i,j,k``
+        are integers representing dimensions. For available letters call
+        :meth:`fruits.core.letters.get_available`.
+    :type letter_string: str
     """
-    def __init__(self, *letter_dims: Tuple[FREE_LETTER_TYPE, int]):
+    def __init__(self, letter_string: str = ""):
         self._letters = []
         self._dimensions = []
         self._string_repr = ""
-        for letter in letter_dims:
-            if not isinstance(letter, tuple) or len(letter) != 2:
-                raise TypeError("ExtendedLetter can only be initialized " +
-                                "using tuples")
-            self.append(*letter)
+        self.append_from_string(letter_string)
 
     def append(self, letter: FREE_LETTER_TYPE, dim: int = 0):
         """Appends a letter to the ExtendedLetter object.
@@ -52,6 +49,12 @@ class ExtendedLetter:
             self._dimensions.append(dim)
             self._string_repr += letter.__dict__[LETTER_NAME]
             self._string_repr += "(" + str(dim+1) + ")"
+
+    def append_from_string(self, letter_string: str):
+        letters = letter_string.split(")")[:-1]
+        for letter in letters:
+            l, d = letter.split("(")
+            self.append(_get(l), int(d))
 
     def copy(self) -> "ExtendedLetter":
         """Returns a copy of this extended letter.
@@ -121,8 +124,8 @@ def letter(*args, name: str = None):
 
     :param name: You can supply a name to the function. This name will
         be used for documentation in an ``ExtendedLetter`` object. If
-        no name is supplied, then the name of the function is used.,
-        defaults to None
+        no name is supplied, then the name of the function is used.
+        Each letter has to have a unique name., defaults to None
     :type name: str, optional
     """
     if name is not None and not isinstance(name, str):
@@ -130,12 +133,13 @@ def letter(*args, name: str = None):
     if len(args) > 1:
         raise RuntimeError("Too many arguments")
     if name is None and len(args)==1 and callable(args[0]):
-        _configure_letter(args[0])
+        _configure_letter(args[0], args[0].__name__)
         @wraps(args[0])
         def wrapper(i: int):
             def index_manipulation(X: np.ndarray):
                 return args[0](X, i)
             return index_manipulation
+        _log(args[0].__name__, wrapper)
         return wrapper
     else:
         if name is None and len(args) > 0:
@@ -149,24 +153,44 @@ def letter(*args, name: str = None):
                 def index_manipulation(X: np.ndarray):
                     return func(X, i)
                 return index_manipulation
+            _log(name, wrapper)
             return wrapper
         return letter_decorator
 
-def _configure_letter(func: BOUND_LETTER_TYPE, name: str = None):
+_AVAILABLE = dict()
+
+def _log(name: str, func: FREE_LETTER_TYPE):
+    if name in _AVAILABLE:
+        raise RuntimeError(f"Letter with name '{name}' already exists")
+    _AVAILABLE[name] = func
+
+def _get(name: str) -> FREE_LETTER_TYPE:
+    # returns the corresponding letter for the given name
+    if not name in _AVAILABLE:
+        raise RuntimeError(f"Letter with name '{name}' does not exist")
+    return _AVAILABLE[name]
+
+def get_available() -> List[str]:
+    """Returns a list of all available letter names to use in a
+    :class:`fruits.core.letters.ExtendedLetter`.
+
+    :rtype: List[str]
+    """
+    return list(_AVAILABLE.keys())
+
+def _configure_letter(func: BOUND_LETTER_TYPE, name: str):
     # marks the input callable as a letter
     if func.__code__.co_argcount != 2:
         raise RuntimeError("Wrong number of arguments at decorated function " +
                            str(func.__name__) + ". Should be 2.")
     func.__dict__[LETTER_SIGNATURE] = "letter"
-    if name is None:
-        func.__dict__[LETTER_NAME] = func.__name__
-    else:
-        func.__dict__[LETTER_NAME] = name
+    func.__dict__[LETTER_NAME] = name
 
 def _letter_configured(func: BOUND_LETTER_TYPE) -> bool:
     # checks if the given callable is a letter
     if (LETTER_SIGNATURE in func.__dict__ and
-        LETTER_NAME in func.__dict__):
+        LETTER_NAME in func.__dict__ and
+        func.__dict__[LETTER_NAME] in _AVAILABLE):
         return True
     return False
 
