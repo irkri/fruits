@@ -103,3 +103,14 @@ def test_dot():
     X_2_result[:, :, 9::10] = X_2[:, :, 9::10]
 
     np.testing.assert_allclose(X_2_result, d.fit_prepare(X_2))
+
+def test_lag():
+    L = fruits.preparation.LAG(1)
+
+    np.testing.assert_allclose(np.array([
+                                [[-4,0.8,0,5,-3], [0,-4,0.8,0,5],
+                                 [2,1,0,0,-7], [0,2,1,0,0]],
+                                [[5,8,2,6,0], [0,5,8,2,6],
+                                 [-5,-1,-4,-0.5,-8], [0,-5,-1,-4,-0.5]]
+                               ]),
+                               L.fit_prepare(X_1))
