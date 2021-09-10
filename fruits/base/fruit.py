@@ -1,4 +1,3 @@
-import re
 import inspect
 from typing import List, Union
 
@@ -133,16 +132,21 @@ class Fruit:
         """
         return sum([branch.nfeatures() for branch in self._branches])
 
-    def fit(self, X: np.ndarray):
+    def fit(self, X: np.ndarray, sample_size: Union[float, int] = 1):
         """Fits all branches to the given data.
 
         :param X: (Multidimensional) time series dataset as an array
             of three dimensions. Have a look at
             ``fruits.base.scope.force_input_shape``.
         :type X: np.ndarray
+        :param sample_size: Size of the random time series sample that
+            is used for fitting. This is represented as a float which
+            will be multiplied by ``X.shape[0]`` or ``1`` for one random
+            time series., defaults to 1
+        :type sample_size: Union[float, int], optional
         """
         for branch in self._branches:
-            branch.fit(X)
+            branch.fit(X, sample_size=sample_size)
         self._fitted = True
 
     def transform(self, X: np.ndarray,
@@ -419,12 +423,19 @@ class FruitBranch:
                 self._requisite_container.register(req)
                 sieve._set_requisite_container(self._requisite_container)
 
-    def _select_fit_sample(self, X: np.ndarray) -> np.ndarray:
+    def _select_fit_sample(self, X, sample_size) -> np.ndarray:
         # returns a sample of the data used for fitting
-        ind = np.random.randint(0, X.shape[0])
-        return X[ind:ind+1, :, :]
+        if sample_size == 1:
+            ind = np.random.randint(0, X.shape[0])
+            return X[ind:ind+1, :, :]
+        else:
+            s = int(sample_size*X.shape[0])
+            if s < 1:
+                s = 1
+            indices = np.random.randint(0, X.shape[0], size=s)
+            return X[indices, :, :]
 
-    def fit(self, X: np.ndarray):
+    def fit(self, X: np.ndarray, sample_size: Union[float, int] = 1):
         """Fits the branch to the given dataset. What this action
         explicitly does depends on the FruitBranch configuration.
 
@@ -432,6 +443,11 @@ class FruitBranch:
             of three dimensions. Have a look at
             :meth:`fruits.base.scope.force_input_shape`.
         :type X: np.ndarray
+        :param sample_size: Size of the random time series sample that
+            is used for fitting. This is represented as a float which
+            will be multiplied by ``X.shape[0]`` or ``1`` for one random
+            time series., defaults to 1
+        :type sample_size: Union[float, int], optional
         :raises: ValueError if ``X.ndims > 3``
         """
         self._compile()
@@ -439,7 +455,7 @@ class FruitBranch:
         self._requisite_container = RequisiteContainer()
         self._collect_requisites()
         self._requisite_container.process(force_input_shape(X))
-        prepared_data = self._select_fit_sample(X)
+        prepared_data = self._select_fit_sample(X, sample_size)
         for prep in self._preparateurs:
             prep.fit(prepared_data)
             prepared_data = prep.prepare(prepared_data)
