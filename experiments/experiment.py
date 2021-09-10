@@ -175,7 +175,7 @@ class FRUITSExperiment:
                                     ["accuracy_mean"].iloc[0])
                 else:
                     results.append(0)
-                if results[3] >= results[4]:
+                if results[6] >= results[7]:
                     mark = "X"
                 results.append(mark)
                 self._results.loc[len(self._results)] = results
