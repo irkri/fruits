@@ -49,3 +49,39 @@ class LAG(DataPreparateur):
 
     def __repr__(self) -> str:
         return "fruits.preparation.dimension.LAG"
+
+
+class ONE(DataPreparateur):
+    """DataPreparateur: Ones
+
+    Preparateur that appends a dimension to each time series consisting
+    of only ones.
+    """
+    def __init__(self):
+        super().__init__("One")
+
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        """Returns the transformed dataset.
+
+        :type X: np.ndarray
+        :rtype: np.ndarray
+        """
+        X_new = np.ones((X.shape[0], X.shape[1]+1, X.shape[2]))
+        X_new[:, :X.shape[1], :] = X[:, :, :]
+        return X_new
+
+    def copy(self) -> "ONE":
+        """Returns a copy of this preparateur.
+
+        :rtype: ONE
+        """
+        return ONE()
+
+    def __eq__(self, other) -> bool:
+        return True
+
+    def __str__(self) -> str:
+        return f"ONE()"
+
+    def __repr__(self) -> str:
+        return "fruits.preparation.dimension.ONE"

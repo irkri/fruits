@@ -114,3 +114,16 @@ def test_lag():
                                  [-5,-1,-4,-0.5,-8], [0,-5,-1,-4,-0.5]]
                                ]),
                                L.fit_prepare(X_1))
+
+def test_one():
+    O = fruits.preparation.ONE()
+
+    np.testing.assert_allclose(np.array([
+                                [[-4,0.8,0,5,-3],
+                                 [2,1,0,0,-7],
+                                 [1,1,1,1,1]],
+                                [[5,8,2,6,0],
+                                 [-5,-1,-4,-0.5,-8],
+                                 [1,1,1,1,1]]
+                               ]),
+                               O.fit_prepare(X_1))
