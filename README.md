@@ -59,9 +59,7 @@ X_test_features = myfruit.transform(X_test)
 ```
 
 ## UCR-Experiments
-Predefined __FRUITS__ configurations are available to test in [configurations.py](experiments/configurations.py).
-Have a look at the file [experiment.py](experiments/experiment.py) for details on performing the experiments.
-Data sets for testing can be downloaded from [timeseriesclassification.com](https://timeseriesclassification.com).
+Have a look at the file [instructions.md](experiments/instructions.md) for more information on how to execute some experiments with __FRUITS__.
 
 ## Unit tests
 There are a bunch of [tests](tests) for __FRUITS__ available to execute. To do this, enter the command
