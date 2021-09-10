@@ -7,12 +7,13 @@ results of the experiment.
 
 import os
 import time
+from typing import Union, List
 from timeit import default_timer as Timer
 
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import RidgeClassifierCV
-from sklearn.preprocessing import FunctionTransformer, StandardScaler
+from sklearn.preprocessing import FunctionTransformer
 
 from context import fruits
 import tsdata
@@ -46,7 +47,10 @@ class FRUITSExperiment:
     """
     output_header_names = [
         "Dataset",
-        "Shape",
+        "TrS",
+        "TeS",
+        "Dim",
+        "Len",
         "FRUITS Time",
         "FRUITS Acc",
         "ROCKET Acc",
@@ -79,7 +83,9 @@ class FRUITSExperiment:
         else:
             self._scaler = scaler
 
-    def append_data(self, path: str, names: list = None):
+    def append_data(self,
+                    path: str,
+                    names: Union[List[str], str, None] = None):
         """Finds time series datasets in the specified directory for
         later usage.
         
@@ -88,13 +94,19 @@ class FRUITSExperiment:
             timeseriesclassification.com.
         :type path: str
         :param names: List of dataset names. Only the datasets in
-            this list will be remembered. If `None`, then all datasets
-            are used., defaults to None
-        :type names: list of strings
+            this list will be remembered. If ``None``, then all datasets
+            are used. If ``names`` is a single string, it will be
+            treated as a text-file name where all dataset names are
+            listed and seperated by a newline character.,
+            defaults to None
+        :type names: Union[List[str], str]
         """
         if not path.endswith("/"):
             path += "/"
         self._datasets[path] = []
+        if isinstance(names, str):
+            with open(names, "r") as file:
+                names = file.read().split("\n")
         for folder in sorted(os.listdir(path)):
             if os.path.isdir(os.path.join(path, folder)):
                 if names is None or folder in names:
@@ -109,6 +121,7 @@ class FRUITSExperiment:
         :param fruit: Feature extractor to use for classification.
         :type fruits: fruits.Fruit
         """
+        self._results = pd.DataFrame(columns=self.output_header_names)
         self._fruit = fruit
 
         if self._comet_exp is not None:
@@ -133,8 +146,10 @@ class FRUITSExperiment:
 
                 X_train, y_train, X_test, y_test = tsdata.load_dataset(
                     path+dataset)
-                results.append(f"{X_train.shape[0]}/{X_test.shape[0]}/"+
-                               f"{X_train.shape[2]}")
+                results.append(X_train.shape[0])
+                results.append(X_test.shape[0])
+                results.append(X_train.shape[1])
+                results.append(X_train.shape[2])
 
                 start = Timer()
                 fruit.fit(X_train)
@@ -213,10 +228,10 @@ class FRUITSExperiment:
                                                      stralign="center"))
                 file.write("\n\nAverage FRUITS Accuracy: "+
                            str(self._results[
-                               self.output_header_names[3]].to_numpy().mean()))
+                               self.output_header_names[6]].to_numpy().mean()))
                 file.write("\nAverage ROCKET Accuracy: "+
                            str(self._results[
-                               self.output_header_names[4]].to_numpy().mean()))
+                               self.output_header_names[7]].to_numpy().mean()))
                 file.write("\n\n\n"+self._fruit.summary()+"\n")
         if csv:
             self._results.to_csv(filename+".csv", index=False)
