@@ -23,7 +23,7 @@ def test_ppv():
     np.testing.assert_allclose(ppv_1.fit_sieve(X_1[0]),
                                ppv_1_copy.fit_sieve(X_1[0]))
 
-    ppvc_1 = fruits.sieving.PPVC(quantile=0, constant=True)
+    ppvc_1 = fruits.sieving.PCC(quantile=0, constant=True)
 
     np.testing.assert_allclose([[0.4],[0.4]], ppvc_1.fit_sieve(X_1[0]))
 
@@ -31,7 +31,7 @@ def test_ppv():
         fruits.sieving.PPV(quantile=[0.5,0.1,-1], constant=[False,True,False])
 
     with pytest.raises(ValueError):
-        fruits.sieving.PPVC(quantile=[0.5,2], constant=False)
+        fruits.sieving.PCC(quantile=[0.5,2], constant=False)
 
     ppv_group_1 = fruits.sieving.PPV(quantile=[0.5,0.1,0.7],
                                      constant=False,

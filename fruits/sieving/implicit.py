@@ -165,11 +165,11 @@ class PPV(FeatureSieve):
                f"segments={self._segments})"
 
 
-class PPVC(PPV):
+class PCC(PPV):
     """FeatureSieve: Proportion of connected components of positive
     values
 
-    For a calculated quantile with ``PPVC.fit``, this FeatureSieve
+    For a calculated quantile with ``PCC.fit``, this FeatureSieve
     calculates the connected components of the proportion of values in
     a time series that is greater than the calculated quantile.
     This is equivalent to the number of consecutive strips of 1's in
@@ -211,7 +211,7 @@ class PPVC(PPV):
         :raises: RuntimeError if ``self.fit`` wasn't called
         """
         if self._q is None:
-            raise RuntimeError("Missing call of PPVC.fit()")
+            raise RuntimeError("Missing call of PCC.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))
         for i in range(len(self._q)):
             diff = _increments(np.expand_dims(
@@ -221,26 +221,26 @@ class PPVC(PPV):
             result[:, i] = 2*np.sum(diff == 1, axis=-1) / X.shape[1]
         return result
 
-    def copy(self) -> "PPVC":
+    def copy(self) -> "PCC":
         """Returns a copy of this object.
 
-        :rtype: PPVC
+        :rtype: PCC
         """
-        fs = PPVC([x[0] for x in self._q_c_input],
-                  [x[1] for x in self._q_c_input],
-                  self._sample_size)
+        fs = PCC([x[0] for x in self._q_c_input],
+                 [x[1] for x in self._q_c_input],
+                 self._sample_size)
         return fs
 
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
-        string = f"PPVC [sampling={self._sample_size}"
+        string = f"PCC [sampling={self._sample_size}"
         string += f"] -> {self.nfeatures()}:"
         for x in self._q_c_input:
             string += f"\n    > {x[0]} | {x[1]}"
         return string
 
     def __str__(self) -> str:
-        string = "PPVC(" + \
+        string = "PCC(" + \
                 f"quantile={[x[0] for x in self._q_c_input]}, " + \
                 f"constant={[x[1] for x in self._q_c_input]}, " + \
                 f"sample_size={self._sample_size}, " + \
