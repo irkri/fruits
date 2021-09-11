@@ -105,7 +105,8 @@ class Fruitalyser:
                  classifier=None,
                  scaler=None,
                  watch_branch: int = 0,
-                 test_set: bool = True):
+                 test_set: bool = True,
+                 fit_sample_size: float = 1):
         """Classifies the specified data by first extracting the
         features of the time series using the fruits.Fruit object.
         
@@ -134,7 +135,7 @@ class Fruitalyser:
             self.callback = TransformationCallback(watch_branch)
             watched_branch = self.fruit.branches()[watch_branch]
             start = Timer()
-            self.fruit.fit(self.X_train)
+            self.fruit.fit(self.X_train, fit_sample_size)
             print(f"Fitting took {Timer() - start} s")
             if test_set:
                 self.X = self.X_test
