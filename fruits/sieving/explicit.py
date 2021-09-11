@@ -3,6 +3,7 @@ from abc import abstractmethod
 import numpy as np
 
 from fruits.sieving.abstract import FeatureSieve
+from fruits.preparation.backend import _increments
 
 class ExplicitSieve(FeatureSieve):
     """Abstract class that has the ability to calculate cutting points
@@ -252,4 +253,92 @@ class END(ExplicitSieve):
     def __str__(self) -> str:
         string = "END(" + \
                 f"cut={self._cut})"
+        return string
+
+
+class PIA(ExplicitSieve):
+    """FeatureSieve: Proportion of incremental alteration
+
+    Counts the number of positive changes in the given time series. This
+    is equal to the number of positive values in the increments of the
+    time series. This number will be divided (by default) by the length
+    of the time series.
+    For more information on the available arguments, have a look at the
+    definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
+
+    :type cut: int/float or list of integers/floats, optional
+    :type segments: bool, optional
+    :param div_on_slice: If set to ``True``, divides the number of
+        positive changes by the length of the slice (see options
+        ``cut, segments``) instead by the length of the whole series.,
+        defaults to False
+    :type div_on_slice: bool, optional
+    """
+    def __init__(self,
+                 cut: int = -1,
+                 segments: bool = False,
+                 div_on_slice: bool = False):
+        super().__init__(cut, segments, "Proportion of incremental alteration")
+        self._dos = div_on_slice
+
+    def sieve(self, X: np.ndarray) -> np.ndarray:
+        """Returns the transformed data. See the class definition for
+        detailed information.
+
+        :type X: np.ndarray
+        :returns: Array of features.
+        :rtype: np.ndarray
+        """
+        req = self._get_requisite(X)[:, 0, :]
+        result = np.zeros((X.shape[0], self.nfeatures()))
+        X_inc = _increments(np.expand_dims(X, axis=1))[:,0,:]
+        for i in range(X.shape[0]):
+            new_cuts = self._transform_cuts(X[i], req[i])
+            if self._segments:
+                for j in range(1, len(new_cuts)):
+                    result[i, j-1] = np.sum(
+                                X_inc[i, new_cuts[j-1]-1:new_cuts[j]] > 0) 
+                    if self._dos:
+                        result[i, j-1] /= new_cuts[j] - new_cuts[j-1] + 1
+                    else:
+                        result[i, j-1] /= X.shape[1]
+            else:
+                for j in range(len(new_cuts)):
+                    result[i, j] = np.sum(X_inc[i, :new_cuts[j]] > 0)
+                    if self._dos:
+                        result[i, j] /= new_cuts[j]
+                    else:
+                        result[i, j] /= X.shape[1]
+        return result
+
+    def summary(self) -> str:
+        """Returns a better formatted summary string for the sieve."""
+        string = f"PIA"
+        if self._segments or self._dos:
+            string += " ["
+            if self._segments:
+                string += "segments"
+                if self._dos:
+                    string += ", "
+            if self._dos:
+                string += "div_on_slice"
+            string += "]"
+        string += f" -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
+
+    def copy(self) -> "PIA":
+        """Returns a copy of this object.
+
+        :rtype: PIA
+        """
+        fs = PIA(self._cut, self._segments, self._dos)
+        return fs
+
+    def __str__(self) -> str:
+        string = "PIA(" + \
+                f"cut={self._cut}, " + \
+                f"segments={self._segments}, " + \
+                f"div_on_slice={self._dos})"
         return string

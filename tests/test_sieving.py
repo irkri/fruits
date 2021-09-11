@@ -149,6 +149,38 @@ def test_end():
     np.testing.assert_allclose(end_cut_group.fit_sieve(X_1[0]),
                                end_cut_group_copy.fit_sieve(X_1[0]))
 
+def test_pia():
+    pia = fruits.sieving.PIA()
+
+    np.testing.assert_allclose(np.array([[2/5],[1/5]]), pia.fit_sieve(X_1[0]))
+
+    pia_cut_1 = fruits.sieving.PIA(cut=3, div_on_slice=True)
+    pia_cut_2 = fruits.sieving.PIA(cut=0.5, div_on_slice=False)
+
+    np.testing.assert_allclose(np.array([[1/3],[1/3]]),
+                               pia_cut_1.fit_sieve(X_1[0]))
+    np.testing.assert_allclose(np.array([[2/5],[2/5]]),
+                               pia_cut_2.fit_sieve(X_1[1]))
+
+    pia_cut_group_1 = fruits.sieving.PIA(cut=[-1, 3, 1],
+                                         segments=False,
+                                         div_on_slice=False)
+
+    np.testing.assert_allclose(np.array([[3/5,2/5,1/5],[2/5,1/5,0]]),
+                               pia_cut_group_1.fit_sieve(X_1[1]))
+
+    pia_cut_group_2 = fruits.sieving.PIA(cut=[-1, 0.2, 0.7, 0.5],
+                                         segments=True,
+                                         div_on_slice=True)
+
+    np.testing.assert_allclose(np.array([[1/2,1/2,1/2],[2/3,1/1,1/2]]),
+                               pia_cut_group_2.fit_sieve(X_1[1]))
+
+    pia_cut_group_2_copy = pia_cut_group_2.copy()
+
+    np.testing.assert_allclose(pia_cut_group_2.fit_sieve(X_1[0]),
+                               pia_cut_group_2_copy.fit_sieve(X_1[0]))
+
 def test_fruitstrings():
     sieve01 = fruits.sieving.MAX(cut=[1, 0.2, 0.4, 0.6, 0.8, -1],
                                  segments=False)
