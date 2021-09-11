@@ -48,7 +48,7 @@ _COLORS = [
 
 def _get_color(i: int):
     if i < 5:
-        return [x/255 for x in _COLORS[i]]
+        return tuple(x/255 for x in _COLORS[i])
     elif i < 20:
         return mpl.cm.get_cmap("tab20b").colors[2:][i-5]
     else:
