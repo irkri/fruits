@@ -425,14 +425,14 @@ class FruitBranch:
 
     def _select_fit_sample(self, X, sample_size) -> np.ndarray:
         # returns a sample of the data used for fitting
-        if sample_size == 1:
+        if isinstance(sample_size, int) and sample_size == 1:
             ind = np.random.randint(0, X.shape[0])
             return X[ind:ind+1, :, :]
         else:
             s = int(sample_size*X.shape[0])
             if s < 1:
                 s = 1
-            indices = np.random.randint(0, X.shape[0], size=s)
+            indices = np.random.choice(X.shape[0], size=s, replace=False)
             return X[indices, :, :]
 
     def fit(self, X: np.ndarray, sample_size: Union[float, int] = 1):
