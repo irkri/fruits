@@ -2,7 +2,10 @@
 (possibly artificial) time series data.
 """
 
+import os
+
 import numpy as np
+from scipy.io import arff
 
 def _multisine(x, coeff):
     return sum([coeff[i, 0]*np.sin(coeff[i, 1]*x+coeff[i, 2])
@@ -89,33 +92,106 @@ def multisine(train_size: int = 100,
 
     return X_train, y_train, X_test, y_test
 
-def load_dataset(path: str) -> tuple:
+def load_dataset(path: str, univariate: bool = True) -> tuple:
     """Returns a time series dataset that is formatted as a .txt file
     and readable with numpy.
-    
+
     :param path: Path to the dataset. The path has to point to a
         folder 'name' with two files:
         'name_TEST.txt' and 'name_TRAIN.txt' where 'name' is the name of
         the dataset.
     :type path: str
+    :param univariate: If ``True``, the function expects the data to be
+        univariate and readable as ".txt" with numpy. Else, it searches
+        for multivariate ".arff" files to read., defaults to True
+    :type univariate: bool, optional
     :returns: Tuple (X_train, y_train, X_test, y_test) where X_train
         and X_test are 3-dimensional numpy arrays
     :rtype: tuple
     """
-    dataset = path.split("/")[-1]
-    delim = None
-    with open(f"{path}/{dataset}_TRAIN.txt") as f:
-        if "," in f.readline():
-            delim = ","
-    train_raw = np.loadtxt(f"{path}/{dataset}_TRAIN.txt", delimiter=delim)
-    test_raw = np.loadtxt(f"{path}/{dataset}_TEST.txt", delimiter=delim)
-    X_train = np.nan_to_num(train_raw[:, 1:])
-    y_train = train_raw[:, 0].astype(np.int32)
-    X_test = np.nan_to_num(test_raw[:, 1:])
-    y_test =  test_raw[:, 0].astype(np.int32)
+    if univariate:
+        dataset = path.split("/")[-1]
+        delim = None
+        with open(f"{path}/{dataset}_TRAIN.txt") as f:
+            if "," in f.readline():
+                delim = ","
+        train_raw = np.loadtxt(f"{path}/{dataset}_TRAIN.txt", delimiter=delim)
+        test_raw = np.loadtxt(f"{path}/{dataset}_TEST.txt", delimiter=delim)
+        X_train = np.nan_to_num(train_raw[:, 1:])
+        y_train = train_raw[:, 0].astype(np.int32)
+        X_test = np.nan_to_num(test_raw[:, 1:])
+        y_test =  test_raw[:, 0].astype(np.int32)
 
-    X_train = np.expand_dims(X_train, axis=1)
-    X_test = np.expand_dims(X_test, axis=1)
+        X_train = np.expand_dims(X_train, axis=1)
+        X_test = np.expand_dims(X_test, axis=1)
+
+        return X_train, y_train, X_test, y_test
+
+    dataset = path.split("/")[-1]
+
+    train_files = []
+    test_files = []
+    for file in os.listdir(path):
+        if file.startswith(dataset+"Dimension"):
+            if file.endswith("_TRAIN.arff"):
+                train_files.append(file)
+            elif file.endswith("_TEST.arff"):
+                test_files.append(file)
+    dim = len(train_files)
+
+    data = arff.loadarff(os.path.join(path, train_files[0]))
+
+    X_train = np.zeros((len(data[0]), dim, len(data[1]._attributes)-1))
+    y_train = np.zeros((len(data[0]),))
+
+    classes = []
+    for i in range(dim):
+        for m in range(X_train.shape[0]):
+            X_train[m, i, :] = np.nan_to_num(
+                                np.asarray(data[0][m].tolist()[:-1],
+                                           dtype=np.float64))
+            if i == 0:
+                classes.append(data[0][m].tolist()[-1])
+        if i == dim - 1:
+            break
+        data = arff.loadarff(os.path.join(path, train_files[i+1]))
+
+    class_map = {}
+    k = 0
+    for m in range(X_train.shape[0]):
+        if classes[m] in class_map:
+            y_train[m] = class_map[classes[m]]
+        else:
+            class_map[classes[m]] = k
+            y_train[m] = k
+            k += 1
+
+    data = arff.loadarff(os.path.join(path, test_files[0]))
+
+    X_test = np.zeros((len(data[0]), dim, len(data[1]._attributes)-1))
+    y_test = np.zeros((len(data[0]),))
+
+    classes = []
+    for i in range(dim):
+        for m in range(X_test.shape[0]):
+            X_test[m, i, :] = np.nan_to_num(
+                                np.asarray(data[0][m].tolist()[:-1],
+                                           dtype=np.float64))
+            if i == 0:
+                classes.append(data[0][m].tolist()[-1])
+        if i == dim - 1:
+            break
+        data = arff.loadarff(os.path.join(path, test_files[i+1]))
+
+    class_map = {}
+    k = 0
+    for m in range(X_test.shape[0]):
+        if classes[m] in class_map:
+            y_test[m] = class_map[classes[m]]
+        else:
+            class_map[classes[m]] = k
+            y_test[m] = k
+            k += 1
 
     return X_train, y_train, X_test, y_test
 
@@ -124,7 +200,7 @@ def implant_stuttering(X: np.ndarray,
     """Implants some 'stuttering' to a given array of time series.
     That is, at some indices in each time series a value will be
     repeated consecutively a (random) number of times.
-    
+
     :param X: 3-dim array of multidimensional time series.
     :type X: np.ndarray
     :param stutter_length: Proportional number of time steps each time
@@ -174,8 +250,8 @@ def implant_stuttering(X: np.ndarray,
 def lengthen(X: np.ndarray,
              length: int = 0.1) -> np.ndarray:
     """Lengthens each time series in the given array.
-    
-    :param X: 3-dim array of multidimensional time series.
+
+    :param X: 3-dim array of multidimensional time series
     :type X: np.ndarray
     :param length: Proportional length that will be added to each time
         series as a float > 0., defaults to 0.1

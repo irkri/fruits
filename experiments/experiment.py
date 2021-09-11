@@ -69,7 +69,7 @@ class FRUITSExperiment:
         else:
             self._rocket_csv = rocket_csv
         self._verbose = verbose
-        # dictionary self._datasets[path] = [datasets in path]
+        # dictionary self._datasets[path] = ([datasets in path], univariate?)
         self._datasets = dict()
         self._comet_exp = comet_experiment
         self._fruit = None
@@ -85,7 +85,8 @@ class FRUITSExperiment:
 
     def append_data(self,
                     path: str,
-                    names: Union[List[str], str, None] = None):
+                    names: Union[List[str], str, None] = None,
+                    univariate: bool = True):
         """Finds time series datasets in the specified directory for
         later usage.
         
@@ -100,18 +101,22 @@ class FRUITSExperiment:
             listed and seperated by a newline character.,
             defaults to None
         :type names: Union[List[str], str]
+        :param univariate: If ``True``, the data in ``path`` is assumed
+            to be univariate. Set this option to False for multivariate
+            data., defaults to True
+        :type univariate: bool, optional
         """
         if not path.endswith("/"):
             path += "/"
-        self._datasets[path] = []
+        self._datasets[path] = ([], univariate)
         if isinstance(names, str):
             with open(names, "r") as file:
                 names = file.read().split("\n")
         for folder in sorted(os.listdir(path)):
             if os.path.isdir(os.path.join(path, folder)):
                 if names is None or folder in names:
-                    self._datasets[path].append(folder)
-        if len(self._datasets[path]) == 0:
+                    self._datasets[path][0].append(folder)
+        if len(self._datasets[path][0]) == 0:
             del self._datasets[path]
 
     def classify(self, fruit: fruits.Fruit):
@@ -127,7 +132,7 @@ class FRUITSExperiment:
         if self._comet_exp is not None:
             self._comet_exp.log_dataset_info(name=\
                 ",".join([ds for path in self._datasets
-                             for ds in self._datasets[path]]))
+                             for ds in self._datasets[path][0]]))
             self._comet_exp.log_text(fruit.summary())
 
         if self._verbose:
@@ -137,7 +142,9 @@ class FRUITSExperiment:
 
         for j, path in enumerate(self._datasets):
 
-            for dataset in self._datasets[path]:
+            univariate = self._datasets[path][1]
+
+            for dataset in self._datasets[path][0]:
 
                 results = [dataset]
 
@@ -145,7 +152,7 @@ class FRUITSExperiment:
                     self._comet_exp.set_step(i)
 
                 X_train, y_train, X_test, y_test = tsdata.load_dataset(
-                    path+dataset)
+                    path+dataset, univariate=univariate)
                 results.append(X_train.shape[0])
                 results.append(X_test.shape[0])
                 results.append(X_train.shape[1])
