@@ -342,3 +342,63 @@ class PIA(ExplicitSieve):
                 f"segments={self._segments}, " + \
                 f"div_on_slice={self._dos})"
         return string
+
+
+class LCS(ExplicitSieve):
+    """FeatureSieve: Length of coquantile slices
+
+    Returns the length of coquantile slices of each given time series.
+    For more information on the available arguments, have a look at the
+    definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
+
+    :type cut: int/float or list of integers/floats, optional
+    :type segments: bool, optional
+    """
+    def __init__(self,
+                 cut: int = -1,
+                 segments: bool = False):
+        super().__init__(cut, segments, "Length of coquantile slices")
+
+    def sieve(self, X: np.ndarray) -> np.ndarray:
+        """Returns the transformed data. See the class definition for
+        detailed information.
+
+        :type X: np.ndarray
+        :returns: Array of features.
+        :rtype: np.ndarray
+        """
+        req = self._get_requisite(X)[:, 0, :]
+        result = np.zeros((X.shape[0], self.nfeatures()))
+        for i in range(X.shape[0]):
+            new_cuts = self._transform_cuts(X[i], req[i])
+            if self._segments:
+                for j in range(1, len(new_cuts)):
+                    result[i, j-1] = new_cuts[j] - new_cuts[j-1] + 1
+            else:
+                for j in range(len(new_cuts)):
+                    result[i, j] = new_cuts[j]
+        return result
+
+    def summary(self) -> str:
+        """Returns a better formatted summary string for the sieve."""
+        string = f"LCS"
+        if self._segments:
+            string += " [segments]"
+        string += f" -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
+
+    def copy(self) -> "LCS":
+        """Returns a copy of this object.
+
+        :rtype: LCS
+        """
+        fs = LCS(self._cut, self._segments)
+        return fs
+
+    def __str__(self) -> str:
+        string = "LCS(" + \
+                f"cut={self._cut}, " + \
+                f"segments={self._segments})"
+        return string

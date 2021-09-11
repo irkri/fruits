@@ -181,6 +181,36 @@ def test_pia():
     np.testing.assert_allclose(pia_cut_group_2.fit_sieve(X_1[0]),
                                pia_cut_group_2_copy.fit_sieve(X_1[0]))
 
+def test_lcs():
+    lcs = fruits.sieving.LCS()
+
+    np.testing.assert_allclose(np.array([[5],[5]]), lcs.fit_sieve(X_1[0]))
+
+    lcs_cut_1 = fruits.sieving.LCS(cut=3)
+    lcs_cut_2 = fruits.sieving.LCS(cut=0.5)
+
+    np.testing.assert_allclose(np.array([[3],[3]]),
+                               lcs_cut_1.fit_sieve(X_1[0]))
+    np.testing.assert_allclose(np.array([[3],[4]]),
+                               lcs_cut_2.fit_sieve(X_1[1]))
+
+    lcs_cut_group_1 = fruits.sieving.LCS(cut=[-1, 3, 1],
+                                         segments=False)
+
+    np.testing.assert_allclose(np.array([[5,3,1],[5,3,1]]),
+                               lcs_cut_group_1.fit_sieve(X_1[1]))
+
+    lcs_cut_group_2 = fruits.sieving.LCS(cut=[-1, 0.2, 0.7, 0.5],
+                                         segments=True)
+
+    np.testing.assert_allclose(np.array([[2,2,2],[3,1,2]]),
+                               lcs_cut_group_2.fit_sieve(X_1[1]))
+
+    lcs_cut_group_2_copy = lcs_cut_group_2.copy()
+
+    np.testing.assert_allclose(lcs_cut_group_2.fit_sieve(X_1[0]),
+                               lcs_cut_group_2_copy.fit_sieve(X_1[0]))
+
 def test_fruitstrings():
     sieve01 = fruits.sieving.MAX(cut=[1, 0.2, 0.4, 0.6, 0.8, -1],
                                  segments=False)
