@@ -2,7 +2,7 @@ from setuptools import setup
 
 metadata = dict(
     name="fruits",
-    version="0.9.0",
+    version="0.9.1",
     author="alienkrieg",
     author_email="alienkrieg@gmail.com",
     description="Feature extRation Using ITerated Sums",
