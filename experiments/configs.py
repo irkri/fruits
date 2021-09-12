@@ -805,18 +805,44 @@ lychee05.branch().calculator.mode = "extended"
 lychee05.add(fruits.sieving.LCS([1]+[i/20 for i in range(1, 20)]+[-1],
                                 segments=True))
 
+# Configuration 12 - Strawberry - Preparateur STD
+
+words = fruits.core.generation.simplewords_by_weight(4)
+
+strawberry = fruits.Fruit("Strawberry")
+strawberry.add(fruits.preparation.STD)
+strawberry.add(fruits.preparation.INC)
+strawberry.add(words)
+strawberry.branch().calculator.mode = "extended"
+strawberry.add(fruits.sieving.PPV,
+               fruits.sieving.PCC,
+               fruits.sieving.MAX,
+               fruits.sieving.MIN,
+               fruits.sieving.END)
+
+strawberry.fork()
+strawberry.add(fruits.preparation.STD)
+strawberry.add(words)
+strawberry.branch().calculator.mode = "extended"
+strawberry.add(fruits.sieving.PPV,
+               fruits.sieving.PCC,
+               fruits.sieving.MAX,
+               fruits.sieving.MIN,
+               fruits.sieving.END)
+
 CONFIGS = [
-    apple01, apple02, apple03, apple04,
-    banana01, banana02, banana03, banana04, banana05,
-    plantain01, plantain02, plantain03, plantain04, plantain05,
-    orange01, orange02, orange03, orange04,
-    tangerine01, tangerine02, tangerine03, tangerine04,
-    apricot01, apricot02, apricot03, apricot04, apricot05, apricot06,
-        apricot07, apricot08,
-    olive01, olive02, olive03,
-    elderberry01, elderberry02, elderberry03, elderberry04, elderberry05,
-    dragonfruit01,
-    pineapple01, pineapple02, pineapple03, pineapple04, pineapple05,
-        pineapple06, pineapple07,
-    lychee01, lychee02, lychee03, lychee04, lychee05,
+    # apple01, apple02, apple03, apple04,
+    # banana01, banana02, banana03, banana04, banana05,
+    # plantain01, plantain02, plantain03, plantain04, plantain05,
+    # orange01, orange02, orange03, orange04,
+    # tangerine01, tangerine02, tangerine03, tangerine04,
+    # apricot01, apricot02, apricot03, apricot04, apricot05, apricot06,
+    #     apricot07, apricot08,
+    # olive01, olive02, olive03,
+    # elderberry01, elderberry02, elderberry03, elderberry04, elderberry05,
+    # dragonfruit01,
+    # pineapple01, pineapple02, pineapple03, pineapple04, pineapple05,
+    #     pineapple06, pineapple07,
+    # lychee01, lychee02, lychee03, lychee04, lychee05,
+    strawberry,
 ]
