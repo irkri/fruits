@@ -17,7 +17,8 @@ def _slow_single_ISS(Z: np.ndarray,
             tmp = np.roll(tmp, 1)
             tmp[0] = 0
         tmp = tmp * C
-        tmp = tmp * np.exp(np.arange(Z.shape[1]) * (alphas[k+1]-alphas[k]))
+        if alphas[k+1] != alphas[k]:
+            tmp = tmp * np.exp(np.arange(Z.shape[1]) * (alphas[k+1]-alphas[k]))
         tmp = _fast_CS(tmp)
         if len(word)-k <= extended:
             # save result
@@ -63,7 +64,8 @@ def _fast_single_ISS(Z: np.ndarray,
             tmp = np.roll(tmp, 1)
             tmp[0] = 0
         tmp = tmp * C
-        tmp = tmp * np.exp(np.arange(Z.shape[1]) * (alphas[k+1]-alphas[k]))
+        if alphas[k+1] != alphas[k]:
+            tmp = tmp * np.exp(np.arange(Z.shape[1]) * (alphas[k+1]-alphas[k]))
         tmp = _fast_CS(tmp)
         if len(word)-k <= extended:
             # save result
