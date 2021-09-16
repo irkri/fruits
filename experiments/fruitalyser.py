@@ -181,6 +181,24 @@ class Fruitalyser:
         print(f"Classification with {type(classifier)}")
         print(f"\t+ Accuracy on test set: {self.test_score}")
 
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        """Returns the predicted probabilities of the classes for the
+        given two-dimensional numpy array consisiting of one or multiple
+        (one-dimensional) time series.
+
+        :type X: np.ndarray
+        """
+        X_train_transform = self.fruit.fit_transform(self.X_train)
+        X_transform = self.fruit.transform(np.expand_dims(X, axis=1))
+
+        classifier = RidgeClassifierCV(alphas=np.logspace(-3,3,10),
+                                       normalize=True)
+        classifier.fit(X_train_transform, self.y_train)
+        dec = np.array(classifier.decision_function(X_transform))
+        dec = dec / np.max(dec)
+        dec_exp = np.exp(dec)
+        return dec_exp / np.sum(dec_exp)
+
     def test_classifier(self,
                         classifier,
                         variable: str = None,
@@ -340,12 +358,13 @@ class Fruitalyser:
             plot(s) or None if ``on_axis`` is provided.
         :rtype: tuple
         """
-        if on_axis is None:
-            fig, on_axis = self._get_plot_template(1, 1)
-        self._plot(self.X[:, dim, :], self.y, on_axis, mean, bounds, nseries,
+        ax = on_axis
+        if ax is None:
+            fig, ax = self._get_plot_template(1, 1)
+        self._plot(self.X[:, dim, :], self.y, ax, mean, bounds, nseries,
                    per_class)
         if on_axis is None:
-            return fig, on_axis
+            return fig, ax
 
     def plot_prepared_data(self,
                            dim: int = 0,
@@ -385,12 +404,13 @@ class Fruitalyser:
             plot(s) or None if ``on_axis`` is provided.
         :rtype: tuple
         """
-        if on_axis is None:
-            fig, on_axis = self._get_plot_template(1, 1)
-        self._plot(self.callback.prepared_data[:, dim, :], self.y, on_axis,
+        ax = on_axis
+        if ax is None:
+            fig, ax = self._get_plot_template(1, 1)
+        self._plot(self.callback.prepared_data[:, dim, :], self.y, ax,
                    mean, bounds, nseries, per_class)
         if on_axis is None:
-            return fig, on_axis
+            return fig, ax
 
     def plot_iterated_sums(self,
                            word_indices: list = None,
@@ -438,17 +458,18 @@ class Fruitalyser:
         """
         if word_indices is None:
             word_indices = list(range(len(self.words)))
-        if on_axes is None:
-            fig, on_axes = self._get_plot_template(len(word_indices), 1,
-                                                   sharex=True)
+        axs = on_axes
+        if axs is None:
+            fig, axs = self._get_plot_template(len(word_indices), 1,
+                                               sharex=True)
             if len(word_indices) == 1:
-                on_axes = [on_axes]
+                axs = [axs]
         for i, index in enumerate(word_indices):
             self._plot(self.callback.iterated_sums[index][:, 0, :], self.y,
-                       on_axes[i], mean, bounds, nseries, per_class)
-            on_axes[i].set_title(str(self.words[index]))
+                       axs[i], mean, bounds, nseries, per_class)
+            axs[i].set_title(str(self.words[index]))
         if on_axes is None:
-            return fig, on_axes
+            return fig, axs
 
     def plot_features(self,
                       sieve_index: int,
