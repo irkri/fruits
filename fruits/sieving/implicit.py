@@ -123,17 +123,17 @@ class PPV(FeatureSieve):
         if self._q is None:
             raise RuntimeError("Missing call of PPV.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))
-        for i in range(X.shape[0]):
-            if self._segments:
-                for j in range(1, len(self._q)):
-                    result[i, j-1] = np.sum(np.logical_and(
-                                                self._q[j-1] <= X[i],
-                                                X[i] < self._q[j]))
-                    result[i, j-1] /= X.shape[1]
-            else:
-                for j in range(len(self._q)):
-                    result[i, j] = np.sum((X[i] >= self._q[j]))
-                    result[i, j] /= X.shape[1]
+        if self._segments:
+            for j in range(1, len(self._q)):
+                result[:, j-1] = np.sum(np.logical_and(
+                                            self._q[j-1] <= X,
+                                            X < self._q[j]),
+                                        axis=1)
+                result[:, j-1] /= X.shape[1]
+        else:
+            for j in range(len(self._q)):
+                result[:, j] = np.sum((X >= self._q[j]), axis=1)
+                result[:, j] /= X.shape[1]
         return result
 
     def copy(self) -> "PPV":
@@ -165,11 +165,11 @@ class PPV(FeatureSieve):
                f"segments={self._segments})"
 
 
-class PCC(PPV):
+class CPV(PPV):
     """FeatureSieve: Proportion of connected components of positive
     values
 
-    For a calculated quantile with ``PCC.fit``, this FeatureSieve
+    For a calculated quantile with ``CPV.fit``, this FeatureSieve
     calculates the connected components of the proportion of values in
     a time series that is greater than the calculated quantile.
     This is equivalent to the number of consecutive strips of 1's in
@@ -194,11 +194,12 @@ class PCC(PPV):
     def __init__(self,
                  quantile: float = 0.5,
                  constant: bool = False,
-                 sample_size: float = 1.0):
+                 sample_size: float = 1.0,
+                 segments: bool = False):
         super().__init__(quantile,
                          constant,
                          sample_size,
-                         False)
+                         segments)
         self.name = "Proportion of connected components of positive values"
 
     def sieve(self, X: np.ndarray) -> np.ndarray:
@@ -211,36 +212,50 @@ class PCC(PPV):
         :raises: RuntimeError if ``self.fit`` wasn't called
         """
         if self._q is None:
-            raise RuntimeError("Missing call of PCC.fit()")
+            raise RuntimeError("Missing call of CPV.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))
-        for i in range(len(self._q)):
-            diff = _increments(np.expand_dims(
-                                (X >= self._q[i]).astype(np.int32),
-                                axis=1))[:, 0, :]
-            # at most X.shape[1]/2 connected components are possible
-            result[:, i] = 2*np.sum(diff == 1, axis=-1) / X.shape[1]
+        n = X.shape[1]
+        if n % 2 == 1:
+            n += 1
+        if self._segments:
+            for j in range(1, len(self._q)):
+                diff = _increments(np.expand_dims(
+                                    np.logical_and(
+                                            self._q[j-1] <= X,
+                                            X < self._q[j]).astype(np.int32),
+                                    axis=1))[:, 0, :]
+                result[:, j-1] = 2 * np.sum(diff == 1, axis=-1) / n
+        else:
+            for j in range(len(self._q)):
+                diff = _increments(np.expand_dims(
+                                    (X >= self._q[j]).astype(np.int32),
+                                    axis=1))[:, 0, :]
+                result[:, j] = 2 * np.sum(diff == 1, axis=-1) / n
         return result
 
-    def copy(self) -> "PCC":
+    def copy(self) -> "CPV":
         """Returns a copy of this object.
 
-        :rtype: PCC
+        :rtype: CPV
         """
-        fs = PCC([x[0] for x in self._q_c_input],
+        fs = CPV([x[0] for x in self._q_c_input],
                  [x[1] for x in self._q_c_input],
-                 self._sample_size)
+                 self._sample_size,
+                 self._segments)
         return fs
 
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
-        string = f"PCC [sampling={self._sample_size}"
+        string = f"PPV [sampling={self._sample_size}"
+        if self._segments:
+            string += ", segments"
         string += f"] -> {self.nfeatures()}:"
         for x in self._q_c_input:
-            string += f"\n    > {x[0]} | {x[1]}"
+            string += f"\n   > {x[0]} | {x[1]}"
         return string
 
     def __str__(self) -> str:
-        string = "PCC(" + \
+        string = "CPV(" + \
                 f"quantile={[x[0] for x in self._q_c_input]}, " + \
                 f"constant={[x[1] for x in self._q_c_input]}, " + \
                 f"sample_size={self._sample_size}, " + \

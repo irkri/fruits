@@ -12,7 +12,7 @@ apple01 = fruits.Fruit("Apple_3")
 apple01.add(fruits.preparation.INC)
 apple01.add(words)
 apple01.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -20,7 +20,7 @@ apple01.add(fruits.sieving.PPV,
 apple01.fork()
 apple01.add(words)
 apple01.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -31,7 +31,7 @@ apple02 = fruits.Fruit("Apple_4")
 apple02.add(fruits.preparation.INC)
 apple02.add(words)
 apple02.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -39,7 +39,7 @@ apple02.add(fruits.sieving.PPV,
 apple02.fork()
 apple02.add(words)
 apple02.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -50,7 +50,7 @@ apple03 = fruits.Fruit("Apple_1_4")
 apple03.add(fruits.preparation.INC)
 apple03.add(words)
 apple03.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -59,7 +59,7 @@ apple03.branch().calculator.mode = "extended"
 apple03.fork()
 apple03.add(words)
 apple03.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -71,7 +71,7 @@ apple04 = fruits.Fruit("Apple_1_5")
 apple04.add(fruits.preparation.INC)
 apple04.add(words)
 apple04.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -80,7 +80,7 @@ apple04.branch().calculator.mode = "extended"
 apple04.fork()
 apple04.add(words)
 apple04.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -145,7 +145,7 @@ banana05.add(words)
 banana05.branch().calculator.mode = "extended"
 banana05.add(fruits.sieving.PPV([i/20 for i in range(1, 20)]))
 
-# Configuration 03 - Plantain - Number of PCC Quantiles
+# Configuration 03 - Plantain - Number of CPV Quantiles
 
 words = fruits.core.generation.simplewords_by_weight(4)
 
@@ -153,56 +153,56 @@ plantain01 = fruits.Fruit("Plantain_1")
 plantain01.add(fruits.preparation.INC)
 plantain01.add(words)
 plantain01.branch().calculator.mode = "extended"
-plantain01.add(fruits.sieving.PCC(0.5))
+plantain01.add(fruits.sieving.CPV(0.5))
 
 plantain01.fork()
 plantain01.add(words)
 plantain01.branch().calculator.mode = "extended"
-plantain01.add(fruits.sieving.PCC(0.5))
+plantain01.add(fruits.sieving.CPV(0.5))
 
 plantain02 = fruits.Fruit("Plantain_3")
 plantain02.add(fruits.preparation.INC)
 plantain02.add(words)
 plantain02.branch().calculator.mode = "extended"
-plantain02.add(fruits.sieving.PCC([0.25, 0.5, 0.75]))
+plantain02.add(fruits.sieving.CPV([0.25, 0.5, 0.75]))
 
 plantain02.fork()
 plantain02.add(words)
 plantain02.branch().calculator.mode = "extended"
-plantain02.add(fruits.sieving.PCC([0.25, 0.5, 0.75]))
+plantain02.add(fruits.sieving.CPV([0.25, 0.5, 0.75]))
 
 plantain03 = fruits.Fruit("Plantain_7")
 plantain03.add(fruits.preparation.INC)
 plantain03.add(words)
 plantain03.branch().calculator.mode = "extended"
-plantain03.add(fruits.sieving.PCC([i/8 for i in range(1, 8)]))
+plantain03.add(fruits.sieving.CPV([i/8 for i in range(1, 8)]))
 
 plantain03.fork()
 plantain03.add(words)
 plantain03.branch().calculator.mode = "extended"
-plantain03.add(fruits.sieving.PCC([i/8 for i in range(1, 8)]))
+plantain03.add(fruits.sieving.CPV([i/8 for i in range(1, 8)]))
 
 plantain04 = fruits.Fruit("Plantain_9")
 plantain04.add(fruits.preparation.INC)
 plantain04.add(words)
 plantain04.branch().calculator.mode = "extended"
-plantain04.add(fruits.sieving.PCC([i/10 for i in range(1, 10)]))
+plantain04.add(fruits.sieving.CPV([i/10 for i in range(1, 10)]))
 
 plantain04.fork()
 plantain04.add(words)
 plantain04.branch().calculator.mode = "extended"
-plantain04.add(fruits.sieving.PCC([i/10 for i in range(1, 10)]))
+plantain04.add(fruits.sieving.CPV([i/10 for i in range(1, 10)]))
 
 plantain05 = fruits.Fruit("Plantain_19")
 plantain05.add(fruits.preparation.INC)
 plantain05.add(words)
 plantain05.branch().calculator.mode = "extended"
-plantain05.add(fruits.sieving.PCC([i/20 for i in range(1, 20)]))
+plantain05.add(fruits.sieving.CPV([i/20 for i in range(1, 20)]))
 
 plantain05.fork()
 plantain05.add(words)
 plantain05.branch().calculator.mode = "extended"
-plantain05.add(fruits.sieving.PCC([i/20 for i in range(1, 20)]))
+plantain05.add(fruits.sieving.CPV([i/20 for i in range(1, 20)]))
 
 # Configuration 04 - Orange - Number of cuts in MAX
 
@@ -319,7 +319,7 @@ apricot01.add(fruits.preparation.INC)
 apricot01.add(words)
 apricot01.branch().calculator.mode = "extended"
 apricot01.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -328,7 +328,7 @@ apricot01.fork()
 apricot01.add(words)
 apricot01.branch().calculator.mode = "extended"
 apricot01.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -340,7 +340,7 @@ apricot02.add(fruits.preparation.INC)
 apricot02.add(words)
 apricot02.branch().calculator.mode = "extended"
 apricot02.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -349,7 +349,7 @@ apricot02.fork()
 apricot02.add(words)
 apricot02.branch().calculator.mode = "extended"
 apricot02.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -361,7 +361,7 @@ apricot03.add(fruits.preparation.INC)
 apricot03.add(words)
 apricot03.branch().calculator.mode = "extended"
 apricot03.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -370,7 +370,7 @@ apricot03.fork()
 apricot03.add(words)
 apricot03.branch().calculator.mode = "extended"
 apricot03.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -382,7 +382,7 @@ apricot04.add(fruits.preparation.INC)
 apricot04.add(words)
 apricot04.branch().calculator.mode = "extended"
 apricot04.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -391,7 +391,7 @@ apricot04.fork()
 apricot04.add(words)
 apricot04.branch().calculator.mode = "extended"
 apricot04.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -403,7 +403,7 @@ apricot05.add(fruits.preparation.INC)
 apricot05.add(words)
 apricot05.branch().calculator.mode = "extended"
 apricot05.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -412,7 +412,7 @@ apricot05.fork()
 apricot05.add(words)
 apricot05.branch().calculator.mode = "extended"
 apricot05.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -424,7 +424,7 @@ apricot06.add(fruits.preparation.INC)
 apricot06.add(words)
 apricot06.branch().calculator.mode = "extended"
 apricot06.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -433,7 +433,7 @@ apricot06.fork()
 apricot06.add(words)
 apricot06.branch().calculator.mode = "extended"
 apricot06.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -445,7 +445,7 @@ apricot07.add(fruits.preparation.INC)
 apricot07.add(words)
 apricot07.branch().calculator.mode = "extended"
 apricot07.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -454,7 +454,7 @@ apricot07.fork()
 apricot07.add(words)
 apricot07.branch().calculator.mode = "extended"
 apricot07.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -466,7 +466,7 @@ apricot08.add(fruits.preparation.INC)
 apricot08.add(words)
 apricot08.branch().calculator.mode = "extended"
 apricot08.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -475,7 +475,7 @@ apricot08.fork()
 apricot08.add(words)
 apricot08.branch().calculator.mode = "extended"
 apricot08.add(fruits.sieving.PPV,
-              fruits.sieving.PCC,
+              fruits.sieving.CPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
@@ -495,7 +495,7 @@ olive01.add(fruits.preparation.INC)
 olive01.add(fruits.preparation.ONE)
 olive01.add(words)
 olive01.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -504,7 +504,7 @@ olive01.fork()
 olive01.add(fruits.preparation.ONE)
 olive01.add(words)
 olive01.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -526,7 +526,7 @@ olive02.add(fruits.preparation.INC)
 olive02.add(fruits.preparation.ONE)
 olive02.add(words)
 olive02.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -535,7 +535,7 @@ olive02.fork()
 olive02.add(fruits.preparation.ONE)
 olive02.add(words)
 olive02.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -550,7 +550,7 @@ olive03.add(fruits.preparation.ONE)
 olive03.add(words)
 olive03.branch().calculator.mode = "extended"
 olive03.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -560,7 +560,7 @@ olive03.add(fruits.preparation.ONE)
 olive03.add(words)
 olive03.branch().calculator.mode = "extended"
 olive03.add(fruits.sieving.PPV,
-            fruits.sieving.PCC,
+            fruits.sieving.CPV,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -638,7 +638,7 @@ for n in ns:
     dragonfruit01.add(words)
     dragonfruit01.branch().calculator.mode = "extended"
     dragonfruit01.add(fruits.sieving.PPV,
-                      fruits.sieving.PCC,
+                      fruits.sieving.CPV,
                       fruits.sieving.MAX,
                       fruits.sieving.MIN,
                       fruits.sieving.END)
@@ -648,7 +648,7 @@ for n in ns:
     dragonfruit01.add(words)
     dragonfruit01.branch().calculator.mode = "extended"
     dragonfruit01.add(fruits.sieving.PPV,
-                      fruits.sieving.PCC,
+                      fruits.sieving.CPV,
                       fruits.sieving.MAX,
                       fruits.sieving.MIN,
                       fruits.sieving.END)
@@ -815,7 +815,7 @@ strawberry.add(fruits.preparation.INC)
 strawberry.add(words)
 strawberry.branch().calculator.mode = "extended"
 strawberry.add(fruits.sieving.PPV,
-               fruits.sieving.PCC,
+               fruits.sieving.CPV,
                fruits.sieving.MAX,
                fruits.sieving.MIN,
                fruits.sieving.END)
@@ -825,7 +825,7 @@ strawberry.add(fruits.preparation.STD)
 strawberry.add(words)
 strawberry.branch().calculator.mode = "extended"
 strawberry.add(fruits.sieving.PPV,
-               fruits.sieving.PCC,
+               fruits.sieving.CPV,
                fruits.sieving.MAX,
                fruits.sieving.MIN,
                fruits.sieving.END)
