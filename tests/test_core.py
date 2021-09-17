@@ -126,8 +126,8 @@ def test_general_words():
 
     # word: [relu(0)][relu(1)]
     relu_word = fruits.core.Word("relu collection")
-    relu_word.multiply(fruits.core.ExtendedLetter("ReLU(0)"))
     relu_word.multiply(fruits.core.ExtendedLetter("ReLU(1)"))
+    relu_word.multiply(fruits.core.ExtendedLetter("ReLU(2)"))
 
     mix = [relu_word, fruits.core.SimpleWord("[111]")]
 

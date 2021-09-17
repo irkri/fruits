@@ -54,7 +54,7 @@ class ExtendedLetter:
         letters = letter_string.split(")")[:-1]
         for letter in letters:
             l, d = letter.split("(")
-            self.append(_get(l), int(d))
+            self.append(_get(l), int(d)-1)
 
     def copy(self) -> "ExtendedLetter":
         """Returns a copy of this extended letter.
@@ -64,6 +64,7 @@ class ExtendedLetter:
         el = ExtendedLetter()
         el._letters = self._letters.copy()
         el._dimensions = self._dimensions.copy()
+        el._string_repr = self._string_repr
         return el
 
     def __iter__(self):

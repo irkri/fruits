@@ -51,25 +51,16 @@ class Word:
 
         fruits.core.ISS(X, SimpleWord("[11][122]"))
 
-    :param name: Descriptive identifier for the word, defaults to ""
-    :type name: str, optional
+    :param word_string: String representation of the word. Names of available
+        letters can be used like ``[ABS(1)SIMPLE(2)][ABS(1)]`` to create
+        the corresponding word., defaults to ""
+    :type word_string: str, optional
     """
-    def __init__(self, name: str = ""):
-        self.name = name
+    def __init__(self, word_string: str = ""):
         self._alpha = 0.0
         self._extended_letters = []
-
-    @property
-    def name(self) -> str:
-        """Simple identifier string for the object.
-
-        This property also has a setter method.
-        """
-        return self._name
-
-    @name.setter
-    def name(self, name: str):
-        self._name = name
+        if word_string != "":
+            self.multiply(word_string)
 
     @property
     def alpha(self) -> List[float]:
@@ -107,6 +98,10 @@ class Word:
         elif isinstance(other, Word):
             for el in other._extended_letters:
                 self._extended_letters.append(el)
+        elif isinstance(other, str):
+            els_raw = other.split("]")[:-1]
+            for el_raw in els_raw:
+                self.multiply(ExtendedLetter(el_raw[1:]))
         else:
             raise TypeError(f"Cannot multiply Word with {type(other)}")
 
@@ -115,7 +110,7 @@ class Word:
 
         :rtype: Word
         """
-        sw = Word(self.name)
+        sw = Word()
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
 
@@ -193,12 +188,12 @@ class SimpleWord(Word):
     :param string: Will be used to create the SimpleWord as
         shown in the example above. It has to match the regular
         expression ``([d+])+`` where ``d+`` denotes one or more digits.
-        This string will also be used to set the name of the object.
     :type string: str
     """
     def __init__(self, string: str):
         super().__init__()
         self._max_dim = 0
+        self._name = ""
         self.multiply(string)
 
     def multiply(self, string: str):
@@ -213,7 +208,7 @@ class SimpleWord(Word):
             raise ValueError("SimpleWord can only be multiplied with a "+
                              "string matching the regular expression "+
                              r"'(\[\d+\])+'")
-        self.name = self.name + string
+        self._name = self._name + string
         els_raw = [x[1:] for x in string.split("]")][:-1]
         max_dim = max([int(letter) for el_raw in els_raw for letter in el_raw])
         if max_dim > self._max_dim:
@@ -232,7 +227,7 @@ class SimpleWord(Word):
 
         :rtype: SimpleWord
         """
-        sw = SimpleWord(self.name)
+        sw = SimpleWord(self._name)
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
 
@@ -242,7 +237,7 @@ class SimpleWord(Word):
         return list(self._extended_letters) == list(other._extended_letters)
 
     def __str__(self) -> str:
-        return self.name
+        return self._name
 
     def __repr__(self) -> str:
         return "fruits.core.wording.SimpleWord"
