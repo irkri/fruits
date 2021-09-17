@@ -38,9 +38,9 @@ def multisine(train_size: int = 100,
     :type used_sines: int, optional
     :param coefficients: The coefficients of the sine functions. A numpy
         array of shape ``(n_classes, used_sines, 3)``.
-        Only use this option if you already know how these coefficients
-        are used. If set to None, random coefficients are used.,
-        defaults to None
+        The third dimension discribes the properties of a single sine
+        function: ``[amplitude, frequency, phaseshift]``.
+        If set to None, random coefficients are used., defaults to None
     :type coefficients: np.ndarray, optional
     :returns: Tuple for the dataset
         ``(X_train, y_train, X_test, y_test)``.
@@ -61,9 +61,10 @@ def multisine(train_size: int = 100,
         remain -= 1
 
     x_range = np.linspace(0, 2*np.pi, num=length)
-    rand_coeff = 2*np.random.rand(n_classes, used_sines, 3)
+    if coefficients is None:
+        coefficients = 2*np.random.rand(n_classes, used_sines, 3)
 
-    models = [np.vectorize(lambda x: _multisine(x, rand_coeff[i]))(x_range) 
+    models = [np.vectorize(lambda x: _multisine(x, coefficients[i]))(x_range)
               for i in range(n_classes)]
 
     X_train = np.zeros((train_size, length))
@@ -194,6 +195,22 @@ def load_dataset(path: str, univariate: bool = True) -> tuple:
             k += 1
 
     return X_train, y_train, X_test, y_test
+
+def analyse(X: np.ndarray):
+    """Takes in a three dimensional numpy array containing
+    multidimensional time series and prints out an analysis of the
+    dataset.
+
+    :type X: np.ndarray
+    """
+    string = f"Shape: {X.shape}"
+    print(string)
+    string = f"Mean of means: {X.mean(axis=2)[:, 0].mean(axis=0):.4f}"
+    string += f" +- {X.mean(axis=2)[:, 0].std(axis=0):.2f}"
+    print(string)
+    string = f"Mean of stds: {X.std(axis=2)[:, 0].mean(axis=0):.4f}"
+    string += f" +- {X.std(axis=2)[:, 0].std(axis=0):.2f}"
+    print(string)
 
 def implant_stuttering(X: np.ndarray,
                        stutter_length: float = 0.1) -> np.ndarray:
