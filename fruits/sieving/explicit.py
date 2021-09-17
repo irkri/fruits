@@ -273,13 +273,19 @@ class PIA(ExplicitSieve):
         ``cut, segments``) instead by the length of the whole series.,
         defaults to False
     :type div_on_slice: bool, optional
+    :param invariant: If set to ``True``, also values equal to 0 in the
+        increments will be counted. This leads to a time warping
+        invariant feature., defaults to False
+    :type invariant: bool, optional
     """
     def __init__(self,
                  cut: int = -1,
                  segments: bool = False,
-                 div_on_slice: bool = False):
+                 div_on_slice: bool = False,
+                 invariant: bool = False):
         super().__init__(cut, segments, "Proportion of incremental alteration")
         self._dos = div_on_slice
+        self._invariant = invariant
 
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
@@ -296,15 +302,22 @@ class PIA(ExplicitSieve):
             new_cuts = self._transform_cuts(X[i], req[i])
             if self._segments:
                 for j in range(1, len(new_cuts)):
-                    result[i, j-1] = np.sum(
-                                X_inc[i, new_cuts[j-1]-1:new_cuts[j]] > 0) 
+                    if not self._invariant:
+                        result[i, j-1] = np.sum(
+                                    X_inc[i, new_cuts[j-1]-1:new_cuts[j]] > 0)
+                    else:
+                        result[i, j-1] = np.sum(
+                                    X_inc[i, new_cuts[j-1]-1:new_cuts[j]] >= 0)
                     if self._dos:
                         result[i, j-1] /= new_cuts[j] - new_cuts[j-1] + 1
                     else:
                         result[i, j-1] /= X.shape[1]
             else:
                 for j in range(len(new_cuts)):
-                    result[i, j] = np.sum(X_inc[i, :new_cuts[j]] > 0)
+                    if not self._invariant:
+                        result[i, j] = np.sum(X_inc[i, :new_cuts[j]] > 0)
+                    else:
+                        result[i, j] = np.sum(X_inc[i, :new_cuts[j]] >= 0)
                     if self._dos:
                         result[i, j] /= new_cuts[j]
                     else:
@@ -314,14 +327,18 @@ class PIA(ExplicitSieve):
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
         string = f"PIA"
-        if self._segments or self._dos:
+        if self._segments or self._dos or self._invariant:
             string += " ["
             if self._segments:
                 string += "segments"
-                if self._dos:
+                if self._dos or self._invariant:
                     string += ", "
             if self._dos:
                 string += "div_on_slice"
+                if self._invariant:
+                    string += ", "
+            if self._invariant:
+                string += "invariant"
             string += "]"
         string += f" -> {self.nfeatures()}:"
         for x in self._cut:
@@ -333,14 +350,15 @@ class PIA(ExplicitSieve):
 
         :rtype: PIA
         """
-        fs = PIA(self._cut, self._segments, self._dos)
+        fs = PIA(self._cut, self._segments, self._dos, self._invariant)
         return fs
 
     def __str__(self) -> str:
         string = "PIA(" + \
                 f"cut={self._cut}, " + \
                 f"segments={self._segments}, " + \
-                f"div_on_slice={self._dos})"
+                f"div_on_slice={self._dos}, " + \
+                f"invariant={self._invariant})"
         return string
 
 
