@@ -275,14 +275,14 @@ class PIA(ExplicitSieve):
     :type div_on_slice: bool, optional
     :param invariant: If set to ``True``, also values equal to 0 in the
         increments will be counted. This leads to a time warping
-        invariant feature., defaults to False
+        invariant feature., defaults to True
     :type invariant: bool, optional
     """
     def __init__(self,
                  cut: int = -1,
                  segments: bool = False,
                  div_on_slice: bool = False,
-                 invariant: bool = False):
+                 invariant: bool = True):
         super().__init__(cut, segments, "Proportion of incremental alteration")
         self._dos = div_on_slice
         self._invariant = invariant

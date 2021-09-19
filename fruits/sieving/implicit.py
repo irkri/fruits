@@ -246,7 +246,7 @@ class CPV(PPV):
 
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
-        string = f"PPV [sampling={self._sample_size}"
+        string = f"CPV [sampling={self._sample_size}"
         if self._segments:
             string += ", segments"
         string += f"] -> {self.nfeatures()}:"
