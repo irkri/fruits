@@ -4,6 +4,52 @@ from context import fruits
 
 np.random.seed(62)
 
+# Configuration 00 - Grape - INC preparateur
+
+words = fruits.core.generation.simplewords_by_weight(4)
+
+grape01 = fruits.Fruit("Grape_without")
+grape01.add(words)
+grape01.branch().calculator.mode = "extended"
+grape01.add(fruits.sieving.PPV,
+            fruits.sieving.CPV,
+            fruits.sieving.PIA,
+            fruits.sieving.MAX,
+            fruits.sieving.MIN,
+            fruits.sieving.END)
+
+grape02 = fruits.Fruit("Grape_with")
+grape02.add(fruits.preparation.INC)
+grape02.add(words)
+grape02.branch().calculator.mode = "extended"
+grape02.add(fruits.sieving.PPV,
+            fruits.sieving.CPV,
+            fruits.sieving.PIA,
+            fruits.sieving.MAX,
+            fruits.sieving.MIN,
+            fruits.sieving.END)
+
+grape03 = fruits.Fruit("Grape_both")
+grape03.add(fruits.preparation.INC)
+grape03.add(words)
+grape03.branch().calculator.mode = "extended"
+grape03.add(fruits.sieving.PPV,
+            fruits.sieving.CPV,
+            fruits.sieving.PIA,
+            fruits.sieving.MAX,
+            fruits.sieving.MIN,
+            fruits.sieving.END)
+
+grape03.fork()
+grape03.add(words)
+grape03.branch().calculator.mode = "extended"
+grape03.add(fruits.sieving.PPV,
+            fruits.sieving.CPV,
+            fruits.sieving.PIA,
+            fruits.sieving.MAX,
+            fruits.sieving.MIN,
+            fruits.sieving.END)
+
 # Configuration 01 - Apple - Number of words
 
 words = fruits.core.generation.simplewords_by_weight(3)
@@ -13,6 +59,7 @@ apple01.add(fruits.preparation.INC)
 apple01.add(words)
 apple01.add(fruits.sieving.PPV,
             fruits.sieving.CPV,
+            fruits.sieving.PIA,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -21,6 +68,7 @@ apple01.fork()
 apple01.add(words)
 apple01.add(fruits.sieving.PPV,
             fruits.sieving.CPV,
+            fruits.sieving.PIA,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -32,6 +80,7 @@ apple02.add(fruits.preparation.INC)
 apple02.add(words)
 apple02.add(fruits.sieving.PPV,
             fruits.sieving.CPV,
+            fruits.sieving.PIA,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -40,6 +89,7 @@ apple02.fork()
 apple02.add(words)
 apple02.add(fruits.sieving.PPV,
             fruits.sieving.CPV,
+            fruits.sieving.PIA,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -51,6 +101,7 @@ apple03.add(fruits.preparation.INC)
 apple03.add(words)
 apple03.add(fruits.sieving.PPV,
             fruits.sieving.CPV,
+            fruits.sieving.PIA,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -60,6 +111,7 @@ apple03.fork()
 apple03.add(words)
 apple03.add(fruits.sieving.PPV,
             fruits.sieving.CPV,
+            fruits.sieving.PIA,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -72,6 +124,7 @@ apple04.add(fruits.preparation.INC)
 apple04.add(words)
 apple04.add(fruits.sieving.PPV,
             fruits.sieving.CPV,
+            fruits.sieving.PIA,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -81,6 +134,7 @@ apple04.fork()
 apple04.add(words)
 apple04.add(fruits.sieving.PPV,
             fruits.sieving.CPV,
+            fruits.sieving.PIA,
             fruits.sieving.MAX,
             fruits.sieving.MIN,
             fruits.sieving.END)
@@ -624,31 +678,107 @@ elderberry05.add(words)
 elderberry05.branch().calculator.mode = "extended"
 elderberry05.add(fruits.sieving.END([i/19 for i in range(1, 19)] + [-1]))
 
-# Configuration 09 - Dragonfruit - DOT preparateur
+# Configuration 09 - Dragonfruit - DIL, WIN or DOT preparateur
 
 words = fruits.core.generation.simplewords_by_weight(4)
 
-ns = [i/100 for i in list(range(1,10))+[15, 20, 25, 30, 35, 40, 45]]
-
-dragonfruit01 = fruits.Fruit("Dragonfruit")
-for n in ns:
+dragonfruit01 = fruits.Fruit("Dragonfruit_DIL")
+for n in range(20):
     dragonfruit01.fork()
     dragonfruit01.add(fruits.preparation.INC)
-    dragonfruit01.add(fruits.preparation.DOT(n))
+    dragonfruit01.add(fruits.preparation.DIL)
     dragonfruit01.add(words)
     dragonfruit01.branch().calculator.mode = "extended"
     dragonfruit01.add(fruits.sieving.PPV,
                       fruits.sieving.CPV,
+                      fruits.sieving.PIA,
                       fruits.sieving.MAX,
                       fruits.sieving.MIN,
                       fruits.sieving.END)
 
     dragonfruit01.fork()
-    dragonfruit01.add(fruits.preparation.DOT(n))
+    dragonfruit01.add(fruits.preparation.DIL)
     dragonfruit01.add(words)
     dragonfruit01.branch().calculator.mode = "extended"
     dragonfruit01.add(fruits.sieving.PPV,
                       fruits.sieving.CPV,
+                      fruits.sieving.PIA,
+                      fruits.sieving.MAX,
+                      fruits.sieving.MIN,
+                      fruits.sieving.END)
+
+cuts = [
+    (0.1, 0.2),
+    (0.2, 0.3),
+    (0.3, 0.4),
+    (0.4, 0.5),
+    (0.5, 0.6),
+    (0.6, 0.7),
+    (0.7, 0.8),
+    (0.8, 0.9),
+    (0.0, 0.2),
+    (0.1, 0.3),
+    (0.2, 0.4),
+    (0.3, 0.5),
+    (0.4, 0.6),
+    (0.5, 0.7),
+    (0.6, 0.8),
+    (0.7, 0.9),
+    (0.8, 1.0),
+    (0.0, 0.5),
+    (0.25, 0.75),
+    (0.5, 1.0),
+]
+
+dragonfruit02 = fruits.Fruit("Dragonfruit_WIN")
+for l, r in cuts:
+    dragonfruit02.fork()
+    dragonfruit02.add(fruits.preparation.INC)
+    dragonfruit02.add(fruits.preparation.WIN(l, r))
+    dragonfruit02.add(words)
+    dragonfruit02.branch().calculator.mode = "extended"
+    dragonfruit02.add(fruits.sieving.PPV,
+                      fruits.sieving.CPV,
+                      fruits.sieving.PIA,
+                      fruits.sieving.MAX,
+                      fruits.sieving.MIN,
+                      fruits.sieving.END)
+
+    dragonfruit02.fork()
+    dragonfruit02.add(fruits.preparation.WIN(l, r))
+    dragonfruit02.add(words)
+    dragonfruit02.branch().calculator.mode = "extended"
+    dragonfruit02.add(fruits.sieving.PPV,
+                      fruits.sieving.CPV,
+                      fruits.sieving.PIA,
+                      fruits.sieving.MAX,
+                      fruits.sieving.MIN,
+                      fruits.sieving.END)
+
+ns = [2, 5, 10] \
+     + [i/100 for i in list(range(1, 11))+[15, 20, 25, 30, 35, 40, 45]]
+
+dragonfruit03 = fruits.Fruit("Dragonfruit_DOT")
+for n in ns:
+    dragonfruit03.fork()
+    dragonfruit03.add(fruits.preparation.INC)
+    dragonfruit03.add(fruits.preparation.DOT(n))
+    dragonfruit03.add(words)
+    dragonfruit03.branch().calculator.mode = "extended"
+    dragonfruit03.add(fruits.sieving.PPV,
+                      fruits.sieving.CPV,
+                      fruits.sieving.PIA,
+                      fruits.sieving.MAX,
+                      fruits.sieving.MIN,
+                      fruits.sieving.END)
+
+    dragonfruit03.fork()
+    dragonfruit03.add(fruits.preparation.DOT(n))
+    dragonfruit03.add(words)
+    dragonfruit03.branch().calculator.mode = "extended"
+    dragonfruit03.add(fruits.sieving.PPV,
+                      fruits.sieving.CPV,
+                      fruits.sieving.PIA,
                       fruits.sieving.MAX,
                       fruits.sieving.MIN,
                       fruits.sieving.END)
@@ -816,6 +946,7 @@ strawberry.add(words)
 strawberry.branch().calculator.mode = "extended"
 strawberry.add(fruits.sieving.PPV,
                fruits.sieving.CPV,
+               fruits.sieving.PIA,
                fruits.sieving.MAX,
                fruits.sieving.MIN,
                fruits.sieving.END)
@@ -826,11 +957,13 @@ strawberry.add(words)
 strawberry.branch().calculator.mode = "extended"
 strawberry.add(fruits.sieving.PPV,
                fruits.sieving.CPV,
+               fruits.sieving.PIA,
                fruits.sieving.MAX,
                fruits.sieving.MIN,
                fruits.sieving.END)
 
 CONFIGS = [
+    grape01, grape02, grape03,
     apple01, apple02, apple03, apple04,
     banana01, banana02, banana03, banana04, banana05,
     plantain01, plantain02, plantain03, plantain04, plantain05,
@@ -840,7 +973,7 @@ CONFIGS = [
         apricot07, apricot08,
     olive01, olive02, olive03,
     elderberry01, elderberry02, elderberry03, elderberry04, elderberry05,
-    dragonfruit01,
+    dragonfruit01, dragonfruit02, dragonfruit03,
     pineapple01, pineapple02, pineapple03, pineapple04, pineapple05,
         pineapple06, pineapple07,
     lychee01, lychee02, lychee03, lychee04, lychee05,
