@@ -119,7 +119,8 @@ class FRUITSExperiment:
         if len(self._datasets[path][0]) == 0:
             del self._datasets[path]
 
-    def classify(self, fruit: fruits.Fruit):
+    def classify(self, fruit: fruits.Fruit,
+                 fit_sample_size: Union[float, int] = 1):
         """Classifies all datasets added earlier and summarizes the
         results in a pandas DataFrame.
         
@@ -159,7 +160,7 @@ class FRUITSExperiment:
                 results.append(X_train.shape[2])
 
                 start = Timer()
-                fruit.fit(X_train)
+                fruit.fit(X_train, fit_sample_size)
                 X_train_feat = fruit.transform(X_train)
                 X_test_feat = fruit.transform(X_test)
                 results.append(Timer() - start)
