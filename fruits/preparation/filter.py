@@ -35,14 +35,19 @@ class DIL(DataPreparateur):
             nclusters = int(self._clusters * X.shape[2])
         else:
             nclusters = np.random.randint(1, int(np.floor(X.shape[2] / 10.0)))
-        self._indices = sorted(np.random.random_sample(nclusters))
+        if nclusters >= X.shape[2]:
+            self._indices = np.arange(X.shape[2])
+        else:
+            self._indices = np.sort(np.random.choice(X.shape[2],
+                                                     size=nclusters,
+                                                     replace=False))
         self._lengths = []
-        for i in range(len(self._indices)):
-            if i == len(self._indices)-1:
-                b = 1 - self._indices[i]
+        for i in range(nclusters):
+            if i == nclusters - 1:
+                max_length = X.shape[2] - self._indices[i]
             else:
-                b = self._indices[i+1] - self._indices[i]
-            self._lengths.append(b*np.random.random_sample())
+                max_length = self._indices[i+1] - self._indices[i]
+            self._lengths.append(np.random.randint(1, max_length+1))
             
     def prepare(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed dataset.
@@ -51,13 +56,11 @@ class DIL(DataPreparateur):
         :rtype: np.ndarray
         :raises: RuntimeError if self.fit() wasn't called
         """
-        if self._indices is None:
+        if self._indices is None or self._lengths is None:
             raise RuntimeError("Missing call of self.fit()")
         X_new = X.copy()
         for i in range(len(self._indices)):
-            start = int(self._indices[i] * X.shape[2])
-            length = int(self._lengths[i] * X.shape[2])
-            X_new[:, :, start:start+length] = 0
+            X_new[:, :, self._indices[i]:self._indices[i]+self._lengths[i]] = 0
         return X_new
     
     def copy(self) -> "DIL":
@@ -144,15 +147,33 @@ class DOT(DataPreparateur):
         the actual value for ``n`` will be calculated in ``self.fit``
         by ``n=n_prop*X.shape[2]``., defaults to 2
     :type n: Union[int, float], optional
+    :param first: First index to keep. If set to ``None``, the value
+        will be internally set to ``n``. Can be either a float or an
+        integer with the same rules as argument ``n``., defaults to None
+    :type first: Union[int, float, None], optional
     """
-    def __init__(self, n: Union[int, float] = 2):
+    def __init__(self,
+                 n: Union[int, float] = 2,
+                 first: Union[int, float, None] = None):
         super().__init__("Dotting")
         if isinstance(n, float) and not 0 < n < 1:
             raise ValueError("If n is a float, it has to satisfy 0 < n < 1")
         elif not isinstance(n, float) and not isinstance(n, int):
             raise TypeError("n has to be either a float or integer")
+
         self._n_given = n
         self._n = None
+
+        if isinstance(first, float) and not 0 < first < 1:
+            raise ValueError("If first is a float, "
+                             + " it has to satisfy 0 < first < 1")
+        elif (not isinstance(first, float)
+              and not isinstance(first, int)
+              and first is not None):
+            raise TypeError("first has to be either a float, integer or None")
+
+        self._first_given = first
+        self._first = None
 
     def fit(self, X: np.ndarray):
         """Fits the preparateur to the given dataset by (if necessary)
@@ -165,10 +186,23 @@ class DOT(DataPreparateur):
             if self._n <= 0:
                 self._n = 1
         else:
-            if self._n_given > X.shape[2]:
+            if self._n_given >= X.shape[2]:
                 self._n = X.shape[2]
             else:
                 self._n = self._n_given
+        if isinstance(self._first_given, float):
+            self._first = int(self._first_given * X.shape[2])
+            if self._first <= 0:
+                self._first = 1
+            if self._first >= X.shape[2]:
+                self._first = X.shape[2] - 1
+        elif self._first_given is not None:
+            if self._first_given >= X.shape[2]:
+                self._first = X.shape[2] - 1
+            else:
+                self._first = self._first_given
+        else:
+            self._first = self._n - 1
 
     def prepare(self, X: np.ndarray):
         """Returns the transformed dataset.
@@ -179,7 +213,7 @@ class DOT(DataPreparateur):
         if self._n is None:
             raise RuntimeError("Missing call of self.fit()")
         out = np.zeros(X.shape)
-        out[:, :, self._n-1::self._n] = X[:, :, self._n-1::self._n]
+        out[:, :, self._first::self._n] = X[:, :, self._first::self._n]
         return out
     
     def copy(self) -> "DOT":
@@ -187,15 +221,16 @@ class DOT(DataPreparateur):
 
         :rtype: DOT
         """
-        return DOT(self._n_given)
+        return DOT(self._n_given, self._first_given)
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, DOT):
             raise TypeError(f"Cannot compare DOT with type {type(other)}")
-        return (self._n_given == other._n_given)
+        return ((self._n_given == other._n_given)
+                and (self._first_given == other._first_given))
 
     def __str__(self) -> str:
-        return f"DOT(n={self._n_given})"
+        return f"DOT(n={self._n_given}, first={self._first_given})"
 
     def __repr__(self) -> str:
         return "fruits.preparation.filter.DOT"
