@@ -152,7 +152,7 @@ def test_end():
 def test_pia():
     pia = fruits.sieving.PIA()
 
-    np.testing.assert_allclose(np.array([[2/5],[2/5]]), pia.fit_sieve(X_1[0]))
+    np.testing.assert_allclose(np.array([[2/5],[1/5]]), pia.fit_sieve(X_1[0]))
 
     pia_cut_1 = fruits.sieving.PIA(cut=3, div_on_slice=True)
     pia_cut_2 = fruits.sieving.PIA(cut=0.5, div_on_slice=False)
