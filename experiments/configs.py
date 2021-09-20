@@ -166,38 +166,49 @@ banana02.add(words)
 banana02.branch().calculator.mode = "extended"
 banana02.add(fruits.sieving.PPV([0.25, 0.5, 0.75]))
 
-banana03 = fruits.Fruit("Banana_7")
+banana03 = fruits.Fruit("Banana_5")
 banana03.add(fruits.preparation.INC)
 banana03.add(words)
 banana03.branch().calculator.mode = "extended"
-banana03.add(fruits.sieving.PPV([i/8 for i in range(1, 8)]))
+banana03.add(fruits.sieving.PPV([i/6 for i in range(1, 6)]))
 
 banana03.fork()
 banana03.add(words)
 banana03.branch().calculator.mode = "extended"
-banana03.add(fruits.sieving.PPV([i/8 for i in range(1, 8)]))
+banana03.add(fruits.sieving.PPV([i/6 for i in range(1, 6)]))
 
-banana04 = fruits.Fruit("Banana_9")
+banana04 = fruits.Fruit("Banana_7")
 banana04.add(fruits.preparation.INC)
 banana04.add(words)
 banana04.branch().calculator.mode = "extended"
-banana04.add(fruits.sieving.PPV([i/10 for i in range(1, 10)]))
+banana04.add(fruits.sieving.PPV([i/8 for i in range(1, 8)]))
 
 banana04.fork()
 banana04.add(words)
 banana04.branch().calculator.mode = "extended"
-banana04.add(fruits.sieving.PPV([i/10 for i in range(1, 10)]))
+banana04.add(fruits.sieving.PPV([i/8 for i in range(1, 8)]))
 
-banana05 = fruits.Fruit("Banana_19")
+banana05 = fruits.Fruit("Banana_9")
 banana05.add(fruits.preparation.INC)
 banana05.add(words)
 banana05.branch().calculator.mode = "extended"
-banana05.add(fruits.sieving.PPV([i/20 for i in range(1, 20)]))
+banana05.add(fruits.sieving.PPV([i/10 for i in range(1, 10)]))
 
 banana05.fork()
 banana05.add(words)
 banana05.branch().calculator.mode = "extended"
-banana05.add(fruits.sieving.PPV([i/20 for i in range(1, 20)]))
+banana05.add(fruits.sieving.PPV([i/10 for i in range(1, 10)]))
+
+banana06 = fruits.Fruit("Banana_19")
+banana06.add(fruits.preparation.INC)
+banana06.add(words)
+banana06.branch().calculator.mode = "extended"
+banana06.add(fruits.sieving.PPV([i/20 for i in range(1, 20)]))
+
+banana06.fork()
+banana06.add(words)
+banana06.branch().calculator.mode = "extended"
+banana06.add(fruits.sieving.PPV([i/20 for i in range(1, 20)]))
 
 # Configuration 03 - Plantain - Number of CPV Quantiles
 
@@ -225,38 +236,49 @@ plantain02.add(words)
 plantain02.branch().calculator.mode = "extended"
 plantain02.add(fruits.sieving.CPV([0.25, 0.5, 0.75]))
 
-plantain03 = fruits.Fruit("Plantain_7")
+plantain03 = fruits.Fruit("Plantain_5")
 plantain03.add(fruits.preparation.INC)
 plantain03.add(words)
 plantain03.branch().calculator.mode = "extended"
-plantain03.add(fruits.sieving.CPV([i/8 for i in range(1, 8)]))
+plantain03.add(fruits.sieving.CPV([i/6 for i in range(1, 6)]))
 
 plantain03.fork()
 plantain03.add(words)
 plantain03.branch().calculator.mode = "extended"
-plantain03.add(fruits.sieving.CPV([i/8 for i in range(1, 8)]))
+plantain03.add(fruits.sieving.CPV([i/6 for i in range(1, 6)]))
 
-plantain04 = fruits.Fruit("Plantain_9")
+plantain04 = fruits.Fruit("Plantain_7")
 plantain04.add(fruits.preparation.INC)
 plantain04.add(words)
 plantain04.branch().calculator.mode = "extended"
-plantain04.add(fruits.sieving.CPV([i/10 for i in range(1, 10)]))
+plantain04.add(fruits.sieving.CPV([i/8 for i in range(1, 8)]))
 
 plantain04.fork()
 plantain04.add(words)
 plantain04.branch().calculator.mode = "extended"
-plantain04.add(fruits.sieving.CPV([i/10 for i in range(1, 10)]))
+plantain04.add(fruits.sieving.CPV([i/8 for i in range(1, 8)]))
 
-plantain05 = fruits.Fruit("Plantain_19")
+plantain05 = fruits.Fruit("Plantain_9")
 plantain05.add(fruits.preparation.INC)
 plantain05.add(words)
 plantain05.branch().calculator.mode = "extended"
-plantain05.add(fruits.sieving.CPV([i/20 for i in range(1, 20)]))
+plantain05.add(fruits.sieving.CPV([i/10 for i in range(1, 10)]))
 
 plantain05.fork()
 plantain05.add(words)
 plantain05.branch().calculator.mode = "extended"
-plantain05.add(fruits.sieving.CPV([i/20 for i in range(1, 20)]))
+plantain05.add(fruits.sieving.CPV([i/10 for i in range(1, 10)]))
+
+plantain06 = fruits.Fruit("Plantain_19")
+plantain06.add(fruits.preparation.INC)
+plantain06.add(words)
+plantain06.branch().calculator.mode = "extended"
+plantain06.add(fruits.sieving.CPV([i/20 for i in range(1, 20)]))
+
+plantain06.fork()
+plantain06.add(words)
+plantain06.branch().calculator.mode = "extended"
+plantain06.add(fruits.sieving.CPV([i/20 for i in range(1, 20)]))
 
 # Configuration 04 - Orange - Number of cuts in MAX
 
@@ -627,12 +649,12 @@ elderberry01 = fruits.Fruit("Elderberry_1")
 elderberry01.add(fruits.preparation.INC)
 elderberry01.add(words)
 elderberry01.branch().calculator.mode = "extended"
-elderberry01.add(fruits.sieving.END())
+elderberry01.add(fruits.sieving.END([-1]))
 
 elderberry01.fork()
 elderberry01.add(words)
 elderberry01.branch().calculator.mode = "extended"
-elderberry01.add(fruits.sieving.END())
+elderberry01.add(fruits.sieving.END([-1]))
 
 elderberry02 = fruits.Fruit("Elderberry_2")
 elderberry02.add(fruits.preparation.INC)
@@ -660,23 +682,23 @@ elderberry04 = fruits.Fruit("Elderberry_10")
 elderberry04.add(fruits.preparation.INC)
 elderberry04.add(words)
 elderberry04.branch().calculator.mode = "extended"
-elderberry04.add(fruits.sieving.END([i/9 for i in range(1, 9)] + [-1]))
+elderberry04.add(fruits.sieving.END([i/10 for i in range(1, 10)] + [-1]))
 
 elderberry04.fork()
 elderberry04.add(words)
 elderberry04.branch().calculator.mode = "extended"
-elderberry04.add(fruits.sieving.END([i/9 for i in range(1, 9)] + [-1]))
+elderberry04.add(fruits.sieving.END([i/10 for i in range(1, 10)] + [-1]))
 
 elderberry05 = fruits.Fruit("Elderberry_20")
 elderberry05.add(fruits.preparation.INC)
 elderberry05.add(words)
 elderberry05.branch().calculator.mode = "extended"
-elderberry05.add(fruits.sieving.END([i/19 for i in range(1, 19)] + [-1]))
+elderberry05.add(fruits.sieving.END([i/20 for i in range(1, 20)] + [-1]))
 
 elderberry05.fork()
 elderberry05.add(words)
 elderberry05.branch().calculator.mode = "extended"
-elderberry05.add(fruits.sieving.END([i/19 for i in range(1, 19)] + [-1]))
+elderberry05.add(fruits.sieving.END([i/20 for i in range(1, 20)] + [-1]))
 
 # Configuration 09 - Dragonfruit - DIL, WIN or DOT preparateur
 
@@ -791,85 +813,109 @@ pineapple01 = fruits.Fruit("Pineapple_1")
 pineapple01.add(fruits.preparation.INC)
 pineapple01.add(words)
 pineapple01.branch().calculator.mode = "extended"
-pineapple01.add(fruits.sieving.PIA)
+pineapple01.add(fruits.sieving.PIA([-1]))
 
 pineapple01.fork()
 pineapple01.add(words)
 pineapple01.branch().calculator.mode = "extended"
-pineapple01.add(fruits.sieving.PIA)
+pineapple01.add(fruits.sieving.PIA([-1]))
 
 pineapple02 = fruits.Fruit("Pineapple_2")
 pineapple02.add(fruits.preparation.INC)
 pineapple02.add(words)
 pineapple02.branch().calculator.mode = "extended"
-pineapple02.add(fruits.sieving.PIA([1, 0.5, -1], segments=True))
+pineapple02.add(fruits.sieving.PIA([0.5, -1]))
 
 pineapple02.fork()
 pineapple02.add(words)
 pineapple02.branch().calculator.mode = "extended"
-pineapple02.add(fruits.sieving.PIA([1, 0.5, -1], segments=True))
+pineapple02.add(fruits.sieving.PIA([0.5, -1]))
 
 pineapple03 = fruits.Fruit("Pineapple_5")
 pineapple03.add(fruits.preparation.INC)
 pineapple03.add(words)
 pineapple03.branch().calculator.mode = "extended"
-pineapple03.add(fruits.sieving.PIA([1, 0.2, 0.4, 0.6, 0.8, -1], segments=True))
+pineapple03.add(fruits.sieving.PIA([0.2, 0.4, 0.6, 0.8, -1]))
 
 pineapple03.fork()
 pineapple03.add(words)
 pineapple03.branch().calculator.mode = "extended"
-pineapple03.add(fruits.sieving.PIA([1, 0.2, 0.4, 0.6, 0.8, -1], segments=True))
+pineapple03.add(fruits.sieving.PIA([0.2, 0.4, 0.6, 0.8, -1]))
 
 pineapple04 = fruits.Fruit("Pineapple_5dos")
 pineapple04.add(fruits.preparation.INC)
 pineapple04.add(words)
 pineapple04.branch().calculator.mode = "extended"
-pineapple04.add(fruits.sieving.PIA([1, 0.2, 0.4, 0.6, 0.8, -1], segments=True,
+pineapple04.add(fruits.sieving.PIA([0.2, 0.4, 0.6, 0.8, -1],
                                    div_on_slice=True))
 
 pineapple04.fork()
 pineapple04.add(words)
 pineapple04.branch().calculator.mode = "extended"
-pineapple04.add(fruits.sieving.PIA([1, 0.2, 0.4, 0.6, 0.8, -1], segments=True,
+pineapple04.add(fruits.sieving.PIA([0.2, 0.4, 0.6, 0.8, -1],
                                    div_on_slice=True))
 
-pineapple05 = fruits.Fruit("Pineapple_10")
+pineapple05 = fruits.Fruit("Pineapple_5segdos")
 pineapple05.add(fruits.preparation.INC)
 pineapple05.add(words)
 pineapple05.branch().calculator.mode = "extended"
-pineapple05.add(fruits.sieving.PIA([1]+[i/10 for i in range(1, 10)]+[-1],
-                                   segments=True))
+pineapple05.add(fruits.sieving.PIA([1, 0.2, 0.4, 0.6, 0.8, -1],
+                                   segments=True,
+                                   div_on_slice=True))
 
-pineapple05.fork()  
+pineapple05.fork()
 pineapple05.add(words)
 pineapple05.branch().calculator.mode = "extended"
-pineapple05.add(fruits.sieving.PIA([1]+[i/10 for i in range(1, 10)]+[-1],
-                                   segments=True))
+pineapple05.add(fruits.sieving.PIA([1, 0.2, 0.4, 0.6, 0.8, -1],
+                                   segments=True,
+                                   div_on_slice=True))
 
-pineapple06 = fruits.Fruit("Pineapple_20")
+pineapple06 = fruits.Fruit("Pineapple_10")
 pineapple06.add(fruits.preparation.INC)
 pineapple06.add(words)
 pineapple06.branch().calculator.mode = "extended"
-pineapple06.add(fruits.sieving.PIA([1]+[i/20 for i in range(1, 20)]+[-1],
-                                   segments=True))
+pineapple06.add(fruits.sieving.PIA([i/10 for i in range(1, 10)]+[-1]))
 
 pineapple06.fork()  
 pineapple06.add(words)
 pineapple06.branch().calculator.mode = "extended"
-pineapple06.add(fruits.sieving.PIA([1]+[i/20 for i in range(1, 20)]+[-1],
-                                   segments=True))
+pineapple06.add(fruits.sieving.PIA([i/10 for i in range(1, 10)]+[-1]))
 
-pineapple07 = fruits.Fruit("Pineapple_20dos")
+pineapple07 = fruits.Fruit("Pineapple_20")
 pineapple07.add(fruits.preparation.INC)
 pineapple07.add(words)
 pineapple07.branch().calculator.mode = "extended"
-pineapple07.add(fruits.sieving.PIA([1]+[i/20 for i in range(1, 20)]+[-1],
-                                   segments=True, div_on_slice=True))
+pineapple07.add(fruits.sieving.PIA([i/20 for i in range(1, 20)]+[-1]))
 
 pineapple07.fork()  
 pineapple07.add(words)
 pineapple07.branch().calculator.mode = "extended"
-pineapple07.add(fruits.sieving.PIA([1]+[i/20 for i in range(1, 20)]+[-1],
+pineapple07.add(fruits.sieving.PIA([i/20 for i in range(1, 20)]+[-1]))
+
+pineapple08 = fruits.Fruit("Pineapple_20dos")
+pineapple08.add(fruits.preparation.INC)
+pineapple08.add(words)
+pineapple08.branch().calculator.mode = "extended"
+pineapple08.add(fruits.sieving.PIA([i/20 for i in range(1, 20)]+[-1],
+                                   div_on_slice=True))
+
+pineapple08.fork()  
+pineapple08.add(words)
+pineapple08.branch().calculator.mode = "extended"
+pineapple08.add(fruits.sieving.PIA([i/20 for i in range(1, 20)]+[-1],
+                                   div_on_slice=True))
+
+pineapple09 = fruits.Fruit("Pineapple_20segdos")
+pineapple09.add(fruits.preparation.INC)
+pineapple09.add(words)
+pineapple09.branch().calculator.mode = "extended"
+pineapple09.add(fruits.sieving.PIA([1]+[i/20 for i in range(1, 20)]+[-1],
+                                   segments=True, div_on_slice=True))
+
+pineapple09.fork()  
+pineapple09.add(words)
+pineapple09.branch().calculator.mode = "extended"
+pineapple09.add(fruits.sieving.PIA([1]+[i/20 for i in range(1, 20)]+[-1],
                                    segments=True, div_on_slice=True))
 
 # Configuration 11 - Lychee - LCS Sieve
@@ -965,8 +1011,8 @@ strawberry.add(fruits.sieving.PPV,
 CONFIGS = [
     grape01, grape02, grape03,
     apple01, apple02, apple03, apple04,
-    banana01, banana02, banana03, banana04, banana05,
-    plantain01, plantain02, plantain03, plantain04, plantain05,
+    banana01, banana02, banana03, banana04, banana05, banana06,
+    plantain01, plantain02, plantain03, plantain04, plantain05, plantain06,
     orange01, orange02, orange03, orange04,
     tangerine01, tangerine02, tangerine03, tangerine04,
     apricot01, apricot02, apricot03, apricot04, apricot05, apricot06,
@@ -975,7 +1021,7 @@ CONFIGS = [
     elderberry01, elderberry02, elderberry03, elderberry04, elderberry05,
     dragonfruit01, dragonfruit02, dragonfruit03,
     pineapple01, pineapple02, pineapple03, pineapple04, pineapple05,
-        pineapple06, pineapple07,
+        pineapple06, pineapple07, pineapple08, pineapple09,
     lychee01, lychee02, lychee03, lychee04, lychee05,
     strawberry,
 ]
