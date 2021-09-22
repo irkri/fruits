@@ -93,7 +93,9 @@ def multisine(train_size: int = 100,
 
     return X_train, y_train, X_test, y_test
 
-def load_dataset(path: str, univariate: bool = True) -> tuple:
+def load_dataset(path: str,
+                 univariate: bool = True,
+                 cache: bool = True) -> tuple:
     """Returns a time series dataset that is formatted as a .txt file
     and readable with numpy.
 
@@ -106,6 +108,10 @@ def load_dataset(path: str, univariate: bool = True) -> tuple:
         univariate and readable as ".txt" with numpy. Else, it searches
         for multivariate ".arff" files to read., defaults to True
     :type univariate: bool, optional
+    :param cache: If set to ``True``, use cache if exists (as .npy file)
+        or create it if it doesn't. Setting this option to ``False``
+        always reads the .arff files., defaults to True
+    :type cache: bool, optional
     :returns: Tuple (X_train, y_train, X_test, y_test) where X_train
         and X_test are 3-dimensional numpy arrays
     :rtype: tuple
@@ -128,71 +134,66 @@ def load_dataset(path: str, univariate: bool = True) -> tuple:
 
         return X_train, y_train, X_test, y_test
 
-    dataset = path.split("/")[-1]
+    name = path.split("/")[-1]
 
-    train_files = []
-    test_files = []
-    for file in os.listdir(path):
-        if file.startswith(dataset+"Dimension"):
-            if file.endswith("_TRAIN.arff"):
-                train_files.append(file)
-            elif file.endswith("_TEST.arff"):
-                test_files.append(file)
-    dim = len(train_files)
+    if cache and os.path.isfile(os.path.join(path, name)+"_XTRAIN.npy"):
+        X_train = np.load(os.path.join(path, name)+"_XTRAIN.npy")
+        y_train = np.load(os.path.join(path, name)+"_yTRAIN.npy")
+        X_test = np.load(os.path.join(path, name)+"_XTEST.npy")
+        y_test = np.load(os.path.join(path, name)+"_yTEST.npy")
+    else:
+        train, _ = arff.loadarff(
+            open(os.path.join(path, name) + "_TRAIN.arff", "r",
+                 encoding="utf8"))
+        test, _ = arff.loadarff(
+            open(os.path.join(path, name) + "_TEST.arff", "r",
+                 encoding="utf8"))
 
-    data = arff.loadarff(os.path.join(path, train_files[0]))
+        X_train = np.zeros(
+            (
+                len(train),
+                len(train[0].tolist()[0]),
+                len(train[0].tolist()[0][0]),
+            ),
+            dtype=np.float64
+        )
+        y_train = np.zeros((X_train.shape[0],))
 
-    X_train = np.zeros((len(data[0]), dim, len(data[1]._attributes)-1))
-    y_train = np.zeros((len(data[0]),))
+        X_test = np.zeros(
+            (
+                len(test),
+                len(test[0].tolist()[0]),
+                len(test[0].tolist()[0][0]),
+            ),
+            dtype=np.float64
+        )
+        y_test = np.zeros((X_test.shape[0],))
 
-    classes = []
-    for i in range(dim):
+        ys = []
         for m in range(X_train.shape[0]):
-            X_train[m, i, :] = np.nan_to_num(
-                                np.asarray(data[0][m].tolist()[:-1],
-                                           dtype=np.float64))
-            if i == 0:
-                classes.append(data[0][m].tolist()[-1])
-        if i == dim - 1:
-            break
-        data = arff.loadarff(os.path.join(path, train_files[i+1]))
-
-    class_map = {}
-    k = 0
-    for m in range(X_train.shape[0]):
-        if classes[m] in class_map:
-            y_train[m] = class_map[classes[m]]
-        else:
-            class_map[classes[m]] = k
-            y_train[m] = k
-            k += 1
-
-    data = arff.loadarff(os.path.join(path, test_files[0]))
-
-    X_test = np.zeros((len(data[0]), dim, len(data[1]._attributes)-1))
-    y_test = np.zeros((len(data[0]),))
-
-    classes = []
-    for i in range(dim):
+            X_train[m, :, :] = train[m][0].tolist()
+            if train[m][1] not in ys:
+                ys.append(train[m][1])
         for m in range(X_test.shape[0]):
-            X_test[m, i, :] = np.nan_to_num(
-                                np.asarray(data[0][m].tolist()[:-1],
-                                           dtype=np.float64))
-            if i == 0:
-                classes.append(data[0][m].tolist()[-1])
-        if i == dim - 1:
-            break
-        data = arff.loadarff(os.path.join(path, test_files[i+1]))
+            X_test[m, :, :] = test[m][0].tolist()
+            if test[m][1] not in ys:
+                ys.append(test[m][1])
 
-    class_map = {}
-    k = 0
-    for m in range(X_test.shape[0]):
-        if classes[m] in class_map:
-            y_test[m] = class_map[classes[m]]
-        else:
-            class_map[classes[m]] = k
-            y_test[m] = k
-            k += 1
+        ys = {ys[i]: i for i in range(len(ys))}
+        for m in range(X_train.shape[0]):
+            y_train[m] = ys[train[m][1]]
+        for m in range(X_test.shape[0]):
+            y_test[m] = ys[test[m][1]]
+
+        if cache:
+            np.save(os.path.join(path, name)+"_XTRAIN",
+                    X_train)
+            np.save(os.path.join(path, name)+"_yTRAIN",
+                    y_train)
+            np.save(os.path.join(path, name)+"_XTEST",
+                    X_test)
+            np.save(os.path.join(path, name)+"_yTEST",
+                    y_test)
 
     return X_train, y_train, X_test, y_test
 
