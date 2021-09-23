@@ -124,9 +124,9 @@ def load_dataset(path: str,
                 delim = ","
         train_raw = np.loadtxt(f"{path}/{dataset}_TRAIN.txt", delimiter=delim)
         test_raw = np.loadtxt(f"{path}/{dataset}_TEST.txt", delimiter=delim)
-        X_train = np.nan_to_num(train_raw[:, 1:])
+        X_train = train_raw[:, 1:].astype(np.float64)
         y_train = train_raw[:, 0].astype(np.int32)
-        X_test = np.nan_to_num(test_raw[:, 1:])
+        X_test = test_raw[:, 1:].astype(np.float64)
         y_test =  test_raw[:, 0].astype(np.int32)
 
         X_train = np.expand_dims(X_train, axis=1)
@@ -196,6 +196,14 @@ def load_dataset(path: str,
                     y_test)
 
     return X_train, y_train, X_test, y_test
+
+def nan_to_num(X: np.ndarray, value: float = 0.0):
+    """Sets all NaN values in X to the given value.
+
+    :type X: np.ndarray
+    :type value: float, optional
+    """
+    return np.nan_to_num(X, value)
 
 def analyse(X: np.ndarray):
     """Takes in a three dimensional numpy array containing

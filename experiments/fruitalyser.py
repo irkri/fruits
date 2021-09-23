@@ -98,6 +98,8 @@ class Fruitalyser:
         self.fruit = fruit
         self._extracted = None
         self.X_train, self.y_train, self.X_test, self.y_test = data
+        self.X_train = np.nan_to_num(self.X_train)
+        self.X_test = np.nan_to_num(self.X_test)
         self.X = self.X_test
         self.y = self.y_test
 
