@@ -183,7 +183,10 @@ class SimpleWord(Word):
     equal to the highest number in the extended letter. The word
     ``"[12][122]"`` will be transformed to ``[[1,1], [1,2]]``. An entry
     ``e_i`` in one of the inner lists ``L_j`` corresponds to the number
-    of occurences of letter ``i`` in the ``j``-th extended letter. 
+    of occurences of letter ``i`` in the ``j``-th extended letter.
+
+    Enclose dimensions with normal brackets that have two or more
+    digits, like ``SimpleWord("[122(10)(62)][(24)5]")``.
 
     :param string: Will be used to create the SimpleWord as
         shown in the example above. It has to match the regular
@@ -198,28 +201,45 @@ class SimpleWord(Word):
 
     def multiply(self, string: str):
         """Multiplies another word with the SimpleWord object.
-        The word is given as a string matching the regular expression
-        ``([d+])+`` where ``d+`` denotes one or more digits.
+        The word is given as a string matching the examples given in
+        the class definition.
 
         :type string: str
         """
         if (not isinstance(string, str) or
-            not re.fullmatch(r"(\[\d+\])+", string)):
+            not re.fullmatch(r"(\[(\d|\(\d+\))+\])+", string)):
             raise ValueError("SimpleWord can only be multiplied with a "+
                              "string matching the regular expression "+
-                             r"'(\[\d+\])+'")
+                             r"'(\[(\d|\(\d+\))+\])+'")
         self._name = self._name + string
         els_raw = [x[1:] for x in string.split("]")][:-1]
-        max_dim = max([int(letter) for el_raw in els_raw for letter in el_raw])
+        els_int = []
+        for i in range(len(els_raw)):
+            els_int.append([])
+            j = 0
+            while j < len(els_raw[i]):
+                if els_raw[i][j] == "(":
+                    temp = ""
+                    j += 1
+                    while els_raw[i][j] != ")":
+                        temp += els_raw[i][j]
+                        j += 1
+                    if temp == "":
+                        temp = "1"
+                    els_int[-1].append(int(temp))
+                else:
+                    els_int[-1].append(int(els_raw[i][j]))
+                j += 1
+        max_dim = max([letter for el_int in els_int for letter in el_int])
         if max_dim > self._max_dim:
             for el in self._extended_letters:
                 for i in range(max_dim-self._max_dim):
                     el.append(0)
             self._max_dim = max_dim
-        for el_raw in els_raw:
+        for el_int in els_int:
             el = [0 for i in range(max_dim)]
-            for letter in set(l for l in el_raw):
-                el[int(letter)-1] = el_raw.count(letter)
+            for letter in set(el_int):
+                el[letter-1] = el_int.count(letter)
             self._extended_letters.append(el)
 
     def copy(self) -> "SimpleWord":

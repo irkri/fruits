@@ -12,9 +12,9 @@ def test_n_features():
 
     featex.add(fruits.preparation.INC(zero_padding=False))
 
-    featex.add(fruits.core.generation.simplewords_by_degree(3, 5, 1))
+    featex.add(fruits.core.generation.simplewords_by_weight(4, 2))
 
-    assert len(featex.branch().get_words()) == 363
+    assert len(featex.branch().get_words()) == 82
 
     featex.add(fruits.sieving.PPV(quantile=0, constant=True))
     featex.add(fruits.sieving.PPV(quantile=0.2, constant=False, 
@@ -24,11 +24,11 @@ def test_n_features():
     featex.add(fruits.sieving.MAX(cut=[0.1,0.5,0.9], segments=True))
     featex.add(fruits.sieving.MIN(cut=[0.1,0.5,0.9], segments=False))
 
-    assert featex.nfeatures() == 2904
+    assert featex.nfeatures() == 656
 
     featex_copy = featex.deepcopy()
 
-    assert featex_copy.nfeatures() == 2904
+    assert featex_copy.nfeatures() == 656
 
     del featex
 

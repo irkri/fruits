@@ -323,7 +323,3 @@ def test_word_generation():
         assert len(fruits.core.generation.simplewords_by_weight(n, dim=1)) \
                 == 2**(n-1)
     assert len(fruits.core.generation.simplewords_by_weight(4, dim=2)) == 82
-
-    assert len(fruits.core.generation.simplewords_by_degree(2, 2, 1)) == 6
-    assert len(fruits.core.generation.simplewords_by_degree(2, 3, 1)) == 14
-    assert len(fruits.core.generation.simplewords_by_degree(2, 2, 2)) == 30
