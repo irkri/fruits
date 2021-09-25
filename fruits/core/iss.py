@@ -128,6 +128,10 @@ class ISSCalculator:
         else:
             return len(words)
 
+    def _get_alpha(self, word: Word, length: int) -> np.ndarray:
+        return np.array([0] + word.alpha + [0],
+                        dtype=np.float32)
+
     def start(self, X: np.ndarray, words: List[Word]):
         self._started = True
         self._X = X
@@ -171,17 +175,17 @@ class ISSCalculator:
             if self.mode == "extended":
                 ext = self._cache_plan.unique_el_depth(i)
 
+            alphas = self._get_alpha(self._words[i], self._X.shape[2])
+
             if isinstance(self._words[i], SimpleWord):
                 results[:, index:index+ext, :] = _fast_ISS(self._X,
                     self._transform_simple_word(self._words[i]),
-                    np.array([0] + self._words[i].alpha + [0],
-                             dtype=np.float32),
+                    alphas,
                     ext)
             elif isinstance(self._words[i], Word):
                 results[:, index:index+ext, :] = _slow_ISS(self._X,
                     self._words[i],
-                    np.array([0] + self._words[i].alpha + [0],
-                             dtype=np.float32),
+                    alphas,
                     ext)
             else:
                 raise TypeError(f"Unknown word type: {type(self._words[i])}")
