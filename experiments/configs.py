@@ -409,6 +409,8 @@ apricot01.add(fruits.sieving.PPV,
               fruits.sieving.MIN,
               fruits.sieving.END)
 
+words = fruits.core.generation.simplewords_by_weight(4)
+
 for word in words:
     word.alpha = -0.0001
 apricot02 = fruits.Fruit("Apricot_m1")
@@ -429,6 +431,8 @@ apricot02.add(fruits.sieving.PPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
+
+words = fruits.core.generation.simplewords_by_weight(4)
 
 for word in words:
     word.alpha = 0.0005
@@ -451,6 +455,8 @@ apricot03.add(fruits.sieving.PPV,
               fruits.sieving.MIN,
               fruits.sieving.END)
 
+words = fruits.core.generation.simplewords_by_weight(4)
+
 for word in words:
     word.alpha = -0.0005
 apricot04 = fruits.Fruit("Apricot_m5")
@@ -471,6 +477,8 @@ apricot04.add(fruits.sieving.PPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
+
+words = fruits.core.generation.simplewords_by_weight(4)
 
 for word in words:
     word.alpha = 0.001
@@ -493,6 +501,8 @@ apricot05.add(fruits.sieving.PPV,
               fruits.sieving.MIN,
               fruits.sieving.END)
 
+words = fruits.core.generation.simplewords_by_weight(4)
+
 for word in words:
     word.alpha = -0.001
 apricot06 = fruits.Fruit("Apricot_m10")
@@ -514,6 +524,8 @@ apricot06.add(fruits.sieving.PPV,
               fruits.sieving.MIN,
               fruits.sieving.END)
 
+words = fruits.core.generation.simplewords_by_weight(4)
+
 for word in words:
     word.alpha = 0.005
 apricot07 = fruits.Fruit("Apricot_50")
@@ -534,6 +546,8 @@ apricot07.add(fruits.sieving.PPV,
               fruits.sieving.MAX,
               fruits.sieving.MIN,
               fruits.sieving.END)
+
+words = fruits.core.generation.simplewords_by_weight(4)
 
 for word in words:
     word.alpha = -0.005
