@@ -1,3 +1,5 @@
+from typing import Union
+
 import numpy as np
 
 from fruits.preparation.abstract import DataPreparateur
@@ -88,7 +90,7 @@ class STD(DataPreparateur):
         :raises: RuntimeError if self.fit() wasn't called
         """
         if self._mean is None or self._std is None:
-            raise RuntimeError("Missing call of fit method")
+            raise RuntimeError("Missing call of self.fit()")
         out = (X - self._mean) / self._std
         return out
 
@@ -107,3 +109,71 @@ class STD(DataPreparateur):
 
     def __repr__(self) -> str:
         return "fruits.preparation.transform.STD"
+
+
+class MAV(DataPreparateur):
+    """DataPreparateur: Moving Average
+
+    Applies a moving average to the given time series dataset.
+
+    :param width: Window width for the moving average. This is either a
+        float that will be multiplied by the length of the time series
+        or an integer., defaults to 5
+    :type width: Union[int, float], optional
+    """
+    def __init__(self, width: Union[int, float] = 5):
+        super().__init__("Moving Average")
+        if isinstance(width, float):
+            if not 0.0 < width < 1.0:
+                raise ValueError("If width is a float, it has to be in (0,1)")
+        elif isinstance(width, int):
+            if not width > 0:
+                raise ValueError("If width is an integer, it has to be > 0")
+        else:
+            raise TypeError("width has to be an integer or a float in (0,1)")
+        self._w_given = width
+        self._w = None
+
+    def fit(self, X: np.ndarray):
+        """Fits the MAV preparateur to the given dataset by calculating
+        the window width if needed.
+
+        :type X: np.ndarray
+        """
+        if isinstance(self._w_given, float):
+            self._w = int(self._w_given * X.shape[2])
+            if self._w <= 0:
+                self._w = 1
+        else:
+            self._w = self._w_given
+
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        """Returns the transformed dataset.
+
+        :type X: np.ndarray
+        :rtype: np.ndarray
+        :raises: RuntimeError if self.fit() wasn't called
+        """
+        if self._w is None:
+            raise RuntimeError("Missing call of self.fit()")
+        out = np.cumsum(X, axis=2)
+        out[:, :, self._w:] = out[:, :, self._w:] - out[:, :, :-self._w]
+        out[:, :, (self._w-1):] = out[:, :, (self._w-1):] / self._w
+        out[:, :, :(self._w-1)] = X[:, :, :(self._w-1)]
+        return out
+
+    def copy(self) -> "MAV":
+        """Returns a copy of this preparateur.
+
+        :rtype: MAV
+        """
+        return MAV(self._w_given)
+
+    def __eq__(self, other) -> bool:
+        return (self._w_given == other._w_given)
+
+    def __str__(self) -> str:
+        return f"MAV(width={self._w_given})"
+
+    def __repr__(self) -> str:
+        return "fruits.preparation.transform.MAV"

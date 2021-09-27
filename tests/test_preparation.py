@@ -33,6 +33,23 @@ def test_standardization():
     np.testing.assert_almost_equal(0, np.mean(X_1_1.flatten()))
     np.testing.assert_almost_equal(1, np.std(X_1_1.flatten()))
 
+def test_mav():
+    result = fruits.preparation.MAV(2).fit_prepare(X_1)
+
+    np.testing.assert_allclose(np.array([
+                                [[-4,-1.6,0.4,2.5,1], [2,1.5,0.5,0,-3.5]],
+                                [[5,6.5,5,4,3], [-5,-3,-2.5,-2.25,-4.25]]
+                               ]),
+                               result)
+
+    result = fruits.preparation.MAV(0.6).fit_prepare(X_1)
+
+    np.testing.assert_allclose(np.array([
+                                [[-12,2.4,-3.2,5.8,2], [6,3,3,1,-7]],
+                                [[15,24,15,16,8], [-15,-3,-10,-5.5,-12.5]]
+                               ])/3,
+                               result)
+
 def test_window():
     X = np.array([
                   [[1,2,4,5,6],
