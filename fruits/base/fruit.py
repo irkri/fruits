@@ -175,6 +175,7 @@ class Fruit:
             k = branch.nfeatures()
             result[:, index:index+k] = branch.transform(X, callbacks)
             index += k
+        result = np.nan_to_num(result, copy=False, nan=0.0)
         return result
 
     def fit_transform(self, X: np.ndarray) -> np.ndarray:
