@@ -177,3 +177,46 @@ class MAV(DataPreparateur):
 
     def __repr__(self) -> str:
         return "fruits.preparation.transform.MAV"
+
+
+class LAG(DataPreparateur):
+    """DataPreparateur: Lead-Lag transform
+
+    This preparateur applies the so called lead-lag transform to every
+    dimension of the given time series.
+    For one dimension ``[x_1,x_2,...,x_n]`` this results in a new
+    two-dimensional vector
+    ``[(x_1,x_1),(x_2,x_1),(x_2,x_2),(x_3,x_2),...,(x_n,x_n)]``.
+    """
+    def __init__(self):
+        super().__init__("Lead-Lag transform")
+
+    def prepare(self, X: np.ndarray) -> np.ndarray:
+        """Returns the transformed dataset.
+
+        :type X: np.ndarray
+        :rtype: np.ndarray
+        """
+        X_new = np.zeros((X.shape[0], 2 * X.shape[1], 2 * X.shape[2] - 1))
+        for i in range(X.shape[1]):
+            X_new[:, 2*i, 0::2] = X[:, i, :]
+            X_new[:, 2*i, 1::2] = X[:, i, 1:]
+            X_new[:, 2*i+1, 0::2] = X[:, i, :]
+            X_new[:, 2*i+1, 1::2] = X[:, i, :-1]
+        return X_new
+
+    def copy(self) -> "LAG":
+        """Returns a copy of this preparateur.
+
+        :rtype: LAG
+        """
+        return LAG()
+
+    def __eq__(self, other) -> bool:
+        return True
+
+    def __str__(self) -> str:
+        return f"LAG()"
+
+    def __repr__(self) -> str:
+        return "fruits.preparation.transform.LAG"
