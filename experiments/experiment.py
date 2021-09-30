@@ -59,7 +59,6 @@ class FRUITSExperiment:
 
     def __init__(self,
                  rocket_csv=None,
-                 verbose=True,
                  classifier=None,
                  scaler=None,
                  comet_experiment=None):
@@ -68,7 +67,6 @@ class FRUITSExperiment:
             self._rocket_csv = pd.read_csv(rocket_csv)
         else:
             self._rocket_csv = rocket_csv
-        self._verbose = verbose
         # dictionary self._datasets[path] = ([datasets in path], univariate?)
         self._datasets = dict()
         self._comet_exp = comet_experiment
@@ -119,14 +117,28 @@ class FRUITSExperiment:
         if len(self._datasets[path][0]) == 0:
             del self._datasets[path]
 
-    def classify(self, fruit: fruits.Fruit,
-                 fit_sample_size: Union[float, int] = 1):
+    def classify(self,
+                 fruit: Union[fruits.Fruit, None] = None,
+                 fit_sample_size: Union[float, int] = 1,
+                 cache_results: Union[str, None] = None,
+                 verbose: bool = True):
         """Classifies all datasets added earlier and summarizes the
         results in a pandas DataFrame.
         
         :param fruit: Feature extractor to use for classification.
-        :type fruits: fruits.Fruit
+            If set to ``None``, the class uses ``fruits.build`` for
+            building a fruit for every dataset., defaults to None
+        :type fruit: Union[fruits.Fruit, None], optional
+        :param fit_sample_size: Option ``sample_size`` supplied to the
+            fitting method of the fruit., defaults to 1
+        :type fit_sample_size: Union[float, int], optional
+        :param cache_results: If set to a filename, the method will save
+            results at the end of each dataset classification to a csv
+            file with that name., defaults to None
+        :type cache_results: Union[str, None], defaults to None
         """
+        if cache_results is not None and cache_results.endswith(".csv"):
+            cache_results = cache_results[:-4]
         self._results = pd.DataFrame(columns=self.output_header_names)
         self._fruit = fruit
 
@@ -134,9 +146,10 @@ class FRUITSExperiment:
             self._comet_exp.log_dataset_info(name=\
                 ",".join([ds for path in self._datasets
                              for ds in self._datasets[path][0]]))
-            self._comet_exp.log_text(fruit.summary())
+            if self._fruit is not None:
+                self._comet_exp.log_text(fruit.summary())
 
-        if self._verbose:
+        if verbose:
             print(f"Starting Classification")
 
         i = 0
@@ -154,10 +167,15 @@ class FRUITSExperiment:
 
                 X_train, y_train, X_test, y_test = tsdata.load_dataset(
                     path+dataset, univariate=univariate)
+                X_train = tsdata.nan_to_num(X_train)
+                X_test = tsdata.nan_to_num(X_test)
                 results.append(X_train.shape[0])
                 results.append(X_test.shape[0])
                 results.append(X_train.shape[1])
                 results.append(X_train.shape[2])
+
+                if self._fruit is None:
+                    fruit = fruits.build(X_train)
 
                 start = Timer()
                 fruit.fit(X_train, fit_sample_size)
@@ -166,10 +184,10 @@ class FRUITSExperiment:
                 results.append(Timer() - start)
 
                 self._scaler.fit(X_train_feat)
-                X_train_feat_scaled = self._scaler.transform(
-                                                X_train_feat)
-                X_test_feat_scaled = self._scaler.transform(
-                                                X_test_feat)
+                X_train_feat_scaled = np.nan_to_num(self._scaler.transform(
+                                                        X_train_feat))
+                X_test_feat_scaled = np.nan_to_num(self._scaler.transform(
+                                                        X_test_feat))
 
                 self._classifier.fit(X_train_feat_scaled, y_train)
 
@@ -187,8 +205,12 @@ class FRUITSExperiment:
                     mark = "X"
                 results.append(mark)
                 self._results.loc[len(self._results)] = results
-                if self._verbose:
+                if verbose:
                     print(".", end="", flush=True)
+                if cache_results is not None:
+                    self._results.to_csv(f"{cache_results}.csv")
+                    if self._comet_exp is not None:
+                        self._comet_exp.log_table("results.csv", self._results)
                 i += 1
 
         if self._comet_exp is not None:
@@ -199,7 +221,7 @@ class FRUITSExperiment:
             self._comet_exp.log_html(self._results.to_html(index=False,
                                                            justify="center"))
 
-        if self._verbose:
+        if verbose:
             print(f"\nDone")
 
     def produce_output(self,
@@ -221,8 +243,6 @@ class FRUITSExperiment:
             accuracy results., defaults to False
         :type csv: bool, optional
         """
-        if self._fruit is None:
-            raise RuntimeError("No output available")
         filename = filename.split(".")[0]
 
         if os.path.isfile(filename+".txt") or os.path.isfile(filename+".csv"):
@@ -240,6 +260,7 @@ class FRUITSExperiment:
                 file.write("\nAverage ROCKET Accuracy: "+
                            str(self._results[
                                self.output_header_names[7]].to_numpy().mean()))
-                file.write("\n\n\n"+self._fruit.summary()+"\n")
+                if self._fruit is not None:
+                    file.write("\n\n\n"+self._fruit.summary()+"\n")
         if csv:
             self._results.to_csv(filename+".csv", index=False)
