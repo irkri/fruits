@@ -34,7 +34,11 @@ class DIL(DataPreparateur):
         if self._clusters is not None:
             nclusters = int(self._clusters * X.shape[2])
         else:
-            nclusters = np.random.randint(1, int(np.floor(X.shape[2] / 10.0)))
+            upper_bound = int(np.floor(X.shape[2] / 10.0))
+            if upper_bound <= 1:
+                nclusters = 1
+            else:
+                nclusters = np.random.randint(1, upper_bound)
         if nclusters >= X.shape[2]:
             self._indices = np.arange(X.shape[2])
         else:
@@ -48,7 +52,7 @@ class DIL(DataPreparateur):
             else:
                 max_length = self._indices[i+1] - self._indices[i]
             self._lengths.append(np.random.randint(1, max_length+1))
-            
+
     def prepare(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed dataset.
 
@@ -234,3 +238,82 @@ class DOT(DataPreparateur):
 
     def __repr__(self) -> str:
         return "fruits.preparation.filter.DOT"
+
+
+class PDD(DataPreparateur):
+    """DataPreparateur: Proportion-Density-Drop
+
+    Sets values in the given time series to zero. The number of values
+    and their distribution in the time domain is adjustable.
+
+    :param density: A float in ``(0,1]``. A low value translates to a
+        larger gap between the points that are being set to zero.,
+        defaults to 0.1
+    :type density: float, optional
+    :param proportion: Proportion of the length of each time series to
+        drop. Has to be a float in ``(0,1)``., defaults to 0.5
+    :type proportion: float, optional
+    """
+    def __init__(self,
+                 density: float = 0.1,
+                 proportion: float = 0.5):
+        super().__init__("Proportion-Density-Drop")
+        if not isinstance(density, float) or not 0.0 < density <= 1.0:
+            raise ValueError("density has to be a float 0 < density <= 1")
+        if not isinstance(proportion, float) or not 0.0 < proportion < 1.0:
+            raise ValueError("proportion has to be a float 0 < proportion < 1")
+
+        self._d_given = density
+        self._p_given = proportion
+        self._indices = None
+        self._width = None
+
+    def fit(self, X: np.ndarray):
+        """Fits the preparateur to the given dataset by calculating the
+        actual values of ``density`` and ``proportion``.
+
+        :type X: np.ndarray
+        """
+        p = int(self._p_given * X.shape[2])
+        if p < 1:
+            p = 1
+        points = int((1.0 - self._d_given) * X.shape[2])
+        if points < 1:
+            points = 1
+        self._width = int(p / points)
+        if points == X.shape[2]-self._width:
+            points -= 1
+        self._indices = np.linspace(0, X.shape[2]-self._width, points,
+                                    dtype="int")
+
+    def prepare(self, X: np.ndarray):
+        """Returns the transformed dataset.
+
+        :type X: np.ndarray
+        :rtype: np.ndarray
+        """
+        if self._indices is None or self._width is None:
+            raise RuntimeError("Missing call of self.fit()")
+        out = X.copy()
+        for i in range(len(self._indices)):
+            out[:, :, self._indices[i]:self._indices[i]+self._width] = 0
+        return out
+
+    def copy(self) -> "PDD":
+        """Returns a copy of this preparateur.
+
+        :rtype: PDD
+        """
+        return PDD(self._d_given, self._p_given)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, PDD):
+            raise TypeError(f"Cannot compare PDD with type {type(other)}")
+        return ((self._d_given == other._d_given)
+                and (self._p_given == other._p_given))
+
+    def __str__(self) -> str:
+        return f"PDD(density={self._d_given}, proportion={self._p_given})"
+
+    def __repr__(self) -> str:
+        return "fruits.preparation.filter.PDD"
