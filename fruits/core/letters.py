@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import List, Tuple, Callable
+from typing import List, Callable
 
 import numpy as np
 

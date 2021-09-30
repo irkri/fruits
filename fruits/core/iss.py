@@ -2,7 +2,7 @@ from typing import List, Union
 
 import numpy as np
 
-from fruits.base.scope import force_input_shape, check_input_shape
+from fruits.base.scope import force_input_shape
 from fruits.core.wording import Word, SimpleWord
 from fruits.core.backend import _fast_ISS, _slow_ISS
 
@@ -134,9 +134,7 @@ class ISSCalculator:
 
     def start(self, X: np.ndarray, words: List[Word]):
         self._started = True
-        self._X = X
-        if not check_input_shape(X):
-            self._X = force_input_shape(X)
+        self._X = force_input_shape(X)
 
         self._words = words
         if self.mode == "extended":
