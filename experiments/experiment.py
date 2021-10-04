@@ -18,11 +18,12 @@ from sklearn.preprocessing import FunctionTransformer
 from context import fruits
 import tsdata
 
+
 class FRUITSExperiment:
     """A pipeline that connects feature extraction of the fruits package
-    with a classifier from sklearn for a classification task of 
+    with a classifier from sklearn for a classification task of
     multidimensional time series data.
-    
+
     :param rocket_csv: String of the path to a csv file with
         the classification results from ROCKET. These results will be
         used for comparision. If None is given, a 0 will be inserted at
@@ -87,7 +88,7 @@ class FRUITSExperiment:
                     univariate: bool = True):
         """Finds time series datasets in the specified directory for
         later usage.
-        
+
         :param path: Path of a directory that contains folders
             structured like the datasets you get from
             timeseriesclassification.com.
@@ -124,7 +125,7 @@ class FRUITSExperiment:
                  verbose: bool = True):
         """Classifies all datasets added earlier and summarizes the
         results in a pandas DataFrame.
-        
+
         :param fruit: Feature extractor to use for classification.
             If set to ``None``, the class uses ``fruits.build`` for
             building a fruit for every dataset., defaults to None
@@ -143,9 +144,10 @@ class FRUITSExperiment:
         self._fruit = fruit
 
         if self._comet_exp is not None:
-            self._comet_exp.log_dataset_info(name=\
-                ",".join([ds for path in self._datasets
-                             for ds in self._datasets[path][0]]))
+            self._comet_exp.log_dataset_info(
+                name=",".join([ds for path in self._datasets
+                               for ds in self._datasets[path][0]])
+            )
             if self._fruit is not None:
                 self._comet_exp.log_text(fruit.summary())
 
@@ -166,7 +168,7 @@ class FRUITSExperiment:
                     self._comet_exp.set_step(i)
 
                 X_train, y_train, X_test, y_test = tsdata.load_dataset(
-                    path+dataset, univariate=univariate)
+                    path + dataset, univariate=univariate)
                 X_train = tsdata.nan_to_num(X_train)
                 X_test = tsdata.nan_to_num(X_test)
                 results.append(X_train.shape[0])
@@ -185,20 +187,20 @@ class FRUITSExperiment:
 
                 self._scaler.fit(X_train_feat)
                 X_train_feat_scaled = np.nan_to_num(self._scaler.transform(
-                                                        X_train_feat))
+                    X_train_feat))
                 X_test_feat_scaled = np.nan_to_num(self._scaler.transform(
-                                                        X_test_feat))
+                    X_test_feat))
 
                 self._classifier.fit(X_train_feat_scaled, y_train)
 
                 results.append(self._classifier.score(
-                                X_test_feat_scaled, y_test))
+                    X_test_feat_scaled, y_test))
 
                 mark = "-"
                 if self._rocket_csv is not None:
                     results.append(self._rocket_csv[
-                                    self._rocket_csv["dataset"] == dataset]\
-                                    ["accuracy_mean"].iloc[0])
+                        self._rocket_csv["dataset"] == dataset]
+                        ["accuracy_mean"].iloc[0])
                 else:
                     results.append(0)
                 if results[6] >= results[7]:
@@ -215,9 +217,10 @@ class FRUITSExperiment:
 
         if self._comet_exp is not None:
             self._comet_exp.log_table("results.csv", self._results)
-            self._comet_exp.log_text(self._results.to_markdown(index=False,
-                                                        numalign="center",
-                                                        stralign="center"))
+            self._comet_exp.log_text(
+                self._results.to_markdown(index=False,
+                                          numalign="center",
+                                          stralign="center"))
             self._comet_exp.log_html(self._results.to_html(index=False,
                                                            justify="center"))
 
@@ -229,7 +232,7 @@ class FRUITSExperiment:
                        txt: bool = True,
                        csv: bool = False):
         """Outputs all results of classified datasets to the file(s).
-        
+
         :param filename: Name of the file (without extension) that is
             used for the different extension types. If it exists already
             as a .txt or .csv file, a timestamp is appended to the name
@@ -245,22 +248,23 @@ class FRUITSExperiment:
         """
         filename = filename.split(".")[0]
 
-        if os.path.isfile(filename+".txt") or os.path.isfile(filename+".csv"):
+        if (os.path.isfile(filename + ".txt")
+                or os.path.isfile(filename + ".csv")):
             filename += "-" + time.strftime("%Y-%m-%d-%H%M%S")
 
         if txt:
-            with open(filename+".txt", "w") as file:
+            with open(filename + ".txt", "w") as file:
                 file.write(self._results.to_markdown(index=False,
                                                      tablefmt="grid",
                                                      numalign="center",
                                                      stralign="center"))
-                file.write("\n\nAverage FRUITS Accuracy: "+
+                file.write("\n\nAverage FRUITS Accuracy: " +
                            str(self._results[
                                self.output_header_names[6]].to_numpy().mean()))
-                file.write("\nAverage ROCKET Accuracy: "+
+                file.write("\nAverage ROCKET Accuracy: " +
                            str(self._results[
                                self.output_header_names[7]].to_numpy().mean()))
                 if self._fruit is not None:
-                    file.write("\n\n\n"+self._fruit.summary()+"\n")
+                    file.write("\n\n\n" + self._fruit.summary() + "\n")
         if csv:
-            self._results.to_csv(filename+".csv", index=False)
+            self._results.to_csv(filename + ".csv", index=False)

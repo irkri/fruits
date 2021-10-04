@@ -1,9 +1,8 @@
 """This python module is an appendix to the package FRUITS.
 
 It contains the class Fruitalyser, which allows the user to take a
-look at the calculations 'under the hood' of a :meth:`fruits.Fruit`
-object when extracting features of a multidimensional time series
-dataset.
+look at the calculations 'under the hood' of a ``fruits.Fruit`` object
+when extracting features of a multidimensional time series dataset.
 """
 
 from timeit import default_timer as Timer
@@ -45,6 +44,7 @@ _COLORS = [
     (0, 48, 100),
     (140, 25, 44),
 ]
+
 
 def _get_color(i: int):
     if i < 5:
@@ -92,6 +92,7 @@ class Fruitalyser:
         ``fruitalyser.load_dataset``.
     :type data: tuple
     """
+
     def __init__(self,
                  fruit: fruits.Fruit,
                  data: tuple):
@@ -111,17 +112,17 @@ class Fruitalyser:
                  fit_sample_size: float = 1):
         """Classifies the specified data by first extracting the
         features of the time series using the fruits.Fruit object.
-        
+
         :param classifier: Used classifier, defaults to
-            ```RidgeClassifierCV(alphas=np.logspace(-3,3,10), 
-                                 normalize=True)```
+            ``RidgeClassifierCV(alphas=np.logspace(-3,3,10),
+                                normalize=True)``
         :type classifier: Classifier from the package sklearn with
             a fit and score method., optional
         :param scaler: Used scaler to scale the calculated features.,
             defaults to None
         :type scaler: Scaler from the package sklearn with a fit and
             transform method.
-        :param watch_branch: The incremental steps (prepared data, 
+        :param watch_branch: The incremental steps (prepared data,
             iterated sums) of a fruits.Fruit object can be only saved
             for one branch in this object. The index of this branch
             is specified with this argument.
@@ -149,13 +150,15 @@ class Fruitalyser:
             if test_set:
                 self.X_train_feat = self.fruit.transform(self.X_train)
             else:
-                self.X_train_feat = self.fruit.transform(self.X_train,
-                                        callbacks=[self.callback])
+                self.X_train_feat = self.fruit.transform(
+                    self.X_train, callbacks=[self.callback]
+                )
             print(f"Transforming training set took {Timer() - start} s")
             start = Timer()
             if test_set:
-                self.X_test_feat = self.fruit.transform(self.X_test,
-                                        callbacks=[self.callback])
+                self.X_test_feat = self.fruit.transform(
+                    self.X_test, callbacks=[self.callback]
+                )
             else:
                 self.X_test_feat = self.fruit.transform(self.X_test)
             print(f"Transforming testing set took {Timer() - start} s")
@@ -174,8 +177,9 @@ class Fruitalyser:
             self.X_train_feat = scaler.transform(self.X_train_feat)
             self.X_test_feat = scaler.transform(self.X_test_feat)
         if classifier is None:
-            classifier = RidgeClassifierCV(alphas=np.logspace(-3,3,10),
-                                           normalize=True)
+            classifier = RidgeClassifierCV(
+                alphas=np.logspace(-3, 3, 10), normalize=True
+            )
         classifier.fit(self.X_train_feat, self.y_train)
         self.test_score = classifier.score(self.X_test_feat,
                                            self.y_test)
@@ -193,8 +197,9 @@ class Fruitalyser:
         X_train_transform = self.fruit.fit_transform(self.X_train)
         X_transform = self.fruit.transform(np.expand_dims(X, axis=1))
 
-        classifier = RidgeClassifierCV(alphas=np.logspace(-3,3,10),
-                                       normalize=True)
+        classifier = RidgeClassifierCV(
+            alphas=np.logspace(-3, 3, 10), normalize=True
+        )
         classifier.fit(X_train_transform, self.y_train)
         dec = np.array(classifier.decision_function(X_transform))
         dec = dec / np.max(dec)
@@ -210,7 +215,7 @@ class Fruitalyser:
         input data. The classifier is initialized with different
         configurations and a 2D-plot is created for visualisation of the
         results.
-        
+
         :param classifier: Classifier to test.
         :type classifier: Class of a classifier from the package sklearn
             with a fit and score method.
@@ -330,9 +335,9 @@ class Fruitalyser:
                         bounds: bool = False,
                         nseries: int = 1,
                         per_class: bool = True,
-                        on_axis = None) -> tuple:
+                        on_axis: plt.Axes = None) -> tuple:
         """Plots the unchanged input data.
-        
+
         :param dim: Dimension of each time series to plot.,
             defaults to 0
         :type dim: int, optional
@@ -374,11 +379,11 @@ class Fruitalyser:
                            bounds: bool = False,
                            nseries: int = 1,
                            per_class: bool = True,
-                           on_axis = None) -> tuple:
+                           on_axis: plt. Axes = None) -> tuple:
         """Plots specified dimension of the prepared data.
         This method can only be used if ``self.classify()`` was
         called before.
-        
+
         :param dim: Dimension of each time series to plot.,
             defaults to 0
         :type dim: int, optional
@@ -420,12 +425,12 @@ class Fruitalyser:
                            bounds: bool = False,
                            nseries: int = 1,
                            per_class: bool = True,
-                           on_axes = None) -> tuple:
+                           on_axes: plt.Axes = None) -> tuple:
         """Plots the iterated sums calculated in the specified
         fruits.Fruit object with ``fruitalyser.msplot()``.
         This method can only be used if ``self.classify()`` was called
         before.
-        
+
         :param word_indices: Indices of the words that are used for
             plotting. If ``None``, all words are used., defaults to None
         :type word_indices: list, optional
@@ -482,7 +487,7 @@ class Fruitalyser:
         following data.
         This method can only be used if ``self.classify()`` was called
         before.
-        
+
         :param sieve_index: Index or indices of the sieve(s) that are
             used.
         :type sieve_index: int or list of int
@@ -517,7 +522,7 @@ class Fruitalyser:
         matching the following specifications.
         This method can only be used if ``self.classify()`` was called
         before.
-        
+
         :param sieve_index: Index or indices of the sieve(s) that are
             used.
         :type sieve_index: int or list of int
@@ -527,11 +532,14 @@ class Fruitalyser:
         :rtype: pandas.DataFrame
         """
         if isinstance(sieve_index, int) and isinstance(word_index, list):
-            feat_table = np.array([self.callback.sieved_data[:,
-                                    self.get_feature_index(sieve_index, i)]
-                                   for i in word_index], dtype=np.float64)
+            feat_table = np.array([
+                self.callback.sieved_data[
+                    :, self.get_feature_index(sieve_index, i)
+                ]
+                for i in word_index
+            ], dtype=np.float64)
             column_names = [str(self.words[i]) + ":" + str(i+1)
-                            if len(str(self.words[i]))<8
+                            if len(str(self.words[i])) < 8
                             else str(self.words[i])[:5] + "..." + ":" + str(i)
                             for i in word_index]
             feats = pd.DataFrame(feat_table.T, columns=column_names)
@@ -539,9 +547,12 @@ class Fruitalyser:
             return feats
 
         elif isinstance(sieve_index, list) and isinstance(word_index, int):
-            feat_table = np.array([self.callback.sieved_data[:,
-                                    self.get_feature_index(i, word_index)]
-                                   for i in sieve_index], dtype=np.float64)
+            feat_table = np.array([
+                self.callback.sieved_data[
+                    :, self.get_feature_index(i, word_index)
+                ]
+                for i in sieve_index
+                ], dtype=np.float64)
             column_names = []
             for i in sieve_index:
                 string = repr(self.sieves[self.sieve_index_to_sieve(i)])
@@ -566,7 +577,7 @@ class Fruitalyser:
         by a fitted ``sklearn.decomposition.PCA`` object.
         This method can only be used if ``self.classify()`` was called
         before.
-        
+
         :param components: Number of components the PCA should
             calculate.
         :type components: int
@@ -575,15 +586,17 @@ class Fruitalyser:
         pca = PCA(n_components=components)
         # standardize feature set
         pca.fit(self.callback.sieved_data)
-        feature_pc_correlation = pd.DataFrame(pca.components_,
-            columns=['Feat-'+str(i+1) for i in range(self.nbranchfeatures)],
-            index=['PC-'+str(i+1) for i in range(components)])
+        feature_pc_correlation = pd.DataFrame(
+            pca.components_,
+            columns=['Feat-' + str(i+1) for i in range(self.nbranchfeatures)],
+            index=['PC-'+str(i+1) for i in range(components)],
+        )
         return feature_pc_correlation
 
     def rank_words_and_sieves(self, n: int, translate: bool = False) -> list:
         """Ranks the words and sieves by variance in the feature space
         (using PCA) in the watched FruitBranch.
-        
+
         :param n: Number of objects to rank
         :type n: int
         :param translate: If True, the output will contain the names
@@ -608,7 +621,7 @@ class Fruitalyser:
     def sieve_index_to_sieve(self, sieve_index: int) -> int:
         """Returns the name of the FeatureSieve that produces the
         feature at the given sieve index.
-        
+
         :param sieve_index: Index of the sieved feature in the current
             branch.
         :type sieve_index: int
@@ -627,13 +640,13 @@ class Fruitalyser:
         the FeatureSieve that led to this particular feature.
         This method can only be used if ``self.classify()`` was called
         before.
-        
+
         :param index: Feature index
         :type index: int
         :rtype: tuple
         """
         word_index = index // self.nfeatures
-        sieve_index =  index - self.nfeatures*word_index
+        sieve_index = index - self.nfeatures*word_index
         return (word_index, sieve_index)
 
     def get_feature_index(self, sieve_index: int, word_index: int) -> int:

@@ -1,5 +1,5 @@
-"""Small python module for the creation/manipulation/reading of
-(possibly artificial) time series data.
+"""Small python module for the creation/manipulation/reading of time
+series data.
 """
 
 import os
@@ -7,9 +7,11 @@ import os
 import numpy as np
 from scipy.io import arff
 
+
 def _multisine(x, coeff):
     return sum([coeff[i, 0]*np.sin(coeff[i, 1]*x+coeff[i, 2])
                 for i in range(len(coeff))])
+
 
 def multisine(train_size: int = 100,
               test_size: int = 1000,
@@ -50,14 +52,14 @@ def multisine(train_size: int = 100,
     train_sizes = [train_size_per_class for i in range(n_classes)]
     remain = train_size - train_size_per_class * n_classes
     while remain > 0:
-        train_sizes[remain%n_classes] += 1
+        train_sizes[remain % n_classes] += 1
         remain -= 1
 
     test_size_per_class = test_size // n_classes
     test_sizes = [test_size_per_class for i in range(n_classes)]
     remain = test_size - test_size_per_class * n_classes
     while remain > 0:
-        test_sizes[remain%n_classes] += 1
+        test_sizes[remain % n_classes] += 1
         remain -= 1
 
     x_range = np.linspace(0, 2*np.pi, num=length)
@@ -87,11 +89,12 @@ def multisine(train_size: int = 100,
             X_test[s+j, :] += np.random.normal(loc=0, scale=0.5, size=length)
             y_test[s+j] = i
         s += n_i
-        
+
     X_train = np.expand_dims(X_train, axis=1)
     X_test = np.expand_dims(X_test, axis=1)
 
     return X_train, y_train, X_test, y_test
+
 
 def load_dataset(path: str,
                  univariate: bool = True,
@@ -127,7 +130,7 @@ def load_dataset(path: str,
         X_train = train_raw[:, 1:].astype(np.float64)
         y_train = train_raw[:, 0].astype(np.int32)
         X_test = test_raw[:, 1:].astype(np.float64)
-        y_test =  test_raw[:, 0].astype(np.int32)
+        y_test = test_raw[:, 0].astype(np.int32)
 
         X_train = np.expand_dims(X_train, axis=1)
         X_test = np.expand_dims(X_test, axis=1)
@@ -197,6 +200,7 @@ def load_dataset(path: str,
 
     return X_train, y_train, X_test, y_test
 
+
 def nan_to_num(X: np.ndarray, value: float = 0.0):
     """Sets all NaN values in X to the given value.
 
@@ -204,6 +208,7 @@ def nan_to_num(X: np.ndarray, value: float = 0.0):
     :type value: float, optional
     """
     return np.nan_to_num(X, value)
+
 
 def analyse(X: np.ndarray):
     """Takes in a three dimensional numpy array containing
@@ -220,6 +225,7 @@ def analyse(X: np.ndarray):
     string = f"Mean of stds: {X.std(axis=2)[:, 0].mean(axis=0):.4f}"
     string += f" +- {X.std(axis=2)[:, 0].std(axis=0):.2f}"
     print(string)
+
 
 def implant_stuttering(X: np.ndarray,
                        stutter_length: float = 0.1) -> np.ndarray:
@@ -272,6 +278,7 @@ def implant_stuttering(X: np.ndarray,
                 lengthened += stlength
                 prop_index = stindex+stlength
     return X_new
+
 
 def lengthen(X: np.ndarray,
              length: int = 0.1) -> np.ndarray:
