@@ -3,9 +3,12 @@ import numpy as np
 import fruits
 
 X_1 = np.array([
-                [[-4,0.8,0,5,-3], [2,1,0,0,-7]],
-                [[5,8,2,6,0], [-5,-1,-4,-0.5,-8]]
-               ])
+    [[-4, 0.8, 0, 5, -3],
+     [2, 1, 0, 0, -7]],
+    [[5, 8, 2, 6, 0],
+     [-5, -1, -4, -0.5, -8]]
+])
+
 
 def test_n_features():
     featex = fruits.Fruit()
@@ -17,12 +20,12 @@ def test_n_features():
     assert len(featex.branch().get_words()) == 82
 
     featex.add(fruits.sieving.PPV(quantile=0, constant=True))
-    featex.add(fruits.sieving.PPV(quantile=0.2, constant=False, 
-                                   sample_size=1))
-    featex.add(fruits.sieving.PPV(quantile=[0.2,5], constant=[False,True], 
-                                   sample_size=1, segments=True))
-    featex.add(fruits.sieving.MAX(cut=[0.1,0.5,0.9], segments=True))
-    featex.add(fruits.sieving.MIN(cut=[0.1,0.5,0.9], segments=False))
+    featex.add(fruits.sieving.PPV(quantile=0.2, constant=False,
+                                  sample_size=1))
+    featex.add(fruits.sieving.PPV(quantile=[0.2, 5], constant=[False, True],
+                                  sample_size=1, segments=True))
+    featex.add(fruits.sieving.MAX(cut=[0.1, 0.5, 0.9], segments=True))
+    featex.add(fruits.sieving.MIN(cut=[0.1, 0.5, 0.9], segments=False))
 
     assert featex.nfeatures() == 656
 
@@ -31,6 +34,7 @@ def test_n_features():
     assert featex_copy.nfeatures() == 656
 
     del featex
+
 
 def test_mode_in_branches():
     featex = fruits.Fruit()
@@ -71,6 +75,7 @@ def test_mode_in_branches():
 
     assert X_transform.shape == (100, 36)
 
+
 def test_branches():
     featex = fruits.Fruit()
 
@@ -94,7 +99,7 @@ def test_branches():
     assert features.shape == (2, 6)
 
     np.testing.assert_allclose(np.array([
-                                    [1.8,3,50.64,-8,-24.6,-16.6],
-                                    [21,-5,129,-44,0,-232.5]
-                               ]),
-                               features)
+        [1.8, 3, 50.64, -8, -24.6, -16.6],
+        [21, -5, 129, -44, 0, -232.5]
+    ]),
+        features)

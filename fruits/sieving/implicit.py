@@ -3,6 +3,7 @@ import numpy as np
 from fruits.sieving.abstract import FeatureSieve
 from fruits.preparation.backend import _increments
 
+
 class PPV(FeatureSieve):
     """FeatureSieve: Proportion of positive values
 
@@ -43,6 +44,7 @@ class PPV(FeatureSieve):
         with the same index rules., defaults to False
     :type segments: bool, optional
     """
+
     def __init__(self,
                  quantile: float = 0.5,
                  constant: bool = False,
@@ -53,33 +55,33 @@ class PPV(FeatureSieve):
             if not isinstance(constant, list):
                 constant = [constant for i in range(len(quantile))]
             elif len(quantile) != len(constant):
-                raise ValueError("If 'quantile' is a list, then 'constant'"+
-                                 " also has to be a list of same length or"+
-                                 " a single boolean.") 
+                raise ValueError("If 'quantile' is a list, then 'constant' "
+                                 + "also has to be a list of same length or "
+                                 + "a single boolean.")
             for q, c in zip(quantile, constant):
                 if not c and not (0 <= q <= 1):
-                    raise ValueError("If 'constant' is set to False,"+
-                                     " 'quantile' has to be a value in [0,1]")
+                    raise ValueError("If 'constant' is set to False, "
+                                     + "'quantile' has to be a value in [0,1]")
         else:
             quantile = [quantile]
             if isinstance(constant, list):
                 if len(constant) > 1:
-                    raise ValueError("'constant' has to be a single boolean"+
-                                     " if 'quantile' is a single float")
+                    raise ValueError("'constant' has to be a single boolean"
+                                     + "if 'quantile' is a single float")
             else:
                 constant = [constant]
         if segments:
-            self._q_c_input = list(zip(list(set(quantile)),constant))
+            self._q_c_input = list(zip(list(set(quantile)), constant))
             self._q_c_input = sorted(self._q_c_input, key=lambda x: x[0])
         else:
-            self._q_c_input = list(zip(quantile,constant))
+            self._q_c_input = list(zip(quantile, constant))
         self._q = None
         if not 0 < sample_size <= 1:
             raise ValueError("'sample_size' has to be a float in (0, 1]")
         self._sample_size = sample_size
         if segments and len(quantile) == 1:
-            raise ValueError("If 'segments' is set to `True` then 'quantile'"+
-                             " has to be a list of length >= 2.")
+            raise ValueError("If 'segments' is set to `True` then 'quantile'"
+                             + "has to be a list of length >= 2.")
         self._segments = segments
 
     def nfeatures(self) -> int:
@@ -191,6 +193,7 @@ class CPV(PPV):
         defaults to 0.05
     :type sample_size: float, optional
     """
+
     def __init__(self,
                  quantile: float = 0.5,
                  constant: bool = False,

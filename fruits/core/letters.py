@@ -9,6 +9,7 @@ LETTER_NAME = "fruits_name"
 BOUND_LETTER_TYPE = Callable[[np.ndarray, int], np.ndarray]
 FREE_LETTER_TYPE = Callable[[int], BOUND_LETTER_TYPE]
 
+
 class ExtendedLetter:
     """Class for an extended letter used in words.
     A :class:`~fruits.core.wording.Word` consists of a number of
@@ -23,6 +24,7 @@ class ExtendedLetter:
         :meth:`fruits.core.letters.get_available`.
     :type letter_string: str
     """
+
     def __init__(self, letter_string: str = ""):
         self._letters = []
         self._dimensions = []
@@ -133,43 +135,52 @@ def letter(*args, name: str = None):
         raise TypeError("Unknown argument type for name")
     if len(args) > 1:
         raise RuntimeError("Too many arguments")
-    if name is None and len(args)==1 and callable(args[0]):
+    if name is None and len(args) == 1 and callable(args[0]):
         _configure_letter(args[0], args[0].__name__)
+
         @wraps(args[0])
         def wrapper(i: int):
             def index_manipulation(X: np.ndarray):
                 return args[0](X, i)
             return index_manipulation
         _log(args[0].__name__, wrapper)
+
         return wrapper
     else:
         if name is None and len(args) > 0:
             if not isinstance(args[0], str):
                 raise TypeError("Unknown argument type")
             name = args[0]
+
         def letter_decorator(func):
             _configure_letter(func, name=name)
+
             @wraps(func)
             def wrapper(i: int):
                 def index_manipulation(X: np.ndarray):
                     return func(X, i)
                 return index_manipulation
+
             _log(name, wrapper)
             return wrapper
         return letter_decorator
 
+
 _AVAILABLE = dict()
+
 
 def _log(name: str, func: FREE_LETTER_TYPE):
     if name in _AVAILABLE:
         raise RuntimeError(f"Letter with name '{name}' already exists")
     _AVAILABLE[name] = func
 
+
 def _get(name: str) -> FREE_LETTER_TYPE:
     # returns the corresponding letter for the given name
-    if not name in _AVAILABLE:
+    if name not in _AVAILABLE:
         raise RuntimeError(f"Letter with name '{name}' does not exist")
     return _AVAILABLE[name]
+
 
 def get_available() -> List[str]:
     """Returns a list of all available letter names to use in a
@@ -179,6 +190,7 @@ def get_available() -> List[str]:
     """
     return list(_AVAILABLE.keys())
 
+
 def _configure_letter(func: BOUND_LETTER_TYPE, name: str):
     # marks the input callable as a letter
     if func.__code__.co_argcount != 2:
@@ -187,17 +199,20 @@ def _configure_letter(func: BOUND_LETTER_TYPE, name: str):
     func.__dict__[LETTER_SIGNATURE] = "letter"
     func.__dict__[LETTER_NAME] = name
 
+
 def _letter_configured(func: BOUND_LETTER_TYPE) -> bool:
     # checks if the given callable is a letter
-    if (LETTER_SIGNATURE in func.__dict__ and
-        LETTER_NAME in func.__dict__ and
-        func.__dict__[LETTER_NAME] in _AVAILABLE):
+    if (LETTER_SIGNATURE in func.__dict__
+            and LETTER_NAME in func.__dict__
+            and func.__dict__[LETTER_NAME] in _AVAILABLE):
         return True
     return False
+
 
 @letter(name="SIMPLE")
 def simple(X: np.ndarray, i: int) -> np.ndarray:
     return X[i, :]
+
 
 @letter(name="ABS")
 def absolute(X: np.ndarray, i: int) -> np.ndarray:

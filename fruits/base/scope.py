@@ -4,6 +4,7 @@ import numpy as np
 
 from fruits.base.callback import AbstractCallback
 
+
 def check_input_shape(X: np.ndarray) -> bool:
     """Checks if the given time series dataset has the correct input
     shape.
@@ -14,6 +15,7 @@ def check_input_shape(X: np.ndarray) -> bool:
     if X.ndim == 3:
         return True
     return False
+
 
 def force_input_shape(X: np.ndarray):
     """Makes the attempt to format the input shape of the
@@ -36,6 +38,7 @@ def force_input_shape(X: np.ndarray):
     if out.ndim != 3:
         raise ValueError("Unsupported input shape")
     return out
+
 
 def check_callbacks(callbacks: List[AbstractCallback]):
     """For a given list of objects, checks if all objects are inheriting

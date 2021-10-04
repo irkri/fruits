@@ -1,6 +1,7 @@
 import numba
 import numpy as np
 
+
 @numba.njit(fastmath=True, cache=True)
 def _increments(X: np.ndarray):
     # accelerated function that calculates increments of every

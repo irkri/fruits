@@ -1,3 +1,5 @@
+from typing import Callable
+
 import numpy as np
 
 from fruits.preparation.abstract import DataPreparateur
@@ -9,6 +11,7 @@ class ONE(DataPreparateur):
     Preparateur that appends a dimension to each time series consisting
     of only ones.
     """
+
     def __init__(self):
         super().__init__("One")
 
@@ -41,7 +44,7 @@ class ONE(DataPreparateur):
 
 class DIM(DataPreparateur):
     """DataPreparateur: Dimension Creator
-    
+
     Creates a new dimension in the given (multidimensional) time series
     dataset based on the supplied function.
 
@@ -51,7 +54,8 @@ class DIM(DataPreparateur):
         dimensions that will be added to the input array.
     :type f: Callable
     """
-    def __init__(self, f):
+
+    def __init__(self, f: Callable[np.ndarray, np.ndarray]):
         super().__init__("Dimension Creator")
         self._function = f
 

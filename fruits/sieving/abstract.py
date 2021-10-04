@@ -1,8 +1,9 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 import numpy as np
 
 from fruits.node import FruitNode
+
 
 class FeatureSieve(FruitNode):
     """Abstract class for a feature sieve. Sieves are the last part of a
@@ -10,12 +11,13 @@ class FeatureSieve(FruitNode):
 
     A feature sieve is used to transforms a two-dimensional numpy
     array containing iterated sums into a onedimensional numpy array of
-    features. The length of the resulting array can be determined by
-    calling ``FeatureSieve.nfeatures``.
+    features.
 
-    Each class that inherits FeatureSieve must override the methods
-    ``FeatureSieve.sieve`` and ``FeatureSieve.nfeatures``.
+    :param name: Identification string of the feature sieve.,
+        defaults to ""
+    :type name: str, optional
     """
+
     def __init__(self, name: str = ""):
         super().__init__(name)
 

@@ -4,6 +4,7 @@ import numpy as np
 
 from fruits.preparation.abstract import DataPreparateur
 
+
 class DIL(DataPreparateur):
     """DataPreparateur: Dilation
 
@@ -19,12 +20,13 @@ class DIL(DataPreparateur):
         defaults to None
     :type clusters: Union[float, None], optional
     """
+
     def __init__(self, clusters: Union[float, None] = None):
         super().__init__("Dilation")
         self._clusters = clusters
         self._indices = None
         self._lengths = None
-    
+
     def fit(self, X: np.ndarray):
         """Fits the preparateur to the given dataset by randomizing the
         starting points and lengths of the zero strips.
@@ -66,7 +68,7 @@ class DIL(DataPreparateur):
         for i in range(len(self._indices)):
             X_new[:, :, self._indices[i]:self._indices[i]+self._lengths[i]] = 0
         return X_new
-    
+
     def copy(self) -> "DIL":
         """Returns a copy of this preparateur.
 
@@ -98,6 +100,7 @@ class WIN(DataPreparateur):
     :param end: Quantile end; float value between 0 and 1 (incl.).
     :type end: float
     """
+
     def __init__(self,
                  start: float,
                  end: float):
@@ -119,7 +122,7 @@ class WIN(DataPreparateur):
 
         mask = (Q >= self._start) & (Q <= self._end)
         return X * mask
-    
+
     def copy(self) -> "WIN":
         """Returns a copy of this preparateur.
 
@@ -156,6 +159,7 @@ class DOT(DataPreparateur):
         integer with the same rules as argument ``n``., defaults to None
     :type first: Union[int, float, None], optional
     """
+
     def __init__(self,
                  n: Union[int, float] = 2,
                  first: Union[int, float, None] = None):
@@ -219,7 +223,7 @@ class DOT(DataPreparateur):
         out = np.zeros(X.shape)
         out[:, :, self._first::self._n] = X[:, :, self._first::self._n]
         return out
-    
+
     def copy(self) -> "DOT":
         """Returns a copy of this preparateur.
 
@@ -254,6 +258,7 @@ class PDD(DataPreparateur):
         drop. Has to be a float in ``(0,1)``., defaults to 0.5
     :type proportion: float, optional
     """
+
     def __init__(self,
                  density: float = 0.1,
                  proportion: float = 0.5):

@@ -3,6 +3,7 @@ import numpy as np
 
 from fruits.core.wording import Word
 
+
 def _slow_single_ISS(Z: np.ndarray,
                      word: Word,
                      alphas: np.ndarray,
@@ -11,8 +12,8 @@ def _slow_single_ISS(Z: np.ndarray,
     tmp = np.ones(Z.shape[1], dtype=np.float64)
     for k, ext_letter in enumerate(word):
         C = np.ones(Z.shape[1], dtype=np.float64)
-        for l in range(len(ext_letter)):
-            C = C * ext_letter[l](Z[:, :])
+        for el in range(len(ext_letter)):
+            C = C * ext_letter[el](Z[:, :])
         if k > 0:
             tmp = np.roll(tmp, 1)
             tmp[0] = 0
@@ -27,6 +28,7 @@ def _slow_single_ISS(Z: np.ndarray,
             result[extended-(len(word)-k), :] = tmp.copy()
     return result
 
+
 def _slow_ISS(Z: np.ndarray,
               word: Word,
               alphas: np.ndarray,
@@ -37,18 +39,21 @@ def _slow_ISS(Z: np.ndarray,
         result[i] = _slow_single_ISS(Z[i], word, alphas, extended)
     return result
 
+
 @numba.njit("float64[:](float64[:])", cache=True)
 def _fast_CS(Z: np.ndarray) -> np.ndarray:
     return np.cumsum(Z)
+
 
 @numba.njit("float64[:](float64[:, :], int32[:])", cache=True)
 def _fast_extended_letter(Z: np.ndarray,
                           extended_letter: np.ndarray) -> np.ndarray:
     C = np.ones(Z.shape[1], dtype=np.float64)
-    for l in range(len(extended_letter)):
-        if extended_letter[l] != 0:
-            C = C * Z[l, :]**extended_letter[l]
+    for el in range(len(extended_letter)):
+        if extended_letter[el] != 0:
+            C = C * Z[el, :]**extended_letter[el]
     return C
+
 
 @numba.njit("float64[:,:](float64[:,:], int32[:,:], float32[:], int32)",
             fastmath=True, cache=True)
@@ -75,6 +80,7 @@ def _fast_single_ISS(Z: np.ndarray,
             # save result
             result[extended-(len(word)-k), :] = tmp.copy()
     return result
+
 
 @numba.njit("float64[:,:,:](float64[:,:,:], int32[:,:], float32[:], int32)",
             parallel=True, cache=True)

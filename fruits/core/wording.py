@@ -3,6 +3,7 @@ from typing import Union, List
 
 from fruits.core.letters import ExtendedLetter
 
+
 class Word:
     """A word is a collection of
     :class:`~fruits.core.letters.ExtendedLetter` objects.
@@ -56,6 +57,7 @@ class Word:
         the corresponding word., defaults to ""
     :type word_string: str, optional
     """
+
     def __init__(self, word_string: str = ""):
         self._alpha = 0.0
         self._extended_letters = []
@@ -193,6 +195,7 @@ class SimpleWord(Word):
         expression ``([d+])+`` where ``d+`` denotes one or more digits.
     :type string: str
     """
+
     def __init__(self, string: str):
         super().__init__()
         self._max_dim = 0

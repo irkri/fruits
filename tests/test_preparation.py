@@ -3,9 +3,10 @@ import numpy as np
 import fruits
 
 X_1 = np.array([
-                [[-4,0.8,0,5,-3], [2,1,0,0,-7]],
-                [[5,8,2,6,0], [-5,-1,-4,-0.5,-8]]
-               ])
+    [[-4, 0.8, 0, 5, -3], [2, 1, 0, 0, -7]],
+    [[5, 8, 2, 6, 0], [-5, -1, -4, -0.5, -8]]
+])
+
 
 def test_increments():
     X_1_1 = fruits.preparation.INC(True).fit_prepare(X_1)
@@ -13,19 +14,20 @@ def test_increments():
     X_1_2 = increments.fit_prepare(X_1)
 
     np.testing.assert_allclose(np.array([
-                                [[0,4.8,-0.8,5,-8], [0,-1,-1,0,-7]],
-                                [[0,3,-6,4,-6], [0,4,-3,3.5,-7.5]]
-                               ]),
-                               X_1_1)
+        [[0, 4.8, -0.8, 5, -8], [0, -1, -1, 0, -7]],
+        [[0, 3, -6, 4, -6], [0, 4, -3, 3.5, -7.5]]
+    ]),
+        X_1_1)
     np.testing.assert_allclose(np.array([
-                                [[-4,4.8,-0.8,5,-8], [2,-1,-1,0,-7]],
-                                [[5,3,-6,4,-6], [-5,4,-3,3.5,-7.5]]
-                               ]),
-                               X_1_2)
+        [[-4, 4.8, -0.8, 5, -8], [2, -1, -1, 0, -7]],
+        [[5, 3, -6, 4, -6], [-5, 4, -3, 3.5, -7.5]]
+    ]),
+        X_1_2)
 
     X_1_2_copy = increments.copy().fit_prepare(X_1)
 
     np.testing.assert_allclose(X_1_2, X_1_2_copy)
+
 
 def test_standardization():
     X_1_1 = fruits.preparation.STD().fit_prepare(X_1)
@@ -33,47 +35,49 @@ def test_standardization():
     np.testing.assert_almost_equal(0, np.mean(X_1_1.flatten()))
     np.testing.assert_almost_equal(1, np.std(X_1_1.flatten()))
 
+
 def test_mav():
     result = fruits.preparation.MAV(2).fit_prepare(X_1)
 
     np.testing.assert_allclose(np.array([
-                                [[-4,-1.6,0.4,2.5,1], [2,1.5,0.5,0,-3.5]],
-                                [[5,6.5,5,4,3], [-5,-3,-2.5,-2.25,-4.25]]
-                               ]),
-                               result)
+        [[-4, -1.6, 0.4, 2.5, 1], [2, 1.5, 0.5, 0, -3.5]],
+        [[5, 6.5, 5, 4, 3], [-5, -3, -2.5, -2.25, -4.25]]
+    ]),
+        result)
 
     result = fruits.preparation.MAV(0.6).fit_prepare(X_1)
 
     np.testing.assert_allclose(np.array([
-                                [[-12,2.4,-3.2,5.8,2], [6,3,3,1,-7]],
-                                [[15,24,15,16,8], [-15,-3,-10,-5.5,-12.5]]
-                               ])/3,
-                               result)
+        [[-12, 2.4, -3.2, 5.8, 2], [6, 3, 3, 1, -7]],
+        [[15, 24, 15, 16, 8], [-15, -3, -10, -5.5, -12.5]]
+    ]) / 3,
+        result)
+
 
 def test_window():
     X = np.array([
-                  [[1,2,4,5,6],
-                   [11,22,33,44,55]],
+        [[1, 2, 4, 5, 6],
+         [11, 22, 33, 44, 55]],
 
-                  [[10,20,30,40,50],
-                   [111,222,333,444,555]]
-                ])
+        [[10, 20, 30, 40, 50],
+         [111, 222, 333, 444, 555]]
+    ])
 
     w = fruits.preparation.WIN(0.0, 0.7)
     result = w.fit_prepare(X)
     np.testing.assert_allclose(np.array([
-                                [[1,2,0,0,0], [11,22,0,0,0]],
-                                [[10,20,30,0,0], [111,222,333,0,0]]
-                               ]),
-                               result)
+        [[1, 2, 0, 0, 0], [11, 22, 0, 0, 0]],
+        [[10, 20, 30, 0, 0], [111, 222, 333, 0, 0]]
+    ]),
+        result)
 
     w = fruits.preparation.WIN(0.7, 1.0)
     result = w.fit_prepare(X)
     np.testing.assert_allclose(np.array([
-                                [[0,0,4,5,6], [0,0,33,44,55]],
-                                [[0,0,0,40,50], [0,0,0,444,555]]
-                               ]),
-                               result)
+        [[0, 0, 4, 5, 6], [0, 0, 33, 44, 55]],
+        [[0, 0, 0, 40, 50], [0, 0, 0, 444, 555]]
+    ]),
+        result)
 
     abs1 = fruits.core.wording.Word()
     el = fruits.core.letters.ExtendedLetter()
@@ -89,27 +93,28 @@ def test_window():
     w.set_requisite("INC -> ABS")
     result = w.fit_prepare(X)
     np.testing.assert_allclose(np.array([
-                                [[1,2,4,0,0], [11,22,33,0,0]],
-                                [[10,20,30,0,0], [111,222,333,0,0]]
-                               ]),
-                               result)
+        [[1, 2, 4, 0, 0], [11, 22, 33, 0, 0]],
+        [[10, 20, 30, 0, 0], [111, 222, 333, 0, 0]]
+    ]),
+        result)
+
 
 def test_dot():
     d = fruits.preparation.DOT(0.4)
 
     np.testing.assert_allclose(np.array([
-                                [[0,0.8,0,5,0], [0,1,0,0,0]],
-                                [[0,8,0,6,0], [0,-1,0,-0.5,0]]
-                               ]),
-                               d.fit_prepare(X_1))
+        [[0, 0.8, 0, 5, 0], [0, 1, 0, 0, 0]],
+        [[0, 8, 0, 6, 0], [0, -1, 0, -0.5, 0]]
+    ]),
+        d.fit_prepare(X_1))
 
     d = fruits.preparation.DOT(0.9)
 
     np.testing.assert_allclose(np.array([
-                                [[0,0,0,5,0], [0,0,0,0,0]],
-                                [[0,0,0,6,0], [0,0,0,-0.5,0]]
-                               ]),
-                               d.fit_prepare(X_1))
+        [[0, 0, 0, 5, 0], [0, 0, 0, 0, 0]],
+        [[0, 0, 0, 6, 0], [0, 0, 0, -0.5, 0]]
+    ]),
+        d.fit_prepare(X_1))
 
     d = fruits.preparation.DOT(0.1)
 
@@ -121,34 +126,36 @@ def test_dot():
 
     np.testing.assert_allclose(X_2_result, d.fit_prepare(X_2))
 
+
 def test_lag():
     L = fruits.preparation.LAG()
 
     np.testing.assert_allclose(np.array([
-                                [
-                                 [-4,0.8,0.8,0,0,5,5,-3,-3],
-                                 [-4,-4,0.8,0.8,0,0,5,5,-3],
-                                 [2,1,1,0,0,0,0,-7,-7],
-                                 [2,2,1,1,0,0,0,0,-7],
-                                ],
-                                [
-                                 [5,8,8,2,2,6,6,0,0],
-                                 [5,5,8,8,2,2,6,6,0],
-                                 [-5,-1,-1,-4,-4,-0.5,-0.5,-8,-8],
-                                 [-5,-5,-1,-1,-4,-4,-0.5,-0.5,-8],
-                                ],
-                               ]),
-                               L.fit_prepare(X_1))
+        [
+            [-4, 0.8, 0.8, 0, 0, 5, 5, -3, -3],
+            [-4, -4, 0.8, 0.8, 0, 0, 5, 5, -3],
+            [2, 1, 1, 0, 0, 0, 0, -7, -7],
+            [2, 2, 1, 1, 0, 0, 0, 0, -7],
+        ],
+        [
+            [5, 8, 8, 2, 2, 6, 6, 0, 0],
+            [5, 5, 8, 8, 2, 2, 6, 6, 0],
+            [-5, -1, -1, -4, -4, -0.5, -0.5, -8, -8],
+            [-5, -5, -1, -1, -4, -4, -0.5, -0.5, -8],
+        ],
+    ]),
+        L.fit_prepare(X_1))
+
 
 def test_one():
-    O = fruits.preparation.ONE()
+    one = fruits.preparation.ONE()
 
     np.testing.assert_allclose(np.array([
-                                [[-4,0.8,0,5,-3],
-                                 [2,1,0,0,-7],
-                                 [1,1,1,1,1]],
-                                [[5,8,2,6,0],
-                                 [-5,-1,-4,-0.5,-8],
-                                 [1,1,1,1,1]]
-                               ]),
-                               O.fit_prepare(X_1))
+        [[-4, 0.8, 0, 5, -3],
+         [2, 1, 0, 0, -7],
+         [1, 1, 1, 1, 1]],
+        [[5, 8, 2, 6, 0],
+         [-5, -1, -4, -0.5, -8],
+         [1, 1, 1, 1, 1]]
+    ]),
+        one.fit_prepare(X_1))

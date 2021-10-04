@@ -11,6 +11,7 @@ from fruits.core.wording import Word
 from fruits.sieving.abstract import FeatureSieve
 from fruits.preparation.abstract import DataPreparateur
 
+
 class Fruit:
     """Feature Extractor using iterated sums.
 
@@ -50,6 +51,7 @@ class Fruit:
     changed by calling ``self.switch_branch(index)`` or forking a new
     branch with ``self.fork()``.
     """
+
     def __init__(self, name: str = ""):
         self.name = name
         # list of FruitBranches
@@ -62,7 +64,7 @@ class Fruit:
     def name(self) -> str:
         """Simple identifier for the Fruit object."""
         return self._name
-    
+
     @name.setter
     def name(self, name: str):
         self._name = name
@@ -125,7 +127,7 @@ class Fruit:
         self._fitted = False
 
     def nfeatures(self) -> int:
-        """Returns the total number of features of all branches 
+        """Returns the total number of features of all branches
         combined.
 
         :rtype: int
@@ -236,9 +238,9 @@ class Fruit:
 class FruitBranch:
     """One branch for a Fruit object.
 
-    A FruitBranch object extracts values from time series data that are 
+    A FruitBranch object extracts values from time series data that are
     somehow representative of the input data.
-    The user can customize any of the following three steps the 
+    The user can customize any of the following three steps the
     extractor is going to do in order to get the so called features.
 
     Preparing data:
@@ -259,6 +261,7 @@ class FruitBranch:
     The branch then returns an array of numbers (the transformed results
     from those sieves), i.e. the features for each time series.
     """
+
     def __init__(self):
         # lists of used classes for data processing
         self._preparateurs = []

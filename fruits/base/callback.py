@@ -2,6 +2,7 @@ from abc import ABC
 
 import numpy as np
 
+
 class AbstractCallback(ABC):
     """Another class inheriting ``AbstractCallback`` can overwrite one
     or more of the class methods.
@@ -9,6 +10,7 @@ class AbstractCallback(ABC):
     The callback can then be used in a call of
     :meth:`~fruits.base.fruit.Fruit.transform`.
     """
+
     def on_next_branch(self):
         """Called every time the current
         :class:`~fruits.base.fruit.FruitBranch` in a

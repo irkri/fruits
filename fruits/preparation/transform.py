@@ -5,6 +5,7 @@ import numpy as np
 from fruits.preparation.abstract import DataPreparateur
 from fruits.preparation.backend import _increments
 
+
 class INC(DataPreparateur):
     """DataPreparateur: Increments
 
@@ -21,6 +22,7 @@ class INC(DataPreparateur):
         all., defaults to True
     :type zero_padding: bool, optional
     """
+
     def __init__(self,
                  zero_padding: bool = True):
         super().__init__("Increments")
@@ -66,6 +68,7 @@ class STD(DataPreparateur):
 
     Used for standardization of a given time series dataset.
     """
+
     def __init__(self):
         super().__init__("Standardization")
         self._mean = None
@@ -121,6 +124,7 @@ class MAV(DataPreparateur):
         or an integer., defaults to 5
     :type width: Union[int, float], optional
     """
+
     def __init__(self, width: Union[int, float] = 5):
         super().__init__("Moving Average")
         if isinstance(width, float):
@@ -188,6 +192,7 @@ class LAG(DataPreparateur):
     two-dimensional vector
     ``[(x_1,x_1),(x_2,x_1),(x_2,x_2),(x_3,x_2),...,(x_n,x_n)]``.
     """
+
     def __init__(self):
         super().__init__("Lead-Lag transform")
 

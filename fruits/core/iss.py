@@ -6,12 +6,14 @@ from fruits.base.scope import force_input_shape
 from fruits.core.wording import Word, SimpleWord
 from fruits.core.backend import _fast_ISS, _slow_ISS
 
+
 class CachePlan:
     """Class that creates a plan for the efficient calculation of
     iterated sums using the given words. This plan is needed when the
     mode of an ISSCalculator is set to "extended".
     The plan removes repetition in calculation.
     """
+
     def __init__(self, words: List[Word]):
         self._words = words
 
@@ -68,6 +70,7 @@ class ISSCalculator:
         defaults to "single"
     :type mode: str, optional
     """
+
     def __init__(self, mode: str = "single"):
         self.mode = mode
         self._batch_size = -1
@@ -94,7 +97,7 @@ class ISSCalculator:
 
     @mode.setter
     def mode(self, mode: str):
-        if not mode in {"single", "extended"}:
+        if mode not in {"single", "extended"}:
             raise ValueError("Unknown mode supplied")
         self._mode = mode
 
@@ -107,7 +110,7 @@ class ISSCalculator:
         results of all words are given at once.
         """
         return self._batch_size
-    
+
     @batch_size.setter
     def batch_size(self, batch_size: int):
         self._batch_size = batch_size
@@ -144,24 +147,21 @@ class ISSCalculator:
         if not self._started:
             raise RuntimeError("Calculator not started yet")
         self._current_word = 0
-        self._real_batch_size = len(self._words) if self._batch_size == -1 \
-                                                 else self._batch_size
+        self._real_batch_size = self._batch_size
+        if self._batch_size == -1:
+            self._real_batch_size = len(self._words)
         return self
 
     def __next__(self) -> np.ndarray:
         if self._current_word >= len(self._words):
             raise StopIteration
+        nsums = self._real_batch_size
         if self.mode == "extended":
-            results = np.zeros((self._X.shape[0],
-                                self._cache_plan.n_iterated_sums(
-                                    list(range(self._current_word, 
-                                    self._current_word + \
-                                    self._real_batch_size))),
-                                self._X.shape[2]))
-        else:
-            results = np.zeros((self._X.shape[0],
-                                self._real_batch_size,
-                                self._X.shape[2]))
+            nsums = self._cache_plan.n_iterated_sums(
+                list(range(self._current_word,
+                           self._current_word + self._real_batch_size))
+            )
+        results = np.zeros((self._X.shape[0], nsums, self._X.shape[2]))
 
         index = 0
         for i in range(self._current_word,
@@ -176,15 +176,19 @@ class ISSCalculator:
             alphas = self._get_alpha(self._words[i], self._X.shape[2])
 
             if isinstance(self._words[i], SimpleWord):
-                results[:, index:index+ext, :] = _fast_ISS(self._X,
+                results[:, index:index+ext, :] = _fast_ISS(
+                    self._X,
                     self._transform_simple_word(self._words[i]),
                     alphas,
-                    ext)
+                    ext
+                )
             elif isinstance(self._words[i], Word):
-                results[:, index:index+ext, :] = _slow_ISS(self._X,
+                results[:, index:index+ext, :] = _slow_ISS(
+                    self._X,
                     self._words[i],
                     alphas,
-                    ext)
+                    ext
+                )
             else:
                 raise TypeError(f"Unknown word type: {type(self._words[i])}")
             index += ext

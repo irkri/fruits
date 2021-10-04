@@ -9,21 +9,25 @@ from fruits.core.letters import (
     BOUND_LETTER_TYPE,
 )
 
-def _partitions_of(n, I=1):
+
+def _partitions_of(n, start: int = 1):
     yield (n,)
-    for i in range(I, n//2 + 1):
+    for i in range(start, n//2 + 1):
         for p in _partitions_of(n-i, i):
             yield (i,) + p
+
 
 def _extended_letters_by_weight(w: int,
                                 d: int = 1) -> List[str]:
     return [
         "["
-        + "".join(["("+str(x)+")" if len(str(x))>1 else str(x) for x in el])
+        + "".join(["(" + str(x) + ")" if len(str(x)) > 1 else str(x)
+                   for x in el])
         + "]"
-        for el in \
+        for el in
         itertools.combinations_with_replacement(list(range(1, d+1)), w)
     ]
+
 
 def simplewords_by_weight(w: int, dim: int = 1) -> List[SimpleWord]:
     """Returns a list of all possible and unique SimpleWords that have
@@ -52,6 +56,7 @@ def simplewords_by_weight(w: int, dim: int = 1) -> List[SimpleWord]:
                 words.append(SimpleWord("".join(raw_word)))
     return words
 
+
 def _replace_letters_simpleword(word, letter_gen):
     complexword = Word()
     for el in word:
@@ -63,29 +68,31 @@ def _replace_letters_simpleword(word, letter_gen):
                 except StopIteration:
                     letter = simple
                 if not _letter_configured(letter):
-                    raise TypeError("Letter has the wrong signature. " +
-                                    "Perhaps it wasn't decorated " +
-                                    "correctly?")
+                    raise TypeError("Letter has the wrong signature. "
+                                    + "Perhaps it wasn't decorated "
+                                    + "correctly?")
                 new_el.append(letter, dim)
         complexword.multiply(new_el)
     return complexword
+
 
 def _replace_letters_complexword(word, letter_gen):
     complexword = Word()
     for el in word:
         new_el = ExtendedLetter()
-        for l, dim in zip(el._letters, el._dimensions):
+        for i, dim in zip(el._letters, el._dimensions):
             try:
                 letter = next(letter_gen)
             except StopIteration:
-                letter = l
+                letter = i
             if not _letter_configured(letter):
-                raise TypeError("Letter has the wrong signature. " +
-                                "Perhaps it wasn't decorated " +
-                                "correctly?")
+                raise TypeError("Letter has the wrong signature. "
+                                + "Perhaps it wasn't decorated "
+                                + "correctly?")
             new_el.append(letter, dim)
         complexword.multiply(new_el)
     return complexword
+
 
 def replace_letters(word: Union[Word, List[Word]],
                     letter_gen: Generator[BOUND_LETTER_TYPE, None, None]) \

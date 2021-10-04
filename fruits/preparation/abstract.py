@@ -4,6 +4,7 @@ import numpy as np
 
 from fruits.node import FruitNode
 
+
 class DataPreparateur(FruitNode):
     """Abstract class for a data preparateur.
 
@@ -14,6 +15,7 @@ class DataPreparateur(FruitNode):
     A class derived from DataPreparateur can be added to a
     ``fruits.Fruit`` object for the preprocessing step.
     """
+
     def __init__(self, name: str = ""):
         super().__init__(name)
 

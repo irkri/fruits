@@ -5,6 +5,7 @@ import numpy as np
 from fruits.sieving.abstract import FeatureSieve
 from fruits.preparation.backend import _increments
 
+
 class ExplicitSieve(FeatureSieve):
     """Abstract class that has the ability to calculate cutting points
     as indices in the time series based on a given 'coquantile'.
@@ -17,7 +18,7 @@ class ExplicitSieve(FeatureSieve):
         first. This option can also be a list of floats or integers
         which will be treated the same way., defaults to -1
     :type cut: int/float or list of integers/floats, optional
-    :param segments: If set to ``True``, then the cutting indices will 
+    :param segments: If set to ``True``, then the cutting indices will
         be sorted and treated as interval borders and the maximum in
         each interval will be sieved. The left interval border is
         reduced by 1 before slicing. This means that an input of
@@ -27,6 +28,7 @@ class ExplicitSieve(FeatureSieve):
         defaults to ``False``
     :type segments: bool, optional
     """
+
     def __init__(self,
                  cut: int = -1,
                  segments: bool = False,
@@ -39,8 +41,8 @@ class ExplicitSieve(FeatureSieve):
             elif not (c == -1 or (c > 0 and isinstance(c, int))):
                 raise ValueError("Unsupported input for option 'cut'")
         if segments and len(self._cut) == 1:
-            raise ValueError("If 'segments' is set to True, then 'cut'"+
-                             " has to be a list of length >= 2.")
+            raise ValueError("If 'segments' is set to True, then 'cut' "
+                             + "has to be a list of length >= 2.")
         self._segments = segments
 
     def _transform_cuts(self, X: np.ndarray, req: np.ndarray) -> list:
@@ -91,6 +93,7 @@ class MAX(ExplicitSieve):
     :type cut: int/float or list of integers/floats, optional
     :type segments: bool, optional
     """
+
     def __init__(self,
                  cut: int = -1,
                  segments: bool = False):
@@ -153,6 +156,7 @@ class MIN(ExplicitSieve):
     :type cut: int/float or list of integers/floats, optional
     :type segments: bool, optional
     """
+
     def __init__(self,
                  cut: int = -1,
                  segments: bool = False):
@@ -215,6 +219,7 @@ class END(ExplicitSieve):
 
     :type cut: int/float or list of integers/floats, optional
     """
+
     def __init__(self,
                  cut: int = -1):
         super().__init__(cut, False, "Last value")
@@ -276,6 +281,7 @@ class PIA(ExplicitSieve):
         defaults to False
     :type div_on_slice: bool, optional
     """
+
     def __init__(self,
                  cut: int = -1,
                  segments: bool = False,
@@ -293,7 +299,7 @@ class PIA(ExplicitSieve):
         """
         req = self._get_requisite(X)[:, 0, :]
         result = np.zeros((X.shape[0], self.nfeatures()))
-        X_inc = _increments(np.expand_dims(X, axis=1))[:,0,:]
+        X_inc = _increments(np.expand_dims(X, axis=1))[:, 0, :]
         for i in range(X.shape[0]):
             new_cuts = self._transform_cuts(X[i], req[i])
             if self._segments:
@@ -356,6 +362,7 @@ class LCS(ExplicitSieve):
     :type cut: int/float or list of integers/floats, optional
     :type segments: bool, optional
     """
+
     def __init__(self,
                  cut: int = -1,
                  segments: bool = False):
