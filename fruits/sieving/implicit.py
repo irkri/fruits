@@ -3,9 +3,10 @@ import numpy as np
 from fruits.sieving.abstract import FeatureSieve
 from fruits.preparation.backend import _increments
 
+
 class PPV(FeatureSieve):
     """FeatureSieve: Proportion of positive values
-    
+
     For a calculated quantile with ``PPV.fit``, this feature sieve
     calculates the proportion of values in a time series that are
     greater than the calculated quantile(s).
@@ -43,6 +44,7 @@ class PPV(FeatureSieve):
         with the same index rules., defaults to False
     :type segments: bool, optional
     """
+
     def __init__(self,
                  quantile: float = 0.5,
                  constant: bool = False,
@@ -53,38 +55,38 @@ class PPV(FeatureSieve):
             if not isinstance(constant, list):
                 constant = [constant for i in range(len(quantile))]
             elif len(quantile) != len(constant):
-                raise ValueError("If 'quantile' is a list, then 'constant'"+
-                                 " also has to be a list of same length or"+
-                                 " a single boolean.") 
+                raise ValueError("If 'quantile' is a list, then 'constant' "
+                                 + "also has to be a list of same length or "
+                                 + "a single boolean.")
             for q, c in zip(quantile, constant):
                 if not c and not (0 <= q <= 1):
-                    raise ValueError("If 'constant' is set to False,"+
-                                     " 'quantile' has to be a value in [0,1]")
+                    raise ValueError("If 'constant' is set to False, "
+                                     + "'quantile' has to be a value in [0,1]")
         else:
             quantile = [quantile]
             if isinstance(constant, list):
                 if len(constant) > 1:
-                    raise ValueError("'constant' has to be a single boolean"+
-                                     " if 'quantile' is a single float")
+                    raise ValueError("'constant' has to be a single boolean"
+                                     + "if 'quantile' is a single float")
             else:
                 constant = [constant]
         if segments:
-            self._q_c_input = list(zip(list(set(quantile)),constant))
+            self._q_c_input = list(zip(list(set(quantile)), constant))
             self._q_c_input = sorted(self._q_c_input, key=lambda x: x[0])
         else:
-            self._q_c_input = list(zip(quantile,constant))
+            self._q_c_input = list(zip(quantile, constant))
         self._q = None
         if not 0 < sample_size <= 1:
             raise ValueError("'sample_size' has to be a float in (0, 1]")
         self._sample_size = sample_size
         if segments and len(quantile) == 1:
-            raise ValueError("If 'segments' is set to `True` then 'quantile'"+
-                             " has to be a list of length >= 2.")
+            raise ValueError("If 'segments' is set to `True` then 'quantile'"
+                             + "has to be a list of length >= 2.")
         self._segments = segments
 
     def nfeatures(self) -> int:
         """Returns the number of features this sieve produces.
-        
+
         :rtype: int
         """
         if self._segments:
@@ -94,7 +96,7 @@ class PPV(FeatureSieve):
 
     def fit(self, X: np.ndarray):
         """Calculates and remembers the quantile(s) of the input data.
-        
+
         :type X: np.ndarray
         """
         self._q = [x[0] for x in self._q_c_input]
@@ -114,7 +116,7 @@ class PPV(FeatureSieve):
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
-        
+
         :type X: np.ndarray
         :returns: array of features
         :rtype: np.ndarray
@@ -123,24 +125,22 @@ class PPV(FeatureSieve):
         if self._q is None:
             raise RuntimeError("Missing call of PPV.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))
-        for i in range(X.shape[0]):
-            if self._segments:
-                for j in range(1, len(self._q)):
-                    result[i, j-1] = np.sum(np.logical_and(
-                                                self._q[j-1] <= X[i],
-                                                X[i] < self._q[j]))
-                    result[i, j-1] /= X.shape[1]
-            else:
-                for j in range(len(self._q)):
-                    result[i, j] = np.sum((X[i] >= self._q[j]))
-                    result[i, j] /= X.shape[1]
-        if self.nfeatures() == 1:
-            return result[:, 0]
+        if self._segments:
+            for j in range(1, len(self._q)):
+                result[:, j-1] = np.sum(np.logical_and(
+                                            self._q[j-1] <= X,
+                                            X < self._q[j]),
+                                        axis=1)
+                result[:, j-1] /= X.shape[1]
+        else:
+            for j in range(len(self._q)):
+                result[:, j] = np.sum((X >= self._q[j]), axis=1)
+                result[:, j] /= X.shape[1]
         return result
 
-    def copy(self):
+    def copy(self) -> "PPV":
         """Returns a copy of this object.
-        
+
         :rtype: PPV
         """
         fs = PPV([x[0] for x in self._q_c_input],
@@ -167,16 +167,16 @@ class PPV(FeatureSieve):
                f"segments={self._segments})"
 
 
-class PPVC(PPV):
+class CPV(PPV):
     """FeatureSieve: Proportion of connected components of positive
     values
-    
-    For a calculated quantile with ``PPVC.fit``, this FeatureSieve
+
+    For a calculated quantile with ``CPV.fit``, this FeatureSieve
     calculates the connected components of the proportion of values in
     a time series that is greater than the calculated quantile.
     This is equivalent to the number of consecutive strips of 1's in
     the array ``X>=quantile``.
-    
+
     :param quantile: Quantile or list of quantiles ``[q_1, ..., q_n]``
         as actual value(s) or probability for quantile calculation
         (e.g. 0.5 for the 0.5-quantile)., defaults to 0.5
@@ -193,58 +193,72 @@ class PPVC(PPV):
         defaults to 0.05
     :type sample_size: float, optional
     """
+
     def __init__(self,
                  quantile: float = 0.5,
                  constant: bool = False,
-                 sample_size: float = 1.0):
+                 sample_size: float = 1.0,
+                 segments: bool = False):
         super().__init__(quantile,
                          constant,
                          sample_size,
-                         False)
+                         segments)
         self.name = "Proportion of connected components of positive values"
 
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
-        
+
         :type X: np.ndarray
         :returns: Array of features.
         :rtype: np.ndarray
         :raises: RuntimeError if ``self.fit`` wasn't called
         """
         if self._q is None:
-            raise RuntimeError("Missing call of PPVC.fit()")
+            raise RuntimeError("Missing call of CPV.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))
-        for i in range(len(self._q)):
-            diff = _increments(np.expand_dims(
-                                (X >= self._q[i]).astype(np.int32),
-                                axis=1))[:, 0, :]
-            # at most X.shape[1]/2 connected components are possible
-            result[:, i] = 2*np.sum(diff == 1, axis=-1) / X.shape[1]
-        if self.nfeatures() == 1:
-            return result[:, 0]
+        n = X.shape[1]
+        if n % 2 == 1:
+            n += 1
+        if self._segments:
+            for j in range(1, len(self._q)):
+                diff = _increments(np.expand_dims(
+                                    np.logical_and(
+                                            self._q[j-1] <= X,
+                                            X < self._q[j]).astype(np.int32),
+                                    axis=1))[:, 0, :]
+                result[:, j-1] = 2 * np.sum(diff == 1, axis=-1) / n
+        else:
+            for j in range(len(self._q)):
+                diff = _increments(np.expand_dims(
+                                    (X >= self._q[j]).astype(np.int32),
+                                    axis=1))[:, 0, :]
+                result[:, j] = 2 * np.sum(diff == 1, axis=-1) / n
         return result
 
-    def copy(self):
+    def copy(self) -> "CPV":
         """Returns a copy of this object.
-        
-        :rtype: PPVC
+
+        :rtype: CPV
         """
-        fs = PPVC([x[0] for x in self._q_c_input],
-                  [x[1] for x in self._q_c_input],
-                  self._sample_size)
+        fs = CPV([x[0] for x in self._q_c_input],
+                 [x[1] for x in self._q_c_input],
+                 self._sample_size,
+                 self._segments)
         return fs
 
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
-        string = f"PPVC [sampling={self._sample_size}"
+        string = f"CPV [sampling={self._sample_size}"
+        if self._segments:
+            string += ", segments"
         string += f"] -> {self.nfeatures()}:"
         for x in self._q_c_input:
-            string += f"\n    > {x[0]} | {x[1]}"
+            string += f"\n   > {x[0]} | {x[1]}"
         return string
 
     def __str__(self) -> str:
-        string = "PPVC(" + \
+        string = "CPV(" + \
                 f"quantile={[x[0] for x in self._q_c_input]}, " + \
                 f"constant={[x[1] for x in self._q_c_input]}, " + \
                 f"sample_size={self._sample_size}, " + \

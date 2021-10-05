@@ -3,20 +3,22 @@ from abc import abstractmethod
 import numpy as np
 
 from fruits.sieving.abstract import FeatureSieve
+from fruits.preparation.backend import _increments
+
 
 class ExplicitSieve(FeatureSieve):
     """Abstract class that has the ability to calculate cutting points
     as indices in the time series based on a given 'coquantile'.
     A (non-scaled) value returned by an explicit sieve always also is a
     value in the original time series.
-    
+
     :param cut: If ``cut`` is an index in the time series array, the
         features are sieved from ``X[:cut]``. If it is a real number in
         ``(0,1)``, the corresponding 'coquantile' will be calculated
         first. This option can also be a list of floats or integers
         which will be treated the same way., defaults to -1
     :type cut: int/float or list of integers/floats, optional
-    :param segments: If set to ``True``, then the cutting indices will 
+    :param segments: If set to ``True``, then the cutting indices will
         be sorted and treated as interval borders and the maximum in
         each interval will be sieved. The left interval border is
         reduced by 1 before slicing. This means that an input of
@@ -26,6 +28,7 @@ class ExplicitSieve(FeatureSieve):
         defaults to ``False``
     :type segments: bool, optional
     """
+
     def __init__(self,
                  cut: int = -1,
                  segments: bool = False,
@@ -38,8 +41,8 @@ class ExplicitSieve(FeatureSieve):
             elif not (c == -1 or (c > 0 and isinstance(c, int))):
                 raise ValueError("Unsupported input for option 'cut'")
         if segments and len(self._cut) == 1:
-            raise ValueError("If 'segments' is set to True, then 'cut'"+
-                             " has to be a list of length >= 2.")
+            raise ValueError("If 'segments' is set to True, then 'cut' "
+                             + "has to be a list of length >= 2.")
         self._segments = segments
 
     def _transform_cuts(self, X: np.ndarray, req: np.ndarray) -> list:
@@ -65,7 +68,7 @@ class ExplicitSieve(FeatureSieve):
 
     def nfeatures(self) -> int:
         """Returns the number of features this sieve produces.
-        
+
         :rtype: int
         """
         if self._segments:
@@ -80,16 +83,17 @@ class ExplicitSieve(FeatureSieve):
 
 class MAX(ExplicitSieve):
     """FeatureSieve: Maximal value
-    
+
     This sieve returns the maximal value for each slice of a time
     series in a given dataset. The slices are determined by the option
     ``cut``.
     For more information on the available arguments, have a look at the
     definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
-    
+
     :type cut: int/float or list of integers/floats, optional
     :type segments: bool, optional
     """
+
     def __init__(self,
                  cut: int = -1,
                  segments: bool = False):
@@ -98,7 +102,7 @@ class MAX(ExplicitSieve):
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
-        
+
         :type X: np.ndarray
         :returns: Array of features.
         :rtype: np.ndarray
@@ -113,8 +117,6 @@ class MAX(ExplicitSieve):
             else:
                 for j in range(len(new_cuts)):
                     result[i, j] = np.max(X[i, :new_cuts[j]])
-        if self.nfeatures() == 1:
-            return result[:, 0]
         return result
 
     def summary(self) -> str:
@@ -127,9 +129,9 @@ class MAX(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self):
+    def copy(self) -> "MAX":
         """Returns a copy of this object.
-        
+
         :rtype: MAX
         """
         fs = MAX(self._cut, self._segments)
@@ -144,16 +146,17 @@ class MAX(ExplicitSieve):
 
 class MIN(ExplicitSieve):
     """FeatureSieve: Minimal value
-    
+
     This sieve returns the minimal value for each slice of a time
     series in a given dataset. The slices are determined by the option
     ``cut``.
     For more information on the available arguments, have a look at the
     definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
-    
+
     :type cut: int/float or list of integers/floats, optional
     :type segments: bool, optional
     """
+
     def __init__(self,
                  cut: int = -1,
                  segments: bool = False):
@@ -162,7 +165,7 @@ class MIN(ExplicitSieve):
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
-        
+
         :type X: np.ndarray
         :returns: Array of features.
         :rtype: np.ndarray
@@ -178,8 +181,6 @@ class MIN(ExplicitSieve):
             else:
                 for j in range(len(new_cuts)):
                     result[i, j] = np.min(X[i, :new_cuts[j]])
-        if self.nfeatures() == 1:
-            return result[:, 0]
         return result
 
     def summary(self) -> str:
@@ -192,9 +193,9 @@ class MIN(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self):
+    def copy(self) -> "MIN":
         """Returns a copy of this object.
-        
+
         :rtype: MIN
         """
         fs = MIN(self._cut, self._segments)
@@ -209,15 +210,16 @@ class MIN(ExplicitSieve):
 
 class END(ExplicitSieve):
     """FeatureSieve: Last value
-    
+
     This FeatureSieve returns the last value of each time series in a
     given dataset.
     For more information on the available arguments, have a look at the
     definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
     The option 'segments' will be ignored in this sieve.
-    
+
     :type cut: int/float or list of integers/floats, optional
     """
+
     def __init__(self,
                  cut: int = -1):
         super().__init__(cut, False, "Last value")
@@ -225,7 +227,7 @@ class END(ExplicitSieve):
     def sieve(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
-        
+
         :type X: np.ndarray
         :returns: Array of features.
         :rtype: np.ndarray
@@ -236,8 +238,6 @@ class END(ExplicitSieve):
             new_cuts = self._transform_cuts(X[i], req[i])
             for j in range(len(new_cuts)):
                 result[i, j] = X[i, new_cuts[j]-1]
-        if self.nfeatures() == 1:
-            return result[:, 0]
         return result
 
     def summary(self) -> str:
@@ -247,9 +247,9 @@ class END(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self):
+    def copy(self) -> "END":
         """Returns a copy of this object.
-        
+
         :rtype: END
         """
         fs = END(self._cut)
@@ -258,4 +258,156 @@ class END(ExplicitSieve):
     def __str__(self) -> str:
         string = "END(" + \
                 f"cut={self._cut})"
+        return string
+
+
+class PIA(ExplicitSieve):
+    """FeatureSieve: Proportion of incremental alteration
+
+    Counts the number of positive changes in the given time series. This
+    is equal to the number of values greater than zero in the increments
+    of the time series. This number will be divided (by default) by the
+    length of the time series.
+    With 'segments' set to ``False``, this sieve is time warping
+    invariant.
+    For more information on the available arguments, have a look at the
+    definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
+
+    :type cut: int/float or list of integers/floats, optional
+    :type segments: bool, optional
+    :param div_on_slice: If set to ``True``, divides the number of
+        positive changes by the length of the slice (see options
+        ``cut, segments``) instead by the length of the whole series.,
+        defaults to False
+    :type div_on_slice: bool, optional
+    """
+
+    def __init__(self,
+                 cut: int = -1,
+                 segments: bool = False,
+                 div_on_slice: bool = False):
+        super().__init__(cut, segments, "Proportion of incremental alteration")
+        self._dos = div_on_slice
+
+    def sieve(self, X: np.ndarray) -> np.ndarray:
+        """Returns the transformed data. See the class definition for
+        detailed information.
+
+        :type X: np.ndarray
+        :returns: Array of features.
+        :rtype: np.ndarray
+        """
+        req = self._get_requisite(X)[:, 0, :]
+        result = np.zeros((X.shape[0], self.nfeatures()))
+        X_inc = _increments(np.expand_dims(X, axis=1))[:, 0, :]
+        for i in range(X.shape[0]):
+            new_cuts = self._transform_cuts(X[i], req[i])
+            if self._segments:
+                for j in range(1, len(new_cuts)):
+                    result[i, j-1] = np.sum(
+                        X_inc[i, new_cuts[j-1]-1:new_cuts[j]] > 0)
+                    if self._dos:
+                        result[i, j-1] /= new_cuts[j] - new_cuts[j-1] + 1
+                    else:
+                        result[i, j-1] /= X.shape[1]
+            else:
+                for j in range(len(new_cuts)):
+                    result[i, j] = np.sum(X_inc[i, :new_cuts[j]] > 0)
+                    if self._dos:
+                        result[i, j] /= new_cuts[j]
+                    else:
+                        result[i, j] /= X.shape[1]
+        return result
+
+    def summary(self) -> str:
+        """Returns a better formatted summary string for the sieve."""
+        string = f"PIA"
+        if self._segments or self._dos:
+            string += " ["
+            if self._segments:
+                string += "segments"
+                if self._dos:
+                    string += ", "
+            if self._dos:
+                string += "div_on_slice"
+            string += "]"
+        string += f" -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
+
+    def copy(self) -> "PIA":
+        """Returns a copy of this object.
+
+        :rtype: PIA
+        """
+        fs = PIA(self._cut, self._segments, self._dos)
+        return fs
+
+    def __str__(self) -> str:
+        string = "PIA(" + \
+                f"cut={self._cut}, " + \
+                f"segments={self._segments}, " + \
+                f"div_on_slice={self._dos})"
+        return string
+
+
+class LCS(ExplicitSieve):
+    """FeatureSieve: Length of coquantile slices
+
+    Returns the length of coquantile slices of each given time series.
+    For more information on the available arguments, have a look at the
+    definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
+
+    :type cut: int/float or list of integers/floats, optional
+    :type segments: bool, optional
+    """
+
+    def __init__(self,
+                 cut: int = -1,
+                 segments: bool = False):
+        super().__init__(cut, segments, "Length of coquantile slices")
+
+    def sieve(self, X: np.ndarray) -> np.ndarray:
+        """Returns the transformed data. See the class definition for
+        detailed information.
+
+        :type X: np.ndarray
+        :returns: Array of features.
+        :rtype: np.ndarray
+        """
+        req = self._get_requisite(X)[:, 0, :]
+        result = np.zeros((X.shape[0], self.nfeatures()))
+        for i in range(X.shape[0]):
+            new_cuts = self._transform_cuts(X[i], req[i])
+            if self._segments:
+                for j in range(1, len(new_cuts)):
+                    result[i, j-1] = new_cuts[j] - new_cuts[j-1] + 1
+            else:
+                for j in range(len(new_cuts)):
+                    result[i, j] = new_cuts[j]
+        return result
+
+    def summary(self) -> str:
+        """Returns a better formatted summary string for the sieve."""
+        string = f"LCS"
+        if self._segments:
+            string += " [segments]"
+        string += f" -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
+
+    def copy(self) -> "LCS":
+        """Returns a copy of this object.
+
+        :rtype: LCS
+        """
+        fs = LCS(self._cut, self._segments)
+        return fs
+
+    def __str__(self) -> str:
+        string = "LCS(" + \
+                f"cut={self._cut}, " + \
+                f"segments={self._segments})"
         return string

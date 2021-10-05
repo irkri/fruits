@@ -9,10 +9,10 @@ fruits.preparation.abstract
    :undoc-members:
    :show-inheritance:
 
-fruits.preparation.backend
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+fruits.preparation.dimension
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: fruits.preparation.backend
+.. automodule:: fruits.preparation.dimension
    :members:
    :undoc-members:
    :show-inheritance:

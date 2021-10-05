@@ -1,12 +1,17 @@
-"""Small python module for the creation/manipulation/reading of
-(possibly artificial) time series data.
+"""Small python module for the creation/manipulation/reading of time
+series data.
 """
 
+import os
+
 import numpy as np
+from scipy.io import arff
+
 
 def _multisine(x, coeff):
     return sum([coeff[i, 0]*np.sin(coeff[i, 1]*x+coeff[i, 2])
                 for i in range(len(coeff))])
+
 
 def multisine(train_size: int = 100,
               test_size: int = 1000,
@@ -35,9 +40,9 @@ def multisine(train_size: int = 100,
     :type used_sines: int, optional
     :param coefficients: The coefficients of the sine functions. A numpy
         array of shape ``(n_classes, used_sines, 3)``.
-        Only use this option if you already know how these coefficients
-        are used. If set to None, random coefficients are used.,
-        defaults to None
+        The third dimension discribes the properties of a single sine
+        function: ``[amplitude, frequency, phaseshift]``.
+        If set to None, random coefficients are used., defaults to None
     :type coefficients: np.ndarray, optional
     :returns: Tuple for the dataset
         ``(X_train, y_train, X_test, y_test)``.
@@ -47,20 +52,21 @@ def multisine(train_size: int = 100,
     train_sizes = [train_size_per_class for i in range(n_classes)]
     remain = train_size - train_size_per_class * n_classes
     while remain > 0:
-        train_sizes[remain%n_classes] += 1
+        train_sizes[remain % n_classes] += 1
         remain -= 1
 
     test_size_per_class = test_size // n_classes
     test_sizes = [test_size_per_class for i in range(n_classes)]
     remain = test_size - test_size_per_class * n_classes
     while remain > 0:
-        test_sizes[remain%n_classes] += 1
+        test_sizes[remain % n_classes] += 1
         remain -= 1
 
     x_range = np.linspace(0, 2*np.pi, num=length)
-    rand_coeff = 2*np.random.rand(n_classes, used_sines, 3)
+    if coefficients is None:
+        coefficients = 2*np.random.rand(n_classes, used_sines, 3)
 
-    models = [np.vectorize(lambda x: _multisine(x, rand_coeff[i]))(x_range) 
+    models = [np.vectorize(lambda x: _multisine(x, coefficients[i]))(x_range)
               for i in range(n_classes)]
 
     X_train = np.zeros((train_size, length))
@@ -83,48 +89,150 @@ def multisine(train_size: int = 100,
             X_test[s+j, :] += np.random.normal(loc=0, scale=0.5, size=length)
             y_test[s+j] = i
         s += n_i
-        
+
     X_train = np.expand_dims(X_train, axis=1)
     X_test = np.expand_dims(X_test, axis=1)
 
     return X_train, y_train, X_test, y_test
 
-def load_dataset(path: str) -> tuple:
+
+def load_dataset(path: str,
+                 univariate: bool = True,
+                 cache: bool = True) -> tuple:
     """Returns a time series dataset that is formatted as a .txt file
     and readable with numpy.
-    
+
     :param path: Path to the dataset. The path has to point to a
         folder 'name' with two files:
         'name_TEST.txt' and 'name_TRAIN.txt' where 'name' is the name of
         the dataset.
     :type path: str
+    :param univariate: If ``True``, the function expects the data to be
+        univariate and readable as ".txt" with numpy. Else, it searches
+        for multivariate ".arff" files to read., defaults to True
+    :type univariate: bool, optional
+    :param cache: If set to ``True``, use cache if exists (as .npy file)
+        or create it if it doesn't. Setting this option to ``False``
+        always reads the .arff files., defaults to True
+    :type cache: bool, optional
     :returns: Tuple (X_train, y_train, X_test, y_test) where X_train
         and X_test are 3-dimensional numpy arrays
     :rtype: tuple
     """
-    dataset = path.split("/")[-1]
-    delim = None
-    with open(f"{path}/{dataset}_TRAIN.txt") as f:
-        if "," in f.readline():
-            delim = ","
-    train_raw = np.loadtxt(f"{path}/{dataset}_TRAIN.txt", delimiter=delim)
-    test_raw = np.loadtxt(f"{path}/{dataset}_TEST.txt", delimiter=delim)
-    X_train = np.nan_to_num(train_raw[:, 1:])
-    y_train = train_raw[:, 0].astype(np.int32)
-    X_test = np.nan_to_num(test_raw[:, 1:])
-    y_test =  test_raw[:, 0].astype(np.int32)
+    if univariate:
+        dataset = path.split("/")[-1]
+        delim = None
+        with open(f"{path}/{dataset}_TRAIN.txt") as f:
+            if "," in f.readline():
+                delim = ","
+        train_raw = np.loadtxt(f"{path}/{dataset}_TRAIN.txt", delimiter=delim)
+        test_raw = np.loadtxt(f"{path}/{dataset}_TEST.txt", delimiter=delim)
+        X_train = train_raw[:, 1:].astype(np.float64)
+        y_train = train_raw[:, 0].astype(np.int32)
+        X_test = test_raw[:, 1:].astype(np.float64)
+        y_test = test_raw[:, 0].astype(np.int32)
 
-    X_train = np.expand_dims(X_train, axis=1)
-    X_test = np.expand_dims(X_test, axis=1)
+        X_train = np.expand_dims(X_train, axis=1)
+        X_test = np.expand_dims(X_test, axis=1)
+
+        return X_train, y_train, X_test, y_test
+
+    name = path.split("/")[-1]
+
+    if cache and os.path.isfile(os.path.join(path, name)+"_XTRAIN.npy"):
+        X_train = np.load(os.path.join(path, name)+"_XTRAIN.npy")
+        y_train = np.load(os.path.join(path, name)+"_yTRAIN.npy")
+        X_test = np.load(os.path.join(path, name)+"_XTEST.npy")
+        y_test = np.load(os.path.join(path, name)+"_yTEST.npy")
+    else:
+        train, _ = arff.loadarff(
+            open(os.path.join(path, name) + "_TRAIN.arff", "r",
+                 encoding="utf8"))
+        test, _ = arff.loadarff(
+            open(os.path.join(path, name) + "_TEST.arff", "r",
+                 encoding="utf8"))
+
+        X_train = np.zeros(
+            (
+                len(train),
+                len(train[0].tolist()[0]),
+                len(train[0].tolist()[0][0]),
+            ),
+            dtype=np.float64
+        )
+        y_train = np.zeros((X_train.shape[0],))
+
+        X_test = np.zeros(
+            (
+                len(test),
+                len(test[0].tolist()[0]),
+                len(test[0].tolist()[0][0]),
+            ),
+            dtype=np.float64
+        )
+        y_test = np.zeros((X_test.shape[0],))
+
+        ys = []
+        for m in range(X_train.shape[0]):
+            X_train[m, :, :] = train[m][0].tolist()
+            if train[m][1] not in ys:
+                ys.append(train[m][1])
+        for m in range(X_test.shape[0]):
+            X_test[m, :, :] = test[m][0].tolist()
+            if test[m][1] not in ys:
+                ys.append(test[m][1])
+
+        ys = {ys[i]: i for i in range(len(ys))}
+        for m in range(X_train.shape[0]):
+            y_train[m] = ys[train[m][1]]
+        for m in range(X_test.shape[0]):
+            y_test[m] = ys[test[m][1]]
+
+        if cache:
+            np.save(os.path.join(path, name)+"_XTRAIN",
+                    X_train)
+            np.save(os.path.join(path, name)+"_yTRAIN",
+                    y_train)
+            np.save(os.path.join(path, name)+"_XTEST",
+                    X_test)
+            np.save(os.path.join(path, name)+"_yTEST",
+                    y_test)
 
     return X_train, y_train, X_test, y_test
+
+
+def nan_to_num(X: np.ndarray, value: float = 0.0):
+    """Sets all NaN values in X to the given value.
+
+    :type X: np.ndarray
+    :type value: float, optional
+    """
+    return np.nan_to_num(X, value)
+
+
+def analyse(X: np.ndarray):
+    """Takes in a three dimensional numpy array containing
+    multidimensional time series and prints out an analysis of the
+    dataset.
+
+    :type X: np.ndarray
+    """
+    string = f"Shape: {X.shape}"
+    print(string)
+    string = f"Mean of means: {X.mean(axis=2)[:, 0].mean(axis=0):.4f}"
+    string += f" +- {X.mean(axis=2)[:, 0].std(axis=0):.2f}"
+    print(string)
+    string = f"Mean of stds: {X.std(axis=2)[:, 0].mean(axis=0):.4f}"
+    string += f" +- {X.std(axis=2)[:, 0].std(axis=0):.2f}"
+    print(string)
+
 
 def implant_stuttering(X: np.ndarray,
                        stutter_length: float = 0.1) -> np.ndarray:
     """Implants some 'stuttering' to a given array of time series.
     That is, at some indices in each time series a value will be
     repeated consecutively a (random) number of times.
-    
+
     :param X: 3-dim array of multidimensional time series.
     :type X: np.ndarray
     :param stutter_length: Proportional number of time steps each time
@@ -171,11 +279,12 @@ def implant_stuttering(X: np.ndarray,
                 prop_index = stindex+stlength
     return X_new
 
+
 def lengthen(X: np.ndarray,
              length: int = 0.1) -> np.ndarray:
     """Lengthens each time series in the given array.
-    
-    :param X: 3-dim array of multidimensional time series.
+
+    :param X: 3-dim array of multidimensional time series
     :type X: np.ndarray
     :param length: Proportional length that will be added to each time
         series as a float > 0., defaults to 0.1

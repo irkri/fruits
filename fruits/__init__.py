@@ -1,4 +1,5 @@
 from fruits.base.fruit import Fruit, FruitBranch
+from fruits.base.builder import build
 
 import fruits.base.callback as callback
 

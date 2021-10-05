@@ -1,61 +1,77 @@
+from typing import Union
+
 import numpy as np
 
 from fruits.preparation.abstract import DataPreparateur
 
+
 class DIL(DataPreparateur):
     """DataPreparateur: Dilation
-    
+
     This preparateur sets some slices in each time series in the
     given dataset to zero. The indices and lengths for those zero
     sequences are chosen randomly.
 
-    :param clusters: Float value between 0 and 1 (incl.). The number of
-        zero strips will be calculated by multiplying
-        ``clusters * X.shape[2]`` in ``self.fit(X)``., defaults to 0.01
-    :type clusters: float, optional
+    :param clusters: If a float value between 0 and 1 (incl.) is given,
+        the number of zero strips will be calculated by multiplying
+        ``clusters * X.shape[2]`` in ``self.fit(X)``.
+        If ``None``, this number will be a random integer between ``1``
+        and ``numpy.floor(X.shape[2] / 10.0) - 1`` instead.,
+        defaults to None
+    :type clusters: Union[float, None], optional
     """
-    def __init__(self,
-                 clusters: float = 0.01):
+
+    def __init__(self, clusters: Union[float, None] = None):
         super().__init__("Dilation")
         self._clusters = clusters
         self._indices = None
         self._lengths = None
-    
+
     def fit(self, X: np.ndarray):
         """Fits the preparateur to the given dataset by randomizing the
         starting points and lengths of the zero strips.
-        
+
         :type X: np.ndarray
         """
-        nclusters = int(self._clusters * X.shape[2])
-        self._indices = sorted(np.random.random_sample(nclusters))
-        self._lengths = []
-        for i in range(len(self._indices)):
-            if i == len(self._indices)-1:
-                b = 1 - self._indices[i]
+        if self._clusters is not None:
+            nclusters = int(self._clusters * X.shape[2])
+        else:
+            upper_bound = int(np.floor(X.shape[2] / 10.0))
+            if upper_bound <= 1:
+                nclusters = 1
             else:
-                b = self._indices[i+1] - self._indices[i]
-            self._lengths.append(b*np.random.random_sample())
-            
+                nclusters = np.random.randint(1, upper_bound)
+        if nclusters >= X.shape[2]:
+            self._indices = np.arange(X.shape[2])
+        else:
+            self._indices = np.sort(np.random.choice(X.shape[2],
+                                                     size=nclusters,
+                                                     replace=False))
+        self._lengths = []
+        for i in range(nclusters):
+            if i == nclusters - 1:
+                max_length = X.shape[2] - self._indices[i]
+            else:
+                max_length = self._indices[i+1] - self._indices[i]
+            self._lengths.append(np.random.randint(1, max_length+1))
+
     def prepare(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed dataset.
-        
+
         :type X: np.ndarray
         :rtype: np.ndarray
         :raises: RuntimeError if self.fit() wasn't called
         """
-        if self._indices is None:
-            raise RuntimeError("Missing call of fit method")
+        if self._indices is None or self._lengths is None:
+            raise RuntimeError("Missing call of self.fit()")
         X_new = X.copy()
         for i in range(len(self._indices)):
-            start = int(self._indices[i] * X.shape[2])
-            length = int(self._lengths[i] * X.shape[2])
-            X_new[:, :, start:start+length] = 0
+            X_new[:, :, self._indices[i]:self._indices[i]+self._lengths[i]] = 0
         return X_new
-    
-    def copy(self):
+
+    def copy(self) -> "DIL":
         """Returns a copy of this preparateur.
-        
+
         :rtype: DIL
         """
         return DIL(self._clusters)
@@ -67,28 +83,24 @@ class DIL(DataPreparateur):
         return f"DIL(clusters={self._clusters})"
 
     def __repr__(self) -> str:
-        return "fruits.preparation.DIL"
+        return "fruits.preparation.filter.DIL"
 
 
 class WIN(DataPreparateur):
     """DataPreparateur: Window
-    
+
     Outside of a certain window the time series is set to zero.
     The window is obtained according to 'quantiles' of a certain
     function of each time series, for example its quadratic variation by
-    calculating increments and getting results from
+    calculating increments on the results from
     ``fruits.core.ISS(X, [SimpleWord("[11]")])``.
-    
+
     :param start: Quantile start; float value between 0 and 1 (incl.).
     :type start: float
     :param end: Quantile end; float value between 0 and 1 (incl.).
     :type end: float
-    :param increments: If True, calculate increments first.
-    :type increments: bool, defaults to True
-    :param word: What word to use for ISS calculation.,
-        defaults to SimpleWord("[11]")
-    :type word: AbstractWord or None, optional
     """
+
     def __init__(self,
                  start: float,
                  end: float):
@@ -96,10 +108,10 @@ class WIN(DataPreparateur):
         self._start = start
         self._end = end
         self._requisite = "INC -> [11]"
-            
+
     def prepare(self, X: np.ndarray) -> np.ndarray:
         """Returns the transformed dataset.
-        
+
         :type X: np.ndarray
         :rtype: np.ndarray
         """
@@ -110,8 +122,12 @@ class WIN(DataPreparateur):
 
         mask = (Q >= self._start) & (Q <= self._end)
         return X * mask
-    
-    def copy(self):
+
+    def copy(self) -> "WIN":
+        """Returns a copy of this preparateur.
+
+        :rtype: WIN
+        """
         return WIN(self._start, self._end)
 
     def __eq__(self, other) -> bool:
@@ -121,54 +137,188 @@ class WIN(DataPreparateur):
                 self._end == other._end)
 
     def __str__(self) -> str:
-        return (f"WIN(start={self._start}, end={self._end})")
+        return f"WIN(start={self._start}, end={self._end})"
 
     def __repr__(self) -> str:
-        return "fruits.preparation.WIN"
+        return "fruits.preparation.filter.WIN"
 
 
 class DOT(DataPreparateur):
     """DataPreparateur: Dotting
-    
-    Keeps every n-th point of a time series while setting everything
-    else to a given value.
-    
-    :param n_prop: Used for calculation of ``n=n_prop*X.shape[2]``.
-        Has to be a float in (0, 1)., defaults to 0.1
-    :type n_prop: float, optional
-    :param value: New value for the other points., defaults to 0
-    :type value: float, optional
+
+    Keeps every ``n``-th point of a time series while setting everything
+    else to zero.
+
+    :param n: If an integer is given, this value will be directly used
+        for the described purpose. If a float between 0 and 1 is given,
+        the actual value for ``n`` will be calculated in ``self.fit``
+        by ``n=n_prop*X.shape[2]``., defaults to 2
+    :type n: Union[int, float], optional
+    :param first: First index to keep. If set to ``None``, the value
+        will be internally set to ``n``. Can be either a float or an
+        integer with the same rules as argument ``n``., defaults to None
+    :type first: Union[int, float, None], optional
     """
-    def __init__(self, n_prop: float = 0.1, value: float = 0):
+
+    def __init__(self,
+                 n: Union[int, float] = 2,
+                 first: Union[int, float, None] = None):
         super().__init__("Dotting")
-        if not 0 < n_prop < 1:
-            raise ValueError("Argument 'n_prop' has to be in interval (0, 1)")
-        self._n_prop = n_prop
-        self._value = value
+        if isinstance(n, float) and not 0 < n < 1:
+            raise ValueError("If n is a float, it has to satisfy 0 < n < 1")
+        elif not isinstance(n, float) and not isinstance(n, int):
+            raise TypeError("n has to be either a float or integer")
+
+        self._n_given = n
+        self._n = None
+
+        if isinstance(first, float) and not 0 < first < 1:
+            raise ValueError("If first is a float, "
+                             + " it has to satisfy 0 < first < 1")
+        elif (not isinstance(first, float)
+              and not isinstance(first, int)
+              and first is not None):
+            raise TypeError("first has to be either a float, integer or None")
+
+        self._first_given = first
+        self._first = None
+
+    def fit(self, X: np.ndarray):
+        """Fits the preparateur to the given dataset by (if necessary)
+        calculating the value of ``n``.
+
+        :type X: np.ndarray
+        """
+        if isinstance(self._n_given, float):
+            self._n = int(self._n_given * X.shape[2])
+            if self._n <= 0:
+                self._n = 1
+        else:
+            if self._n_given >= X.shape[2]:
+                self._n = X.shape[2]
+            else:
+                self._n = self._n_given
+        if isinstance(self._first_given, float):
+            self._first = int(self._first_given * X.shape[2])
+            if self._first <= 0:
+                self._first = 1
+            if self._first >= X.shape[2]:
+                self._first = X.shape[2] - 1
+        elif self._first_given is not None:
+            if self._first_given >= X.shape[2]:
+                self._first = X.shape[2] - 1
+            else:
+                self._first = self._first_given
+        else:
+            self._first = self._n - 1
 
     def prepare(self, X: np.ndarray):
         """Returns the transformed dataset.
-        
+
         :type X: np.ndarray
         :rtype: np.ndarray
         """
-        out = np.ones(X.shape) * self._value
-        n = int(self._n_prop * X.shape[2])
-        if n <= 0:
-            n = 1
-        out[:, :, n-1::n] = X[:, :, n-1::n]
+        if self._n is None:
+            raise RuntimeError("Missing call of self.fit()")
+        out = np.zeros(X.shape)
+        out[:, :, self._first::self._n] = X[:, :, self._first::self._n]
         return out
-    
-    def copy(self):
-        return DOT(self._n_prop, self._value)
+
+    def copy(self) -> "DOT":
+        """Returns a copy of this preparateur.
+
+        :rtype: DOT
+        """
+        return DOT(self._n_given, self._first_given)
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, DOT):
             raise TypeError(f"Cannot compare DOT with type {type(other)}")
-        return (self._n_prop == other._n_prop and self._value == other._value)
+        return ((self._n_given == other._n_given)
+                and (self._first_given == other._first_given))
 
     def __str__(self) -> str:
-        return f"DOT(n_prop={self._n_prop}, value={self._value})"
+        return f"DOT(n={self._n_given}, first={self._first_given})"
 
     def __repr__(self) -> str:
-        return "fruits.preparation.DOT"
+        return "fruits.preparation.filter.DOT"
+
+
+class PDD(DataPreparateur):
+    """DataPreparateur: Proportion-Density-Drop
+
+    Sets values in the given time series to zero. The number of values
+    and their distribution in the time domain is adjustable.
+
+    :param density: A float in ``(0,1]``. A low value translates to a
+        larger gap between the points that are being set to zero.,
+        defaults to 0.1
+    :type density: float, optional
+    :param proportion: Proportion of the length of each time series to
+        drop. Has to be a float in ``(0,1)``., defaults to 0.5
+    :type proportion: float, optional
+    """
+
+    def __init__(self,
+                 density: float = 0.1,
+                 proportion: float = 0.5):
+        super().__init__("Proportion-Density-Drop")
+        if not isinstance(density, float) or not 0.0 < density <= 1.0:
+            raise ValueError("density has to be a float 0 < density <= 1")
+        if not isinstance(proportion, float) or not 0.0 < proportion < 1.0:
+            raise ValueError("proportion has to be a float 0 < proportion < 1")
+
+        self._d_given = density
+        self._p_given = proportion
+        self._indices = None
+        self._width = None
+
+    def fit(self, X: np.ndarray):
+        """Fits the preparateur to the given dataset by calculating the
+        actual values of ``density`` and ``proportion``.
+
+        :type X: np.ndarray
+        """
+        p = int(self._p_given * X.shape[2])
+        if p < 1:
+            p = 1
+        points = int((1.0 - self._d_given) * X.shape[2])
+        if points < 1:
+            points = 1
+        self._width = int(p / points)
+        if points == X.shape[2]-self._width:
+            points -= 1
+        self._indices = np.linspace(0, X.shape[2]-self._width, points,
+                                    dtype="int")
+
+    def prepare(self, X: np.ndarray):
+        """Returns the transformed dataset.
+
+        :type X: np.ndarray
+        :rtype: np.ndarray
+        """
+        if self._indices is None or self._width is None:
+            raise RuntimeError("Missing call of self.fit()")
+        out = X.copy()
+        for i in range(len(self._indices)):
+            out[:, :, self._indices[i]:self._indices[i]+self._width] = 0
+        return out
+
+    def copy(self) -> "PDD":
+        """Returns a copy of this preparateur.
+
+        :rtype: PDD
+        """
+        return PDD(self._d_given, self._p_given)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, PDD):
+            raise TypeError(f"Cannot compare PDD with type {type(other)}")
+        return ((self._d_given == other._d_given)
+                and (self._p_given == other._p_given))
+
+    def __str__(self) -> str:
+        return f"PDD(density={self._d_given}, proportion={self._p_given})"
+
+    def __repr__(self) -> str:
+        return "fruits.preparation.filter.PDD"
