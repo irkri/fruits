@@ -16,8 +16,8 @@ Earlier versions of the named packages could work too, but aren't tested.
 
 ## Execution
 
-There are predefined ``fruits`` configurations to test in the file [configs.py](experiments/configs.py).
-A simple code to execute the experiments on data from [timeseriesclassification.com](https://timeseriesclassification.com) (readable with numpy as .txt format, see the module [tsdata](experiments/tsdata.py)) could be:
+There are predefined ``fruits`` configurations to test in the file [configs.py](/experiments/configs.py).
+A simple code to execute the experiments on data from [timeseriesclassification.com](https://timeseriesclassification.com) (readable with numpy as .txt format, see the module [tsdata](/experiments/tsdata.py)) could be:
 ```python
 from sklearn.preprocessing import StandardScaler
 
@@ -33,4 +33,4 @@ for i, fruit in enumerate(CONFIGS):
     pipeline.produce_output("results_config_" + str(i+1).zfill(2),
                             txt=True, csv=True)
 ```
-The docstrings provided in [experiment.py](experiments/experiment.py), [fruitalyser.py](experiments/fruitalyser.py), [tsdata.py](experiments/tsdata.py) and [comparision.py](experiments/comparision.py) should be enough to get a good understanding of what is possible to do with the defined classes.
+The docstrings provided in [experiment.py](/experiments/experiment.py), [fruitalyser.py](/experiments/fruitalyser.py), [tsdata.py](/experiments/tsdata.py) and [comparision.py](/experiments/comparision.py) should be enough to get a good understanding of what is possible to do with the defined classes.
