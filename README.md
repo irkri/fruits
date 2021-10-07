@@ -9,7 +9,7 @@ __FRUITS__ can be installed on your local machine by using the file [setup.py](s
 ```
 
 ## Documentation
-The documentation of __FRUITS__ can be created by calling `make html` in the [docs](docs) folder. This will need a few dependencies to work. Please install the following packages using `pip` before executing the `make` command.
+The documentation of __FRUITS__ can be created by calling `make html` in the [docs](docs) folder. This will need a few dependencies to work. Please install the following packages using `pip` or `conda` before executing the `make` command.
 - sphinx
 - sphinx_rtd_theme
 
@@ -40,7 +40,7 @@ X_train, y_train, X_test, y_test = ...
 # create a Fruit object
 myfruit = fruits.Fruit("myfruit - Fruit class example")
 
-# add a DataPreparateur to it by using predefined ones from fruits.preparateurs
+# add a DataPreparateur to it by using predefined ones from fruits.preparation
 myfruit.add(fruits.preparation.INC)
 
 # generate SimpleWord objects
