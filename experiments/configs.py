@@ -973,30 +973,30 @@ strawberry.add(fruits.sieving.PPV,
                fruits.sieving.END)
 
 CONFIGS = [
-    # grape01, grape02, grape03,
+    grape01, grape02, grape03,
 
-    # apple01, apple02, apple03, apple04,
+    apple01, apple02, apple03, apple04,
 
-    banana01, banana02, banana03,# banana04, banana05, banana06,
+    banana01, banana02, banana03, banana04, banana05, banana06,
 
-    # plantain01, plantain02, plantain03, plantain04, plantain05, plantain06,
+    plantain01, plantain02, plantain03, plantain04, plantain05, plantain06,
 
-    # orange01, orange02, orange03, orange04,
+    orange01, orange02, orange03, orange04,
 
-    # tangerine01, tangerine02, tangerine03, tangerine04,
+    tangerine01, tangerine02, tangerine03, tangerine04,
 
-    # apricot01, apricot02, apricot03, apricot04, apricot05, apricot06,
-    # apricot07, apricot08,
+    apricot01, apricot02, apricot03, apricot04, apricot05, apricot06,
+    apricot07, apricot08,
 
-    # olive01, olive02, olive03,
+    olive01, olive02, olive03,
 
-    # elderberry01, elderberry02, elderberry03, elderberry04, elderberry05,
+    elderberry01, elderberry02, elderberry03, elderberry04, elderberry05,
 
-    # dragonfruit01, dragonfruit02, dragonfruit03,
+    dragonfruit01, dragonfruit02, dragonfruit03,
 
-    # pineapple01, pineapple02, pineapple03, pineapple04, pineapple05,
+    pineapple01, pineapple02, pineapple03, pineapple04, pineapple05,
 
-    # lychee01, lychee02, lychee03, lychee04, lychee05,
+    lychee01, lychee02, lychee03, lychee04, lychee05,
 
-    # strawberry,
+    strawberry,
 ]
