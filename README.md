@@ -22,7 +22,7 @@ Time series datasets go through different `fruits.FruitBranch` objects within th
 - Calculation of iterated sums: `Word` objects specify which _iterated sums_ should be calculated.<br>
   For example:<br>
   `<[11], ISS(X)>=numpy.cumsum([x^2 for x in X])` is the result of <br>
-  `fruits.core.ISS(X, [fruits.iterators.SimpleWord("[11]")])`<br>
+  `fruits.core.ISS(X, [fruits.words.SimpleWord("[11]")])`<br>
   The module ``fruits.signature`` together with ``fruits.words`` implements the *iterated sums signature* ISS.
   The definition and applications of that signature can be found in [this paper](https://link.springer.com/article/10.1007/s10440-020-00333-x>)
   by Diehl *et al.*.
