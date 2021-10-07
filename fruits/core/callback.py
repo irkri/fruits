@@ -8,13 +8,13 @@ class AbstractCallback(ABC):
     or more of the class methods.
 
     The callback can then be used in a call of
-    :meth:`~fruits.base.fruit.Fruit.transform`.
+    :meth:`fruits.core.fruit.Fruit.transform`.
     """
 
     def on_next_branch(self):
         """Called every time the current
-        :class:`~fruits.base.fruit.FruitBranch` in a
-        :class:`~fruits.base.fruit.Fruit` object is switched.
+        :class:`~fruits.core.fruit.FruitBranch` in a
+        :class:`~fruits.core.fruit.Fruit` object is switched.
         """
         pass
 
@@ -36,7 +36,7 @@ class AbstractCallback(ABC):
 
     def on_iterated_sum(self, X: np.ndarray):
         """Called for every iterated sum calculated for each single
-        :class:`~fruits.core.wording.Word`.
+        :class:`~fruits.words.word.Word`.
 
         :type X: np.ndarray
         """

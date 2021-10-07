@@ -141,7 +141,7 @@ class Fruit:
         if arguments differ from ``None``.
 
         :param kwargs: For possible options, have a look at
-            :meth:`~fruits.core.fruit.FruitBranch.configure`.
+            :meth:`fruits.core.fruit.FruitBranch.configure`.
         :type kwargs: Any
         """
         for branch in self._branches:
@@ -296,11 +296,11 @@ class FruitBranch:
         if arguments differ from ``None``.
 
         :param mode: See
-            :meth:`~fruits.signature.iss.SignatureCalculator.transform`,
+            :meth:`fruits.signature.iss.SignatureCalculator.transform`,
             defaults to None
         :type mode: str, optional
         :param batch_size: See
-            :meth:`~fruits.signature.iss.SignatureCalculator.transform`,
+            :meth:`~ruits.signature.iss.SignatureCalculator.transform`,
             defaults to None
         :type batch_size: int, optional
         :param fit_sample_size: Size of the random time series sample

@@ -12,16 +12,16 @@ FREE_LETTER_TYPE = Callable[[int], BOUND_LETTER_TYPE]
 
 class ExtendedLetter:
     """Class for an extended letter used in words.
-    A :class:`~fruits.core.wording.Word` consists of a number of
+    A :class:`~fruits.words.word.Word` consists of a number of
     extended letters.
     An extended letter is a container that only allows appending
     functions that were decorated with
-    :meth:`~fruits.core.letters.letter`.
+    :meth:`~fruits.words.letters.letter`.
 
     :param letter_string: A string like ``f1(i)f2(j)f3(k)``, where
         ``f1,f2,f3`` are the names of decorated letters and ``i,j,k``
         are integers representing dimensions. For available letters call
-        :meth:`fruits.core.letters.get_available`.
+        :meth:`fruits.words.letters.get_available`.
     :type letter_string: str
     """
 
@@ -35,7 +35,7 @@ class ExtendedLetter:
         """Appends a letter to the ExtendedLetter object.
 
         :param letter: Function that was decorated with
-            :meth:`~fruits.core.letters.letter`.
+            :meth:`~fruits.words.letters.letter`.
         :type letter: callable
         :param int: Dimension of the letter that is going to be used as
             its second argument, if it has one., defaults to 0
@@ -90,12 +90,12 @@ class ExtendedLetter:
         return "["+self._string_repr+"]"
 
     def __repr__(self):
-        return "fruits.core.letters.ExtendedLetter"
+        return "fruits.words.letters.ExtendedLetter"
 
 
 def letter(*args, name: str = None):
     """Decorator for the implementation of a letter appendable to an
-    :class:`fruits.core.letters.ExtendedLetter` object.
+    :class:`~fruits.words.letters.ExtendedLetter` object.
 
     It is possible to implement a new letter by using this decorator.
     This callable (e.g. called ``myletter``) has to have two arguments:
@@ -107,7 +107,7 @@ def letter(*args, name: str = None):
 
     .. code-block:: python
 
-        @fruits.core.letter(name="ReLU")
+        @fruits.words.letter(name="ReLU")
         def myletter(X: np.ndarray, i: int) -> np.ndarray:
             return X[i, :] * (X[i, :]>0)
 
@@ -115,7 +115,7 @@ def letter(*args, name: str = None):
 
     .. code-block:: python
 
-        @fruits.core.letter
+        @fruits.words.letter
 
     Available predefined letters are:
 
@@ -181,7 +181,7 @@ def _get(name: str) -> FREE_LETTER_TYPE:
 
 def get_available() -> List[str]:
     """Returns a list of all available letter names to use in a
-    :class:`fruits.core.letters.ExtendedLetter`.
+    :class:`~fruits.words.letters.ExtendedLetter`.
 
     :rtype: List[str]
     """

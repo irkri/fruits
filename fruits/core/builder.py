@@ -16,7 +16,7 @@ from fruits import sieving
 
 class FruitBuilder(ABC):
     """Abstract class that is inherited by classes which are building
-    :class:`~fruits.base.fruit.Fruit` objects.
+    :class:`~fruits.core.fruit.Fruit` objects.
     """
 
     @abstractmethod
@@ -31,7 +31,7 @@ class FruitBuilder(ABC):
 
 
 class UnivariateFruitBuilder(FruitBuilder):
-    """Class that builds a :class:`~fruits.base.fruit.Fruit` object for
+    """Class that builds a :class:`~fruits.core.fruit.Fruit` object for
     a given multivariate time series dataset.
 
     The returned fruit is expected to be a good candidate for the
@@ -138,7 +138,7 @@ class UnivariateFruitBuilder(FruitBuilder):
 
 
 class MultivariateFruitBuilder(FruitBuilder):
-    """Class that builds a :class:`~fruits.base.fruit.Fruit` object out
+    """Class that builds a :class:`~fruits.core.fruit.Fruit` object out
     of a given multivariate time series dataset.
 
     The returned fruit is expected to be a good candidate for the
@@ -235,7 +235,7 @@ class MultivariateFruitBuilder(FruitBuilder):
 
 
 def build(X_train: np.ndarray) -> Fruit:
-    """Builds a :class:`~fruits.base.fruit.Fruit` object based on a
+    """Builds a :class:`~fruits.core.fruit.Fruit` object based on a
     given time series dataset.
 
     The returned fruit is expected to be a good candidate for the
@@ -243,7 +243,7 @@ def build(X_train: np.ndarray) -> Fruit:
 
     :param X: Time series dataset (preferably the training set).
         This should be a three dimensional numpy array. Check
-        :meth:`~fruits.base.scope.force_input_shape`.
+        :meth:`~fruits.scope.force_input_shape`.
     :type X: np.ndarray
     :rtype: Fruit
     """

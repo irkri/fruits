@@ -9,8 +9,8 @@ from fruits.signature.backend import _fast_ISS, _slow_ISS
 class CachePlan:
     """Class that creates a plan for the efficient calculation of
     iterated sums using the given words. This plan is needed when the
-    mode of an ISSCalculator is set to "extended".
-    The plan removes repetition in calculation.
+    mode of an :class:`~fruits.signature.iss.SignatureCalculator` is set
+    to "extended". The plan removes repetition in calculation.
     """
 
     def __init__(self, words: List[Word]):
@@ -60,6 +60,10 @@ class CachePlan:
 class SignatureCalculation:
     """Object type that is returned by the ``transform()`` method of a
     :class:`~fruits.signature.iss.SignatureCalculator`.
+    This object is an iterable. The elements in the iterator are numpy
+    arrays containing the results of iterated sums. The number of
+    results in one of these arrays is determined by the option
+    ``batch_size``.
     """
 
     def __init__(self,
@@ -74,7 +78,7 @@ class SignatureCalculation:
         self._mode = mode
         self._batch_size = batch_size
 
-    def _transform_simple_word(self, word: Word) -> np.ndarray:
+    def _transform_simple_word(self, word: SimpleWord) -> np.ndarray:
         # transforms all simplewords for faster calculation with a
         # backend function
         simple_word_raw = [el for el in word]
@@ -163,22 +167,26 @@ class SignatureCalculator:
         """
 
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Starts and returns a iterated sums signature calculation.
+        """Starts and returns an iterated sums signature calculation.
 
         :param kwargs: Has to include the argument ``words`` as a list
             of :class:`~fruits.signature.wording.Word` objects.
             Possible optional arguments are:
 
-            - ``batch_size``: Number of words for which the iterated
-                sums are calculated at once when starting the iterator
-                ofthis calculator. This doesn't have to be the same
-                number as the actual number of iterated sums returned.
+            - ``batch_size``: Batch size of the calculaor.
+                Number of words for which the iterated sums are
+                calculated at once when starting the iterator of this
+                calculator. This doesn't have to be the same number as
+                the actual number of iterated sums returned.
                 Default value is -1, which means the results of all
                 words are given at once.
-            - ``mode``: Following options are available.
-                - 'single': Calculates one iterated sum for each given
-                    word.
-                - 'extended': For each given word, the iterated sum for
+            - ``mode``: Mode of the calculator.
+                Following options are available.
+
+                - 'single':
+                    Calculates one iterated sum for each given word.
+                - 'extended':
+                    For each given word, the iterated sum for
                     each sequential combination of extended letters in
                     that word will be calculated. So for a simple word
                     like ``[21][121][1]`` the calculator returns the

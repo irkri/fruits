@@ -102,7 +102,7 @@ def replace_letters(word: Union[Word, List[Word]],
 
     :type word: Union[Word, List[Word]]
     :param letter_gen: Generator that returns functions correctly
-        decorated with :meth:`~fruits.core.letters.letter``.
+        decorated with :meth:`~fruits.words.letters.letter``.
         If the iteration through the generator is stopped, all left
         letters in the word will not be changed.
     :type letter_gen: generator

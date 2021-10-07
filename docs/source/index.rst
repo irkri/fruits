@@ -6,7 +6,7 @@ FRUITS Documentation
    :caption: Contents:
 
    introduction
-   code
+   code/code
 
 Indices and tables
 ==================

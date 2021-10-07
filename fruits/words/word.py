@@ -29,26 +29,26 @@ class Word:
         word = Word()
 
         el01 = ExtendedLetter()
-        el01.append(fruits.signature.letters.simple_letter, 0)
-        el01.append(fruits.signature.letters.simple_letter, 0)
+        el01.append(fruits.words.letters.simple, 0)
+        el01.append(fruits.words.letters.simple, 0)
         el02 = ExtendedLetter()
-        el02.append(fruits.signature.letters.simple_letter, 0)
-        el02.append(fruits.signature.letters.simple_letter, 1)
-        el02.append(fruits.signature.letters.simple_letter, 1)
+        el02.append(fruits.words.letters.simple, 0)
+        el02.append(fruits.words.letters.simple, 1)
+        el02.append(fruits.words.letters.simple, 1)
 
         word.multiply(el01)
         word.multiply(el02)
 
         iterated_sums = fruits.signature.ISS(X, word)
 
-    The result in ``iterated_sums`` is equal to
+    The result in ``iterated_sums`` is (roughly) equal to
 
     .. code-block:: python
 
         numpy.cumsum(numpy.cumsum(X[0, :]**2) * X[0, :]*X[1, :]**2)
 
     which can be simplified using a
-    :class:`~fruits.signature.wording.SimpleWord`: ::
+    :class:`~fruits.words.word.SimpleWord`: ::
 
         fruits.signature.ISS(X, SimpleWord("[11][122]"))
 
