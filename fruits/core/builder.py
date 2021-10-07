@@ -3,10 +3,10 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from fruits.base.fruit import Fruit
-from fruits.base.scope import force_input_shape
-from fruits.core.wording import Word, SimpleWord
-from fruits.core.generation import simplewords_by_weight
+from fruits.core.fruit import Fruit
+from fruits.scope import force_input_shape
+from fruits.words.word import Word, SimpleWord
+from fruits.words.creation import simplewords_by_weight
 
 from fruits.preparation.abstract import DataPreparateur
 from fruits.sieving.abstract import FeatureSieve
@@ -56,13 +56,13 @@ class UnivariateFruitBuilder(FruitBuilder):
         fruit.add(preparation.transform.INC)
         fruit.add(self._choose_preparateurs("single", length))
         fruit.add(leadingwords)
-        fruit.branch().calculator.mode = mode
+        fruit.branch().configure(mode=mode)
         fruit.add(self._choose_sieves("small"))
 
         fruit.fork()
         fruit.add(self._choose_preparateurs("single", length))
         fruit.add(leadingwords)
-        fruit.branch().calculator.mode = mode
+        fruit.branch().configure(mode=mode)
         fruit.add(self._choose_sieves("small"))
 
         smallwords, mode = self._choose_words("small")
@@ -72,13 +72,13 @@ class UnivariateFruitBuilder(FruitBuilder):
             fruit.add(preparation.transform.INC)
             fruit.add(fltr)
             fruit.add(smallwords)
-            fruit.branch().calculator.mode = mode
+            fruit.branch().configure(mode=mode)
             fruit.add(self._choose_sieves("small"))
 
             fruit.fork()
             fruit.add(fltr)
             fruit.add(smallwords)
-            fruit.branch().calculator.mode = mode
+            fruit.branch().configure(mode=mode)
             fruit.add(self._choose_sieves("small"))
 
         return fruit
@@ -162,12 +162,12 @@ class MultivariateFruitBuilder(FruitBuilder):
 
         fruit.add(preparation.transform.INC)
         fruit.add(words)
-        fruit.branch().calculator.mode = mode
+        fruit.branch().configure(mode=mode)
         fruit.add(sieves)
 
         fruit.fork()
         fruit.add(words)
-        fruit.branch().calculator.mode = mode
+        fruit.branch().configure(mode=mode)
         fruit.add(sieves)
 
         return fruit

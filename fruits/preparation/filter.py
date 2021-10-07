@@ -1,8 +1,9 @@
-from typing import Union
+from typing import Union, List
 
 import numpy as np
 
 from fruits.preparation.abstract import DataPreparateur
+from fruits._backend import _coquantile
 
 
 class DIL(DataPreparateur):
@@ -24,10 +25,10 @@ class DIL(DataPreparateur):
     def __init__(self, clusters: Union[float, None] = None):
         super().__init__("Dilation")
         self._clusters = clusters
-        self._indices = None
-        self._lengths = None
+        self._indices: np.ndarray
+        self._lengths: List[int]
 
-    def fit(self, X: np.ndarray):
+    def fit(self, X: np.ndarray, **kwargs) -> None:
         """Fits the preparateur to the given dataset by randomizing the
         starting points and lengths of the zero strips.
 
@@ -55,14 +56,14 @@ class DIL(DataPreparateur):
                 max_length = self._indices[i+1] - self._indices[i]
             self._lengths.append(np.random.randint(1, max_length+1))
 
-    def prepare(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed dataset.
 
         :type X: np.ndarray
         :rtype: np.ndarray
         :raises: RuntimeError if self.fit() wasn't called
         """
-        if self._indices is None or self._lengths is None:
+        if not hasattr(self, "_indices") or not hasattr(self, "_lengths"):
             raise RuntimeError("Missing call of self.fit()")
         X_new = X.copy()
         for i in range(len(self._indices)):
@@ -107,21 +108,23 @@ class WIN(DataPreparateur):
         super().__init__("Window")
         self._start = start
         self._end = end
-        self._requisite = "INC -> [11]"
 
-    def prepare(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed dataset.
 
         :type X: np.ndarray
         :rtype: np.ndarray
         """
-        Q = self._get_requisite(X)
-
-        maxima = np.expand_dims(np.max(Q, axis=2), axis=-1)
-        Q = Q / maxima
-
-        mask = (Q >= self._start) & (Q <= self._end)
-        return X * mask
+        coq_start = _coquantile(X.astype(np.float64), self._start)
+        coq_end = _coquantile(X.astype(np.float64), self._end)
+        print(coq_start, coq_end)
+        result = np.zeros_like(X)
+        for i in range(X.shape[0]):
+            for j in range(X.shape[1]):
+                result[i, j, coq_start[i]-1:coq_end[i]] = (
+                    X[i, j, coq_start[i]-1:coq_end[i]]
+                )
+        return result
 
     def copy(self) -> "WIN":
         """Returns a copy of this preparateur.
@@ -170,7 +173,7 @@ class DOT(DataPreparateur):
             raise TypeError("n has to be either a float or integer")
 
         self._n_given = n
-        self._n = None
+        self._n: int
 
         if isinstance(first, float) and not 0 < first < 1:
             raise ValueError("If first is a float, "
@@ -181,9 +184,9 @@ class DOT(DataPreparateur):
             raise TypeError("first has to be either a float, integer or None")
 
         self._first_given = first
-        self._first = None
+        self._first: int
 
-    def fit(self, X: np.ndarray):
+    def fit(self, X: np.ndarray, **kwargs) -> None:
         """Fits the preparateur to the given dataset by (if necessary)
         calculating the value of ``n``.
 
@@ -212,13 +215,13 @@ class DOT(DataPreparateur):
         else:
             self._first = self._n - 1
 
-    def prepare(self, X: np.ndarray):
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed dataset.
 
         :type X: np.ndarray
         :rtype: np.ndarray
         """
-        if self._n is None:
+        if not hasattr(self, "_n") or not hasattr(self, "_first"):
             raise RuntimeError("Missing call of self.fit()")
         out = np.zeros(X.shape)
         out[:, :, self._first::self._n] = X[:, :, self._first::self._n]
@@ -270,10 +273,10 @@ class PDD(DataPreparateur):
 
         self._d_given = density
         self._p_given = proportion
-        self._indices = None
-        self._width = None
+        self._indices: np.ndarray
+        self._width: int
 
-    def fit(self, X: np.ndarray):
+    def fit(self, X: np.ndarray, **kwargs) -> None:
         """Fits the preparateur to the given dataset by calculating the
         actual values of ``density`` and ``proportion``.
 
@@ -291,13 +294,13 @@ class PDD(DataPreparateur):
         self._indices = np.linspace(0, X.shape[2]-self._width, points,
                                     dtype="int")
 
-    def prepare(self, X: np.ndarray):
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed dataset.
 
         :type X: np.ndarray
         :rtype: np.ndarray
         """
-        if self._indices is None or self._width is None:
+        if not hasattr(self, "_width") or not hasattr(self, "_indices"):
             raise RuntimeError("Missing call of self.fit()")
         out = X.copy()
         for i in range(len(self._indices)):

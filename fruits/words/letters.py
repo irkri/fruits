@@ -26,8 +26,8 @@ class ExtendedLetter:
     """
 
     def __init__(self, letter_string: str = ""):
-        self._letters = []
-        self._dimensions = []
+        self._letters: List[FREE_LETTER_TYPE] = []
+        self._dimensions: List[int] = []
         self._string_repr = ""
         self.append_from_string(letter_string)
 
@@ -85,9 +85,6 @@ class ExtendedLetter:
 
     def __getitem__(self, i: int) -> BOUND_LETTER_TYPE:
         return self._letters[i](self._dimensions[i])
-
-    def __copy__(self) -> "ExtendedLetter":
-        return self.copy()
 
     def __str__(self) -> str:
         return "["+self._string_repr+"]"
@@ -200,7 +197,7 @@ def _configure_letter(func: BOUND_LETTER_TYPE, name: str):
     func.__dict__[LETTER_NAME] = name
 
 
-def _letter_configured(func: BOUND_LETTER_TYPE) -> bool:
+def _letter_configured(func: FREE_LETTER_TYPE) -> bool:
     # checks if the given callable is a letter
     if (LETTER_SIGNATURE in func.__dict__
             and LETTER_NAME in func.__dict__

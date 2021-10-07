@@ -15,7 +15,7 @@ class ONE(DataPreparateur):
     def __init__(self):
         super().__init__("One")
 
-    def prepare(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed dataset.
 
         :type X: np.ndarray
@@ -55,11 +55,11 @@ class DIM(DataPreparateur):
     :type f: Callable
     """
 
-    def __init__(self, f: Callable[np.ndarray, np.ndarray]):
+    def __init__(self, f: Callable[[np.ndarray], np.ndarray]):
         super().__init__("Dimension Creator")
         self._function = f
 
-    def prepare(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed dataset.
 
         :type X: np.ndarray

@@ -1,13 +1,13 @@
 import inspect
-from typing import List, Union
+from typing import List, Union, Set, Any
 
 import numpy as np
 
-from fruits.requisites import RequisiteContainer
-from fruits.base.scope import force_input_shape
-from fruits.base.callback import AbstractCallback
-from fruits.core.iss import ISSCalculator
-from fruits.core.wording import Word
+from fruits.cache import Cache, CoquantileCache
+from fruits.scope import force_input_shape, FitTransform
+from fruits.core.callback import AbstractCallback
+from fruits.signature.iss import SignatureCalculator, CachePlan
+from fruits.words.word import Word
 from fruits.sieving.abstract import FeatureSieve
 from fruits.preparation.abstract import DataPreparateur
 
@@ -15,50 +15,53 @@ from fruits.preparation.abstract import DataPreparateur
 class Fruit:
     """Feature Extractor using iterated sums.
 
-    A Fruit object consists of a number of ``FruitBranch`` objects.
+    A Fruit consists of a number of
+    :class:`~fruits.core.fruit.FruitBranch` objects.
     At the end of the pipeline, each branch returns their own features
     and they will be concatenated by this class.
 
-    A simple example (using one ``FruitBranch``):
+    A simple example (using two branches):
 
     .. code-block:: python
 
         fruit = fruits.Fruit("My Fruit")
         # optional: add preparateurs for preprocessing
-        fruit.add(fruits.preparation.INC(zero_padding=False))
+        fruit.add(fruits.preparation.INC)
         # add words for iterated sums calculation
-        fruit.add(fruits.core.generation.simplewords_by_degree(2, 2, 1))
+        fruit.add(fruits.words.creation.simplewords_by_weight(4))
         # choose sieves
         fruit.add(fruits.sieving.PPV(0.5))
-        fruit.add(fruits.sieving.MAX)
-        fruit.add(fruits.sieving.MIN)
         fruit.add(fruits.sieving.END)
 
-        # transform time series dataset
+        # add a new branch without INC
+        fruit.fork()
+        fruit.add(fruits.words.creation.simplewords_by_weight(4))
+        fruit.add(fruits.sieving.PPV(0.5))
+        fruit.add(fruits.sieving.END)
+
+        # configure the fruit
+        fruit.configure(mode="extended")
+
+        # fit the fruit on a time series dataset
         fruit.fit(X_train)
+        # transform the dataset
         X_train_transformed = fruit.transform(X_train)
         X_test_tranformed = fruit.transform(X_test)
 
         # use the transformed results (features) in a classifier
         ...
 
-    The above defined ``fruit`` will result in ``6*4=24`` features per
-    time series.
-
-    Calling ``add(...)`` on a ``Fruit`` object always calls
-    ``branch.add(...)`` where ``branch`` is the currently selected
-    ``FruitBranch`` in this object. What branch is selected can be
-    changed by calling ``self.switch_branch(index)`` or forking a new
-    branch with ``self.fork()``.
+    The ``fruit`` above will result in ``2*8*2=32`` features per time
+    series.
     """
 
     def __init__(self, name: str = ""):
-        self.name = name
+        self.name: str = name
         # list of FruitBranches
-        self._branches = []
+        self._branches: List[FruitBranch] = []
         # pointer for the current branch index
-        self._cbi = None
-        self._fitted = False
+        self._cbi: int = 0
+        self._fitted: bool = False
 
     @property
     def name(self) -> str:
@@ -108,22 +111,21 @@ class Fruit:
             raise IndexError("Index has to be in [0, len(self.branches()))")
         self._cbi = index
 
-    def add(self, *objects: Union[DataPreparateur, Word, FeatureSieve]):
-        """Adds one or multiple object(s) to the `currently selected`
+    def add(self, *objects: Union[FitTransform, Word, type]):
+        """Adds one or multiple object(s) to the currently selected
         branch.
-        These objects can be one of the following types:
 
-        - :class:`~fruits.preparation.abstract.DataPreparateur`
-        - :class:`~fruits.core.wording.Word`
-        - :class:`~fruits.sieving.abstract.FeatureSieve`
+        :param objects: One or more objects of the following types:
 
-        :type objects: Object of mentioned type(s) or iterable object
-            containing multiple objects of mentioned type(s).
-        :raises: TypeError if one of the objects has an unknown type
+            - :class:`~fruits.preparation.abstract.DataPreparateur`
+            - :class:`~fruits.words.word.Word`
+            - :class:`~fruits.sieving.abstract.FeatureSieve`
+
+        :type objects: Union[FitTransform, Word]
         """
         if len(self._branches) == 0:
             self.fork()
-        self._branches[self._cbi].add(objects)
+        self._branches[self._cbi].add(*objects)
         self._fitted = False
 
     def nfeatures(self) -> int:
@@ -134,21 +136,27 @@ class Fruit:
         """
         return sum([branch.nfeatures() for branch in self._branches])
 
-    def fit(self, X: np.ndarray, sample_size: Union[float, int] = 1):
+    def configure(self, **kwargs: Any):
+        """Makes changes to the default configuration of a all branches
+        if arguments differ from ``None``.
+
+        :param kwargs: For possible options, have a look at
+            :meth:`~fruits.core.fruit.FruitBranch.configure`.
+        :type kwargs: Any
+        """
+        for branch in self._branches:
+            branch.configure(**kwargs)
+
+    def fit(self, X: np.ndarray):
         """Fits all branches to the given data.
 
         :param X: (Multidimensional) time series dataset as an array
             of three dimensions. Have a look at
-            ``fruits.base.scope.force_input_shape``.
+            :meth:`~fruits.scope.force_input_shape`.
         :type X: np.ndarray
-        :param sample_size: Size of the random time series sample that
-            is used for fitting. This is represented as a float which
-            will be multiplied by ``X.shape[0]`` or ``1`` for one random
-            time series., defaults to 1
-        :type sample_size: Union[float, int], optional
         """
         for branch in self._branches:
-            branch.fit(X, sample_size=sample_size)
+            branch.fit(X)
         self._fitted = True
 
     def transform(self, X: np.ndarray,
@@ -158,11 +166,12 @@ class Fruit:
 
         :param X: (Multidimensional) time series dataset as an array
             of three dimensions. Have a look at
-            ``fruits.base.scope.force_input_shape``.
+            :meth:`~fruits.scope.force_input_shape`.
         :type X: np.ndarray
         :param callbacks: List of callbacks. To write your own callback,
-            override the class ``fruits.callback.AbstractCallback``.,
-            defaults to empty list
+            override the class
+            :class:`~fruits.core.callback.AbstractCallback`.,
+            defaults to None
         :type callbacks: List[AbstractCallback], optional
         :rtype: np.ndarray
         :raises: RuntimeError if Fruit.fit wasn't called
@@ -228,69 +237,84 @@ class Fruit:
             copy_.fork(branch.deepcopy())
         return copy_
 
-    def __copy__(self) -> "Fruit":
-        return self.copy()
-
-    def __deepcopy__(self) -> "Fruit":
-        return self.deepcopy()
-
 
 class FruitBranch:
-    """One branch for a Fruit object.
+    """One branch of a Fruit object.
 
     A FruitBranch object extracts values from time series data that are
     somehow representative of the input data.
-    The user can customize any of the following three steps the
-    extractor is going to do in order to get the so called features.
+    The user can customize any of the following three steps.
 
-    Preparing data:
-    Apply functions at the start of the extraction procedure.
-    There are many so called
-    :class:`~fruits.preparation.abstract.DataPreparateur` objects in
-    fruits available for preprocessing.
-    The preparateurs will be applied sequentially to the input data.
+        - Preparing data:
+            Apply functions at the start of the extraction procedure.
+            There are many so called
+            :class:`~fruits.preparation.abstract.DataPreparateur`
+            objects in fruits available for preprocessing. The
+            preparateurs will be applied sequentially to the input data.
 
-    Calculating Iterated Sums:
-    The preprocessed data is now used to calculate the iterated sums
-    signature for different :class:`~fruits.core.wording.Word` objects
-    the user can specify.
+        - Calculating Iterated Sums:
+            The preprocessed data is now used to calculate the iterated
+            sums signature for different
+            :class:`~fruits.words.word.Word` objects the user can
+            specify.
 
-    Extracting Features:
-    Each :class:`~fruits.sieving.abstract.FeatureSieve` added to the
-    branch will be fitted on the iterated sums from the previous step.
-    The branch then returns an array of numbers (the transformed results
-    from those sieves), i.e. the features for each time series.
+        - Extracting Features:
+            Each :class:`~fruits.sieving.abstract.FeatureSieve` added to
+            the branch will be fitted on the iterated sums from the
+            previous step. The branch then returns an array of numbers
+            (the transformed results from those sieves), i.e. the
+            features for each time series.
     """
 
     def __init__(self):
         # lists of used classes for data processing
-        self._preparateurs = []
-        self._words = []
-        self._sieves = []
+        self._preparateurs: list = []
+        self._words: list = []
+        self._sieves: list = []
 
-        # calculator used for the ISS calculation
-        self._calculator = ISSCalculator()
-        self._calculator.batch_size = 1
+        # calculator options used in the ISS calculation
+        self._calculator_options: dict = {"batch_size": 1, "mode": "single"}
 
         # list with inner lists containing sieves
         # all sieves in one list are trained on one specific output
         # of an ISS-result
-        self._sieves_extended = []
+        self._sieves_extended: list = []
 
-        # bool variable that is True if the FruitBranch is fitted
-        self._fitted = False
+        # configurations for fitting
+        self._fitted: bool = False
+        self._fit_sample_size: Union[float, int] = 1
 
-        # list of calculations that are shared among sieves
-        self._sieve_prerequisites = None
+        # cache that is calculated at fitting and also used in the
+        # transformation process
+        self._cache: Cache
 
-    @property
-    def calculator(self):
-        """Returns the used calculator for the iterated sums. This
-        for example allows setting the mode used in the calculation.
+    def configure(self,
+                  mode: str = None,
+                  batch_size: int = None,
+                  fit_sample_size: Union[float, int] = None):
+        """Makes changes to the default configuration of a fruit branch
+        if arguments differ from ``None``.
 
-        :rtype: ISSCalculator
+        :param mode: See
+            :meth:`~fruits.signature.iss.SignatureCalculator.transform`,
+            defaults to None
+        :type mode: str, optional
+        :param batch_size: See
+            :meth:`~fruits.signature.iss.SignatureCalculator.transform`,
+            defaults to None
+        :type batch_size: int, optional
+        :param fit_sample_size: Size of the random time series sample
+            that is used for fitting. This is represented as a float
+            which will be multiplied by ``X.shape[0]`` or ``1`` for one
+            random time series., defaults to 1
+        :type fit_sample_size: Union[float, int]
         """
-        return self._calculator
+        if mode is not None:
+            self._calculator_options["mode"] = mode
+        if batch_size is not None:
+            self._calculator_options["batch_size"] = batch_size
+        if fit_sample_size is not None:
+            self._fit_sample_size = fit_sample_size
 
     def add_preparateur(self, preparateur: DataPreparateur):
         """Adds a preparateur to the branch.
@@ -356,27 +380,23 @@ class FruitBranch:
         return self._sieves
 
     def clear_sieves(self):
-        """Removes all feature sieves that were added to this branch.
-        """
+        """Removes all feature sieves that were added to this branch."""
         self._sieves = []
         self._sieve_prerequisites = None
         self._sieves_extended = []
         self._fitted = False
 
-    def add(self, *objects: Union[DataPreparateur, Word, FeatureSieve]):
+    def add(self, *objects: Union[FitTransform, Word, type]):
         """Adds one or multiple object(s) to the branch.
-        These objects can be of type:
 
-        - :class:`~fruits.preparation.abstract.DataPreparateur`
-        - :class:`~fruits.core.wording.Word`
-        - :class:`~fruits.sieving.abstract.FeatureSieve`
+        :type objects: One or more objects of the following types:
 
-        :type objects: Object(s) of mentioned type(s) or iterable object
-            containing multiple objects of mentioned type(s).
-        :raises: TypeError if one of the objects has an unknown type
+            - :class:`~fruits.preparation.abstract.DataPreparateur`
+            - :class:`~fruits.words.word.Word`
+            - :class:`~fruits.sieving.abstract.FeatureSieve`
         """
-        objects = np.array(objects, dtype=object).flatten()
-        for obj in objects:
+        objects_flattened = np.array(objects, dtype=object).flatten()
+        for obj in objects_flattened:
             if inspect.isclass(obj):
                 obj = obj()
             if isinstance(obj, DataPreparateur):
@@ -398,6 +418,7 @@ class FruitBranch:
         self.clear_preparateurs()
         self.clear_words()
         self.clear_sieves()
+        self._calculator_options = {"batch_size": 1, "mode": "single"}
 
     def nfeatures(self) -> int:
         """Returns the total number of features the current
@@ -405,8 +426,18 @@ class FruitBranch:
 
         :rtype: int
         """
-        return (sum([s.nfeatures() for s in self._sieves])
-                * self.calculator._n_iterated_sums(self._words))
+        if self._calculator_options["mode"] == "extended":
+            return (
+                sum([s.nfeatures() for s in self._sieves])
+                * CachePlan(self._words).n_iterated_sums(
+                    list(range(len(self._words)))
+                  )
+            )
+        else:
+            return (
+                sum([s.nfeatures() for s in self._sieves])
+                * len(self._words)
+            )
 
     def _compile(self):
         # checks if the FruitBranch is configured correctly and ready
@@ -416,57 +447,61 @@ class FruitBranch:
         if not self._sieves:
             raise RuntimeError("No FeatureSieve objects specified")
 
-    def _collect_requisites(self):
-        # collects requisites of all added preparateurs and sieves
+    def _collect_cache_keys(self) -> Set[str]:
+        # collects cache keys of all FitTransformers in the branch
+        keys: Set[str] = set()
         for prep in self._preparateurs:
-            if (req := prep._requisite) is not None:
-                self._requisite_container.register(req)
-                prep._set_requisite_container(self._requisite_container)
+            prep_keys = prep._get_cache_keys()
+            if 'coquantile' in prep_keys:
+                keys = keys.union(prep_keys['coquantile'])
         for sieve in self._sieves:
-            if (req := sieve._requisite) is not None:
-                self._requisite_container.register(req)
-                sieve._set_requisite_container(self._requisite_container)
+            sieve_keys = sieve._get_cache_keys()
+            if 'coquantile' in sieve_keys:
+                keys = keys.union(sieve_keys['coquantile'])
+        return keys
 
-    def _select_fit_sample(self, X, sample_size) -> np.ndarray:
+    def _get_cache(self, X: np.ndarray):
+        # returns the already processed cache needed in this branch
+        self._cache = CoquantileCache()
+        self._cache.process(X, list(self._collect_cache_keys()))
+
+    def _select_fit_sample(self, X: np.ndarray) -> np.ndarray:
         # returns a sample of the data used for fitting
-        if isinstance(sample_size, int) and sample_size == 1:
+        if (isinstance(self._fit_sample_size, int)
+                and self._fit_sample_size == 1):
             ind = np.random.randint(0, X.shape[0])
             return X[ind:ind+1, :, :]
         else:
-            s = int(sample_size*X.shape[0])
+            s = int(self._fit_sample_size * X.shape[0])
             if s < 1:
                 s = 1
             indices = np.random.choice(X.shape[0], size=s, replace=False)
             return X[indices, :, :]
 
-    def fit(self, X: np.ndarray, sample_size: Union[float, int] = 1):
+    def fit(self, X: np.ndarray):
         """Fits the branch to the given dataset. What this action
         explicitly does depends on the FruitBranch configuration.
 
         :param X: (Multidimensional) time series dataset as an array
             of three dimensions. Have a look at
-            :meth:`fruits.base.scope.force_input_shape`.
+            :meth:`~fruits.scope.force_input_shape`.
         :type X: np.ndarray
-        :param sample_size: Size of the random time series sample that
-            is used for fitting. This is represented as a float which
-            will be multiplied by ``X.shape[0]`` or ``1`` for one random
-            time series., defaults to 1
-        :type sample_size: Union[float, int], optional
-        :raises: ValueError if ``X.ndims > 3``
         """
         self._compile()
 
-        self._requisite_container = RequisiteContainer()
-        self._collect_requisites()
-        self._requisite_container.process(force_input_shape(X))
-        prepared_data = self._select_fit_sample(X, sample_size)
+        self._get_cache(X)
+        prepared_data = self._select_fit_sample(X)
         for prep in self._preparateurs:
             prep.fit(prepared_data)
-            prepared_data = prep.prepare(prepared_data)
+            prepared_data = prep.transform(prepared_data, cache=self._cache)
 
         self._sieves_extended = []
-        self.calculator.start(prepared_data, self._words)
-        for iterated_data in self.calculator:
+        iss_calculations = SignatureCalculator().transform(
+            prepared_data,
+            words=self._words,
+            **self._calculator_options
+        )[0]
+        for iterated_data in iss_calculations:
             iterated_data = iterated_data.reshape(iterated_data.shape[0]
                                                   * iterated_data.shape[1],
                                                   iterated_data.shape[2])
@@ -483,24 +518,23 @@ class FruitBranch:
 
         :param X: (Multidimensional) time series dataset as an array
             of three dimensions. Have a look at
-            ``fruits.base.scope.force_input_shape``.
+            :meth:`~fruits.scope.force_input_shape`.
         :type X: np.ndarray
         :param callbacks: List of callbacks. To write your own callback,
-            override the class ``fruits.callback.AbstractCallback``.,
-            defaults to empty list
+            override the class
+            :class:`~fruits.core.callback.AbstractCallback`.,
+            defaults to []
         :type callbacks: List[AbstractCallback], optional
         :rtype: np.ndarray
-        :raises: ValueError if ``X.ndims > 3``
-        :raises: RuntimeError if FruitBranch.fit wasn't called
+        :raises: RuntimeError if ``self.fit`` wasn't called
         """
         if not self._fitted:
             raise RuntimeError("Missing call of self.fit")
 
-        self._requisite_container.clear()
-        self._requisite_container.process(X)
+        self._get_cache(X)
         prepared_data = force_input_shape(X)
         for prep in self._preparateurs:
-            prepared_data = prep.prepare(prepared_data)
+            prepared_data = prep.transform(prepared_data, cache=self._cache)
             for callback in callbacks:
                 callback.on_preparateur(prepared_data)
         for callback in callbacks:
@@ -509,16 +543,22 @@ class FruitBranch:
         sieved_data = np.zeros((prepared_data.shape[0],
                                 self.nfeatures()))
         k = 0
-        self.calculator.start(prepared_data, self._words)
-        for i, iterated_data in enumerate(self.calculator):
+        iss_calculations = SignatureCalculator().transform(
+            prepared_data,
+            words=self._words,
+            **self._calculator_options
+        )[0]
+        for i, iterated_data in enumerate(iss_calculations):
             for callback in callbacks:
                 callback.on_iterated_sum(iterated_data)
-            for j, sieve in enumerate(self._sieves_extended[i]):
+            for sieve in self._sieves_extended[i]:
                 nf = sieve.nfeatures()
                 new_features = nf * iterated_data.shape[1]
                 for it in range(iterated_data.shape[1]):
-                    sieved_data[:, k+it*nf:k+(it+1)*nf] = \
-                            sieve.sieve(iterated_data[:, it, :])
+                    sieved_data[:, k+it*nf:k+(it+1)*nf] = sieve.transform(
+                        iterated_data[:, it, :],
+                        cache=self._cache,
+                    )
                 for callback in callbacks:
                     callback.on_sieve(sieved_data[k:k+new_features])
                 k += new_features
@@ -532,7 +572,7 @@ class FruitBranch:
 
         :param X: (Multidimensional) time series dataset as an array
             of three dimensions. Have a look at
-            ``fruits.base.scope.force_input_shape``.
+            `:meth:`~fruits.scope.force_input_shape`.
         :type X: np.ndarray
         :returns: Array of features.
         :rtype: np.ndarray
@@ -605,11 +645,5 @@ class FruitBranch:
             copy_.add(iterator.copy())
         for sieve in self._sieves:
             copy_.add(sieve.copy())
-        copy_._calculator = self.calculator.copy()
+        copy_._calculator_options = self._calculator_options.copy()
         return copy_
-
-    def __copy__(self) -> "FruitBranch":
-        return self.copy()
-
-    def __deepcopy__(self) -> "FruitBranch":
-        return self.deepcopy()

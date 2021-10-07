@@ -2,9 +2,8 @@ from typing import List, Union
 
 import numpy as np
 
-from fruits.base.scope import force_input_shape
-from fruits.core.wording import Word, SimpleWord
-from fruits.core.backend import _fast_ISS, _slow_ISS
+from fruits.words.word import Word, SimpleWord
+from fruits.signature.backend import _fast_ISS, _slow_ISS
 
 
 class CachePlan:
@@ -16,7 +15,6 @@ class CachePlan:
 
     def __init__(self, words: List[Word]):
         self._words = words
-
         self._create_plan()
 
     def _create_plan(self):
@@ -59,63 +57,24 @@ class CachePlan:
         return sum(self._plan[i] for i in word_indices)
 
 
-class ISSCalculator:
-    """Class that is responsible for managing the calculation of
-    iterated sums.
-
-    :param mode: Mode used for the calculation. Has to be either 'single'
-        or 'extended'. It is a public property of the calculator.
-        Specifying the mode used in a :class:`~fruits.base.fruit.Fruit`
-        can be done by setting ``fruit.calculator.mode``.,
-        defaults to "single"
-    :type mode: str, optional
+class SignatureCalculation:
+    """Object type that is returned by the ``transform()`` method of a
+    :class:`~fruits.signature.iss.SignatureCalculator`.
     """
 
-    def __init__(self, mode: str = "single"):
-        self.mode = mode
-        self._batch_size = -1
-        self._words = None
-        self._X = None
-        self._cache_plan = None
-        self._started = False
-
-    @property
-    def mode(self) -> str:
-        """Mode of the object that has to be one of the following
-        values.
-
-        - 'single': Calculates one iterated sum for each given word.
-        - 'extended': For each given word, the iterated sum for each
-            sequential combination of extended letters in that word will
-            be calculated. So for a simple word like ``[21][121][1]``
-            the calculator returns the iterated sums for ``[21]``,
-            ``[21][121]`` and ``[21][121][1]``.
-
-        :rtype: str
-        """
-        return self._mode
-
-    @mode.setter
-    def mode(self, mode: str):
-        if mode not in {"single", "extended"}:
-            raise ValueError("Unknown mode supplied")
+    def __init__(self,
+                 X: np.ndarray,
+                 words: List[Word],
+                 mode: str = "single",
+                 batch_size: int = -1):
+        self._X = X
+        self._words = words
+        if mode not in ["single", "extended"]:
+            raise ValueError("mode can either be 'single' or 'extended'")
         self._mode = mode
-
-    @property
-    def batch_size(self) -> int:
-        """Number of words for which the iterated sums are calculated at
-        once when starting the iterator of this calculator.
-        This doesn't have to be the same number as the actual number of
-        iterated sums returned. Default value is -1, which means the
-        results of all words are given at once.
-        """
-        return self._batch_size
-
-    @batch_size.setter
-    def batch_size(self, batch_size: int):
         self._batch_size = batch_size
 
-    def _transform_simple_word(self, word: SimpleWord) -> np.ndarray:
+    def _transform_simple_word(self, word: Word) -> np.ndarray:
         # transforms all simplewords for faster calculation with a
         # backend function
         simple_word_raw = [el for el in word]
@@ -126,26 +85,20 @@ class ISSCalculator:
         return word_transformed
 
     def _n_iterated_sums(self, words: List[Word]) -> int:
-        if self.mode == "extended":
+        # returns the number of iterated sums this object produces
+        if self._mode == "extended":
             return CachePlan(words).n_iterated_sums(list(range(len(words))))
         else:
             return len(words)
 
-    def _get_alpha(self, word: Word, length: int) -> np.ndarray:
-        return np.array([0] + word.alpha + [0],
+    def _get_alpha(self, word: Word) -> np.ndarray:
+        # returns a better format of the weighting of the given word
+        return np.array([0.0] + word.alpha + [0.0],
                         dtype=np.float32)
 
-    def start(self, X: np.ndarray, words: List[Word]):
-        self._started = True
-        self._X = force_input_shape(X)
-
-        self._words = words
-        if self.mode == "extended":
-            self._cache_plan = CachePlan(words)
-
     def __iter__(self):
-        if not self._started:
-            raise RuntimeError("Calculator not started yet")
+        if self._mode == "extended":
+            self._cache_plan = CachePlan(self._words)
         self._current_word = 0
         self._real_batch_size = self._batch_size
         if self._batch_size == -1:
@@ -156,7 +109,7 @@ class ISSCalculator:
         if self._current_word >= len(self._words):
             raise StopIteration
         nsums = self._real_batch_size
-        if self.mode == "extended":
+        if self._mode == "extended":
             nsums = self._cache_plan.n_iterated_sums(
                 list(range(self._current_word,
                            self._current_word + self._real_batch_size))
@@ -170,10 +123,10 @@ class ISSCalculator:
                 self._current_word = len(self._words)
                 return results[:, :i, :]
             ext = 1
-            if self.mode == "extended":
+            if self._mode == "extended":
                 ext = self._cache_plan.unique_el_depth(i)
 
-            alphas = self._get_alpha(self._words[i], self._X.shape[2])
+            alphas = self._get_alpha(self._words[i])
 
             if isinstance(self._words[i], SimpleWord):
                 results[:, index:index+ext, :] = _fast_ISS(
@@ -196,13 +149,49 @@ class ISSCalculator:
         self._current_word += self._real_batch_size
         return results
 
-    def copy(self) -> "ISSCalculator":
-        """Returns a copy of this calculator.
 
-        :rtype: ISSCalculator
+class SignatureCalculator:
+    """Class that is responsible for managing the calculation of
+    iterated sums.
+    """
+
+    def fit(self, X: np.ndarray, **kwargs) -> None:
+        """Fits the calculator on the given time series dataset.
+
+        :type X: np.ndarray
+        :param kwargs:
         """
-        calc = ISSCalculator(mode=self.mode)
-        return calc
+
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        """Starts and returns a iterated sums signature calculation.
+
+        :param kwargs: Has to include the argument ``words`` as a list
+            of :class:`~fruits.signature.wording.Word` objects.
+            Possible optional arguments are:
+
+            - ``batch_size``: Number of words for which the iterated
+                sums are calculated at once when starting the iterator
+                ofthis calculator. This doesn't have to be the same
+                number as the actual number of iterated sums returned.
+                Default value is -1, which means the results of all
+                words are given at once.
+            - ``mode``: Following options are available.
+                - 'single': Calculates one iterated sum for each given
+                    word.
+                - 'extended': For each given word, the iterated sum for
+                    each sequential combination of extended letters in
+                    that word will be calculated. So for a simple word
+                    like ``[21][121][1]`` the calculator returns the
+                    iterated sums for ``[21]``, ``[21][121]`` and
+                    ``[21][121][1]``.
+        :returns: A numpy array with only one object of type
+            :class:`~fruits.signature.iss.SignatureCalculation`.
+        :rtype: np.ndarray
+        """
+        return np.array(
+            [SignatureCalculation(X, **kwargs)],
+            dtype=object
+        )
 
 
 def ISS(X: np.ndarray,
@@ -210,10 +199,10 @@ def ISS(X: np.ndarray,
         mode: str = "single") -> np.ndarray:
     """Takes in a number of time series and a list of words and
     calculates the iterated sums for each time series in ``X``. This
-    function is just used as wrapper for the class
-    :class:`~fruits.core.iss.ISSCalculator`. For more information on the
-    calculation of the iterated sums signature, have a look at the
-    calculator.
+    function is just used as a convenience wrapper of the class
+    :class:`~fruits.signature.iss.SignatureCalculator`.
+    For more information on the calculation of the iterated sums
+    signature, have a look at the calculator.
 
     :param X: Three dimensional numpy array containing a
         multidimensional time series dataset.
@@ -228,7 +217,12 @@ def ISS(X: np.ndarray,
     """
     words = [words] if isinstance(words, Word) else words
 
-    calculator = ISSCalculator(mode)
-    calculator.start(X, words)
+    calculator = SignatureCalculator()
 
-    return list(calculator)[0]
+    result_iterator = calculator.transform(
+        X,
+        words=words,
+        mode=mode,
+        batch_size=-1,
+    )[0]
+    return next(iter(result_iterator))

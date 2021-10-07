@@ -1,7 +1,7 @@
 import numba
 import numpy as np
 
-from fruits.core.wording import Word
+from fruits.words.word import Word
 
 
 def _slow_single_ISS(Z: np.ndarray,
@@ -64,9 +64,9 @@ def _fast_single_ISS(Z: np.ndarray,
     result = np.ones((extended, Z.shape[1]), dtype=np.float64)
     tmp = np.ones(Z.shape[1], dtype=np.float64)
     for k, ext_letter in enumerate(word):
-        if not np.any(word[k]):
+        if not np.any(ext_letter):
             continue
-        C = _fast_extended_letter(Z, word[k])
+        C = _fast_extended_letter(Z, ext_letter)
         if k > 0:
             tmp = np.roll(tmp, 1)
             tmp[0] = 0
@@ -91,6 +91,6 @@ def _fast_ISS(Z: np.ndarray,
     # accelerated function for calculation of
     # fruits.core.ISS(X, [SimpleWord(...)])
     result = np.zeros((Z.shape[0], extended, Z.shape[2]))
-    for i in numba.prange(Z.shape[0]):
+    for i in numba.prange(Z.shape[0]):  # pylint: disable=not-an-iterable
         result[i] = _fast_single_ISS(Z[i, :, :], word, alphas, extended)
     return result

@@ -1,8 +1,8 @@
 import itertools
 from typing import Generator, Union, List
 
-from fruits.core.wording import SimpleWord, Word
-from fruits.core.letters import (
+from fruits.words.word import SimpleWord, Word
+from fruits.words.letters import (
     ExtendedLetter,
     _letter_configured,
     simple,
@@ -62,15 +62,15 @@ def _replace_letters_simpleword(word, letter_gen):
     for el in word:
         new_el = ExtendedLetter()
         for dim, ndim in enumerate(el):
-            for j in range(ndim):
+            for _ in range(ndim):
                 try:
                     letter = next(letter_gen)
                 except StopIteration:
                     letter = simple
                 if not _letter_configured(letter):
                     raise TypeError("Letter has the wrong signature. "
-                                    + "Perhaps it wasn't decorated "
-                                    + "correctly?")
+                                    "Perhaps it wasn't decorated "
+                                    "correctly?")
                 new_el.append(letter, dim)
         complexword.multiply(new_el)
     return complexword

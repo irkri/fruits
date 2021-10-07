@@ -1,12 +1,12 @@
 import re
 from typing import Union, List
 
-from fruits.core.letters import ExtendedLetter
+from fruits.words.letters import ExtendedLetter
 
 
 class Word:
     """A word is a collection of
-    :class:`~fruits.core.letters.ExtendedLetter` objects.
+    :class:`~fruits.words.letter.ExtendedLetter` objects.
     An extended letter is a collection of letters.
     A letter is a function that accepts and returns numpy arrays. The
     order of the letters in an extended letter doesn't matter.
@@ -14,7 +14,7 @@ class Word:
     A Word is used for the calculation of iterated sums for a given
     time series dataset ``X``. This can be done by calling::
 
-        fruits.core.iss.ISS(X, word)
+        fruits.signature.iss.ISS(X, word)
 
     Each Word is iterable. The items returned by the iterator are the
     extended letters.
@@ -29,28 +29,28 @@ class Word:
         word = Word()
 
         el01 = ExtendedLetter()
-        el01.append(fruits.core.letters.simple_letter, 0)
-        el01.append(fruits.core.letters.simple_letter, 0)
+        el01.append(fruits.signature.letters.simple_letter, 0)
+        el01.append(fruits.signature.letters.simple_letter, 0)
         el02 = ExtendedLetter()
-        el02.append(fruits.core.letters.simple_letter, 0)
-        el02.append(fruits.core.letters.simple_letter, 1)
-        el02.append(fruits.core.letters.simple_letter, 1)
+        el02.append(fruits.signature.letters.simple_letter, 0)
+        el02.append(fruits.signature.letters.simple_letter, 1)
+        el02.append(fruits.signature.letters.simple_letter, 1)
 
         word.multiply(el01)
         word.multiply(el02)
 
-        iterated_sums = fruits.core.ISS(X, word)
+        iterated_sums = fruits.signature.ISS(X, word)
 
-    The result in ``iterated_sums`` is equal to 
+    The result in ``iterated_sums`` is equal to
 
     .. code-block:: python
 
         numpy.cumsum(numpy.cumsum(X[0, :]**2) * X[0, :]*X[1, :]**2)
 
     which can be simplified using a
-    :class:`~fruits.core.wording.SimpleWord`: ::
+    :class:`~fruits.signature.wording.SimpleWord`: ::
 
-        fruits.core.ISS(X, SimpleWord("[11][122]"))
+        fruits.signature.ISS(X, SimpleWord("[11][122]"))
 
     :param word_string: String representation of the word. Names of available
         letters can be used like ``[ABS(1)SIMPLE(2)][ABS(1)]`` to create
@@ -59,8 +59,8 @@ class Word:
     """
 
     def __init__(self, word_string: str = ""):
-        self._alpha = 0.0
-        self._extended_letters = []
+        self._alpha: Union[float, List[float]] = 0.0
+        self._extended_letters: List[ExtendedLetter] = []
         if word_string != "":
             self.multiply(word_string)
 
@@ -80,7 +80,7 @@ class Word:
         return self._alpha
 
     @alpha.setter
-    def alpha(self, alpha: List[float]):
+    def alpha(self, alpha: Union[float, List[float]]):
         if isinstance(alpha, list):
             if len(alpha) != len(self) - 1:
                 raise ValueError("alpha has to have the same length as " +
@@ -89,7 +89,7 @@ class Word:
             raise ValueError("alpha has to be a float or list of floats")
         self._alpha = alpha
 
-    def multiply(self, other: Union["Word", ExtendedLetter]):
+    def multiply(self, other: Union["Word", ExtendedLetter, str]):
         """Appends one or more extended letters to the word. A group of
         extended letters have to be given as another Word object.
 
@@ -132,25 +132,27 @@ class Word:
     def __copy__(self) -> "Word":
         return self.copy()
 
-    def __eq__(self, other: "Word"):
+    def __eq__(self, other: object):
+        if not isinstance(other, Word):
+            raise NotImplementedError
         return False
 
     def __str__(self) -> str:
         return "".join([str(el) for el in self._extended_letters])
 
     def __repr__(self) -> str:
-        return "fruits.core.wording.Word"
+        return f"fruits.words.word.Word('{self!s}')"
 
 
 class SimpleWord(Word):
     """A Word that is directly inheriting from
-    :class:`~fruits.core.wording.Word`.
+    :class:`~fruits.words.word.Word`.
 
     A simple word is a special form of an ``Word`` that contains
     letters (i.e. functions) that extract a single dimension of a
     multidimesional time series.
     The letters in this object do the same as the predefined letter
-    :meth:`~fruits.core.letters.simple_letter` but they are saved as
+    :meth:`~fruits.signature.letters.simple_letter` but they are saved as
     integers in a numpy array which allows for better space and
     computation management. It is therefore used to speed up the
     calculation of iterated sums and to make the creation of such a
@@ -162,9 +164,9 @@ class SimpleWord(Word):
 
         X = numpy.random.randint(-100, 100, (2, 100))
         word = SimpleWord("[11][122]")
-        iterated_sums = fruits.core.ISS(X, word)
+        iterated_sums = fruits.signature.ISS(X, word)
 
-    This code does the same as 
+    This code does the same as
 
     .. code-block:: python
 
@@ -198,25 +200,27 @@ class SimpleWord(Word):
 
     def __init__(self, string: str):
         super().__init__()
+        self._extended_letters: List[List[int]] = []
         self._max_dim = 0
         self._name = ""
         self.multiply(string)
 
-    def multiply(self, string: str):
+    def multiply(self, string: Union[Word, ExtendedLetter, str]):
         """Multiplies another word with the SimpleWord object.
         The word is given as a string matching the examples given in
         the class definition.
 
         :type string: str
         """
-        if (not isinstance(string, str) or
-            not re.fullmatch(r"(\[(\d|\(\d+\))+\])+", string)):
-            raise ValueError("SimpleWord can only be multiplied with a "+
-                             "string matching the regular expression "+
+        if not isinstance(string, str):
+            raise NotImplementedError
+        if not re.fullmatch(r"(\[(\d|\(\d+\))+\])+", string):
+            raise ValueError("SimpleWord can only be multiplied with a "
+                             "string matching the regular expression "
                              r"'(\[(\d|\(\d+\))+\])+'")
         self._name = self._name + string
         els_raw = [x[1:] for x in string.split("]")][:-1]
-        els_int = []
+        els_int: List[List[int]] = []
         for i in range(len(els_raw)):
             els_int.append([])
             j = 0
@@ -254,13 +258,13 @@ class SimpleWord(Word):
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
 
-    def __eq__(self, other: "SimpleWord"):
+    def __eq__(self, other: object):
         if not isinstance(other, SimpleWord):
-            raise TypeError(f"Cannot compare SimpleWord with {type(other)}")
+            raise NotImplementedError
         return list(self._extended_letters) == list(other._extended_letters)
 
     def __str__(self) -> str:
         return self._name
 
     def __repr__(self) -> str:
-        return "fruits.core.wording.SimpleWord"
+        return f"fruits.words.word.SimpleWord('{self!s}')"

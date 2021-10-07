@@ -1,9 +1,9 @@
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 
+from fruits._backend import _increments
 from fruits.preparation.abstract import DataPreparateur
-from fruits.preparation.backend import _increments
 
 
 class INC(DataPreparateur):
@@ -28,15 +28,15 @@ class INC(DataPreparateur):
         super().__init__("Increments")
         self._zero_padding = zero_padding
 
-    def prepare(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the increments of all time series in ``X``.
 
         :type X: np.ndarray
         :rtype: np.ndarray
         """
         out = _increments(X)
-        if self._zero_padding:
-            out[:, :, 0] = 0
+        if not self._zero_padding:
+            out[:, :, 0] = X[:, :, 0]
         return out
 
     def copy(self) -> "INC":
@@ -74,7 +74,7 @@ class STD(DataPreparateur):
         self._mean = None
         self._std = None
 
-    def fit(self, X: np.ndarray):
+    def fit(self, X: np.ndarray, **kwargs) -> None:
         """Fits the STD object to the given dataset by calculating the
         mean and standard deviation of the flattened dataset.
 
@@ -83,7 +83,7 @@ class STD(DataPreparateur):
         self._mean = np.mean(X)
         self._std = np.std(X)
 
-    def prepare(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the standardized dataset ``(X-mu)/std`` where ``mu``
         and ``std`` are the parameters calculated in :meth:`STD.fit`.
 
@@ -136,9 +136,9 @@ class MAV(DataPreparateur):
         else:
             raise TypeError("width has to be an integer or a float in (0,1)")
         self._w_given = width
-        self._w = None
+        self._w: int
 
-    def fit(self, X: np.ndarray):
+    def fit(self, X: np.ndarray, **kwargs) -> None:
         """Fits the MAV preparateur to the given dataset by calculating
         the window width if needed.
 
@@ -151,14 +151,14 @@ class MAV(DataPreparateur):
         else:
             self._w = self._w_given
 
-    def prepare(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed dataset.
 
         :type X: np.ndarray
         :rtype: np.ndarray
         :raises: RuntimeError if self.fit() wasn't called
         """
-        if self._w is None:
+        if not hasattr(self, "_w"):
             raise RuntimeError("Missing call of self.fit()")
         out = np.cumsum(X, axis=2)
         out[:, :, self._w:] = out[:, :, self._w:] - out[:, :, :-self._w]
@@ -196,7 +196,7 @@ class LAG(DataPreparateur):
     def __init__(self):
         super().__init__("Lead-Lag transform")
 
-    def prepare(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed dataset.
 
         :type X: np.ndarray

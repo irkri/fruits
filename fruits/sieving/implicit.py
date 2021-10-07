@@ -1,7 +1,9 @@
+from typing import Union, List
+
 import numpy as np
 
 from fruits.sieving.abstract import FeatureSieve
-from fruits.preparation.backend import _increments
+from fruits._backend import _increments
 
 
 class PPV(FeatureSieve):
@@ -24,7 +26,7 @@ class PPV(FeatureSieve):
     :type constant: bool or list of bools, optional
     :param sample_size: Sample size to use for quantile calculation.
         This option can be ignored if ``constant`` is set to ``True``.,
-        defaults to 0.05
+        defaults to 1.0
     :type sample_size: float, optional
     :param segments: If `True`, then the proportion of values within
         each two quantiles will be calculated. If `quantile` is a list,
@@ -46,8 +48,8 @@ class PPV(FeatureSieve):
     """
 
     def __init__(self,
-                 quantile: float = 0.5,
-                 constant: bool = False,
+                 quantile: Union[List[float], float] = 0.5,
+                 constant: Union[List[bool], bool] = False,
                  sample_size: float = 1.0,
                  segments: bool = False):
         super().__init__("Proportion of positive values")
@@ -75,7 +77,7 @@ class PPV(FeatureSieve):
             self._q_c_input = sorted(self._q_c_input, key=lambda x: x[0])
         else:
             self._q_c_input = list(zip(quantile, constant))
-        self._q = None
+        self._q: List[float]
         if not 0 < sample_size <= 1:
             raise ValueError("'sample_size' has to be a float in (0, 1]")
         self._sample_size = sample_size
@@ -94,7 +96,7 @@ class PPV(FeatureSieve):
         else:
             return len(self._q_c_input)
 
-    def fit(self, X: np.ndarray):
+    def fit(self, X: np.ndarray, **kwargs) -> None:
         """Calculates and remembers the quantile(s) of the input data.
 
         :type X: np.ndarray
@@ -113,7 +115,7 @@ class PPV(FeatureSieve):
                                          ).flatten(),
                                          self._q[i])
 
-    def sieve(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
 
@@ -122,7 +124,7 @@ class PPV(FeatureSieve):
         :rtype: np.ndarray
         :raises: RuntimeError if ``self.fit`` wasn't called
         """
-        if self._q is None:
+        if not hasattr(self, "_q"):
             raise RuntimeError("Missing call of PPV.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))
         if self._segments:
@@ -195,8 +197,8 @@ class CPV(PPV):
     """
 
     def __init__(self,
-                 quantile: float = 0.5,
-                 constant: bool = False,
+                 quantile: Union[List[float], float] = 0.5,
+                 constant: Union[List[bool], bool] = False,
                  sample_size: float = 1.0,
                  segments: bool = False):
         super().__init__(quantile,
@@ -205,7 +207,7 @@ class CPV(PPV):
                          segments)
         self.name = "Proportion of connected components of positive values"
 
-    def sieve(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
 
@@ -214,7 +216,7 @@ class CPV(PPV):
         :rtype: np.ndarray
         :raises: RuntimeError if ``self.fit`` wasn't called
         """
-        if self._q is None:
+        if not hasattr(self, "_q"):
             raise RuntimeError("Missing call of CPV.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))
         n = X.shape[1]
@@ -225,13 +227,13 @@ class CPV(PPV):
                 diff = _increments(np.expand_dims(
                                     np.logical_and(
                                             self._q[j-1] <= X,
-                                            X < self._q[j]).astype(np.int32),
+                                            X < self._q[j]).astype(np.float64),
                                     axis=1))[:, 0, :]
                 result[:, j-1] = 2 * np.sum(diff == 1, axis=-1) / n
         else:
             for j in range(len(self._q)):
                 diff = _increments(np.expand_dims(
-                                    (X >= self._q[j]).astype(np.int32),
+                                    (X >= self._q[j]).astype(np.float64),
                                     axis=1))[:, 0, :]
                 result[:, j] = 2 * np.sum(diff == 1, axis=-1) / n
         return result
