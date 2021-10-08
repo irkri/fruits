@@ -1,10 +1,10 @@
-from fruits.base.fruit import Fruit, FruitBranch
-from fruits.base.builder import build
+from fruits.core.fruit import Fruit, FruitBranch
+from fruits.core.builder import build
+import fruits.core.callback as callback
 
-import fruits.base.callback as callback
+import fruits.words
 
-import fruits.core
-import fruits.core.generation
+import fruits.signature
 
 import fruits.preparation
 

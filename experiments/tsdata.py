@@ -182,11 +182,11 @@ def load_dataset(path: str,
             if test[m][1] not in ys:
                 ys.append(test[m][1])
 
-        ys = {ys[i]: i for i in range(len(ys))}
+        ylabels = {ys[i]: i for i in range(len(ys))}
         for m in range(X_train.shape[0]):
-            y_train[m] = ys[train[m][1]]
+            y_train[m] = ylabels[train[m][1]]
         for m in range(X_test.shape[0]):
-            y_test[m] = ys[test[m][1]]
+            y_test[m] = ylabels[test[m][1]]
 
         if cache:
             np.save(os.path.join(path, name)+"_XTRAIN",
@@ -281,7 +281,7 @@ def implant_stuttering(X: np.ndarray,
 
 
 def lengthen(X: np.ndarray,
-             length: int = 0.1) -> np.ndarray:
+             length: float = 0.1) -> np.ndarray:
     """Lengthens each time series in the given array.
 
     :param X: 3-dim array of multidimensional time series

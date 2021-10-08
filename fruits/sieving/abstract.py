@@ -1,16 +1,15 @@
 from abc import abstractmethod
+from typing import Dict, List
 
 import numpy as np
 
-from fruits.node import FruitNode
 
-
-class FeatureSieve(FruitNode):
+class FeatureSieve:
     """Abstract class for a feature sieve. Sieves are the last part of a
-    FRUITS pipeline.
+    :class:`~fruits.core.fruit.Fruit`.
 
     A feature sieve is used to transforms a two-dimensional numpy
-    array containing iterated sums into a onedimensional numpy array of
+    array containing iterated sums into a one dimensional numpy array of
     features.
 
     :param name: Identification string of the feature sieve.,
@@ -18,36 +17,40 @@ class FeatureSieve(FruitNode):
     :type name: str, optional
     """
 
+    name: str
+
     def __init__(self, name: str = ""):
-        super().__init__(name)
+        self.name = name
 
     @abstractmethod
     def nfeatures(self) -> int:
         pass
 
-    def fit(self, X: np.ndarray):
+    def fit(self, X: np.ndarray, **kwargs) -> None:
         """Fits the sieve to the dataset.
 
         :param X: 2-dimensional numpy array of iterated sums.
         :type X: np.ndarray
         """
-        pass
 
     @abstractmethod
-    def sieve(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         pass
 
-    def fit_sieve(self, X: np.ndarray) -> np.ndarray:
+    def fit_transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Equivalent of calling ``FeatureSieve.fit`` and
-        ``FeatureSieve.sieve`` consecutively.
+        ``FeatureSieve.transform`` consecutively.
 
         :param X: 2-dimensional numpy array of iterated sums.
         :type X: np.ndarray
-        :returns: Array of features
         :rtype: np.ndarray
         """
-        self.fit(X)
-        return self.sieve(X)
+        self.fit(X, **kwargs)
+        return self.transform(X, **kwargs)
+
+    def _get_cache_keys(self) -> Dict[str, List[str]]:
+        # returns keys for cache needed in the sieve
+        return dict()
 
     @abstractmethod
     def copy(self) -> "FeatureSieve":
@@ -55,7 +58,7 @@ class FeatureSieve(FruitNode):
 
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
-        return "FeatureSieve('" + self._name + "')"
+        return "FeatureSieve('" + self.name + "')"
 
     def __copy__(self) -> "FeatureSieve":
         return self.copy()

@@ -1,9 +1,11 @@
-from abc import abstractmethod
+from typing import Union, List, Dict
 
+import numba
 import numpy as np
 
 from fruits.sieving.abstract import FeatureSieve
-from fruits.preparation.backend import _increments
+from fruits._backend import _increments
+from fruits.cache import CoquantileCache
 
 
 class ExplicitSieve(FeatureSieve):
@@ -13,10 +15,10 @@ class ExplicitSieve(FeatureSieve):
     value in the original time series.
 
     :param cut: If ``cut`` is an index in the time series array, the
-        features are sieved from ``X[:cut]``. If it is a real number in
-        ``(0,1)``, the corresponding 'coquantile' will be calculated
+        features are sieved from ``X[:cut]``. If it is a float in
+        ``[0,1]``, the corresponding 'coquantile' will be calculated
         first. This option can also be a list of floats or integers
-        which will be treated the same way., defaults to -1
+        which will be treated the same way., defaults to 1.0
     :type cut: int/float or list of integers/floats, optional
     :param segments: If set to ``True``, then the cutting indices will
         be sorted and treated as interval borders and the maximum in
@@ -29,42 +31,49 @@ class ExplicitSieve(FeatureSieve):
     :type segments: bool, optional
     """
 
+    _CACHE_KEY = 'coquantile'
+
     def __init__(self,
-                 cut: int = -1,
+                 cut: Union[List[float], float] = -1,
                  segments: bool = False,
                  name: str = "Abstract Explicit Sieve"):
         super().__init__(name)
         self._cut = cut if isinstance(cut, list) else [cut]
-        for c in self._cut:
-            if 0 < c < 1:
-                self._requisite = "INC -> [11]"
-            elif not (c == -1 or (c > 0 and isinstance(c, int))):
-                raise ValueError("Unsupported input for option 'cut'")
-        if segments and len(self._cut) == 1:
-            raise ValueError("If 'segments' is set to True, then 'cut' "
-                             + "has to be a list of length >= 2.")
+        if len(self._cut) == 1 and segments:
+            self._cut = [1, self._cut[0]]
         self._segments = segments
 
-    def _transform_cuts(self, X: np.ndarray, req: np.ndarray) -> list:
+    def _get_cache_keys(self) -> Dict[str, List[str]]:
         # transforms the input cuts based on the given time series
-        new_cuts = []
-        for j in range(len(self._cut)):
-            cut = self._cut[j]
-            if 0 < cut < 1:
-                cut = np.sum((req <= (req[-1] * cut)))
-                if cut == 0:
-                    cut = 1
-            elif not isinstance(cut, int):
-                raise TypeError("Cut has to be a float in (0,1) or an " +
-                                "integer")
-            elif cut == -1:
-                cut = X.shape[0]
-            elif cut > X.shape[0]:
-                raise IndexError("Cutting index out of range")
-            new_cuts.append(cut)
+        keys = [str(cut) for cut in self._cut if isinstance(cut, float)]
+        return {self._CACHE_KEY: keys}
+
+    def _get_cache(self, X: np.ndarray, **kwargs) -> CoquantileCache:
+        # checks if the sieve got any cache to use, if not, compute it
+        if 'cache' in kwargs:
+            return kwargs['cache']
+        else:
+            cache = CoquantileCache()
+            cache.process(np.expand_dims(X, axis=1),
+                          [str(cut) for cut in self._cut
+                           if isinstance(cut, float)])
+            return cache
+
+    def _get_transformed_cuts(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        # mix cuts got from coquantile cache with given integer cuts
+        cached_cuts = self._get_cache(X, **kwargs)
+        new_cuts = np.zeros((X.shape[0], len(self._cut)))
+        for i, cut in enumerate(self._cut):
+            if isinstance(cut, float):
+                new_cuts[:, i] = cached_cuts[str(cut)]
+            else:
+                if self._cut[i] <= 0:
+                    new_cuts[:, i] = X.shape[1] + self._cut[i] + 1
+                else:
+                    new_cuts[:, i] = self._cut[i]
         if self._segments:
-            new_cuts = sorted(list(new_cuts))
-        return new_cuts
+            new_cuts = np.sort(new_cuts)
+        return new_cuts.astype(np.int64)
 
     def nfeatures(self) -> int:
         """Returns the number of features this sieve produces.
@@ -75,10 +84,6 @@ class ExplicitSieve(FeatureSieve):
             return len(self._cut) - 1
         else:
             return len(self._cut)
-
-    @abstractmethod
-    def sieve(self, X: np.ndarray) -> np.ndarray:
-        pass
 
 
 class MAX(ExplicitSieve):
@@ -91,15 +96,23 @@ class MAX(ExplicitSieve):
     definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
 
     :type cut: int/float or list of integers/floats, optional
-    :type segments: bool, optional
     """
 
     def __init__(self,
-                 cut: int = -1,
-                 segments: bool = False):
-        super().__init__(cut, segments, "Maximal value")
+                 cut: Union[List[float], float] = -1):
+        super().__init__(cut, True, "Maximal value")
 
-    def sieve(self, X: np.ndarray) -> np.ndarray:
+    @staticmethod
+    @numba.njit("float64[:,:](float64[:,:], int64[:,:])",
+                parallel=True, cache=True)
+    def _backend(X: np.ndarray, cuts: np.ndarray) -> np.ndarray:
+        result = np.zeros((X.shape[0], cuts.shape[1] - 1))
+        for i in numba.prange(X.shape[0]):  # pylint: disable=not-an-iterable
+            for j in range(1, cuts.shape[1]):
+                result[i, j-1] = np.max(X[i, cuts[i, j-1]-1:cuts[i, j]])
+        return result
+
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
 
@@ -107,17 +120,8 @@ class MAX(ExplicitSieve):
         :returns: Array of features.
         :rtype: np.ndarray
         """
-        req = self._get_requisite(X)[:, 0, :]
-        result = np.zeros((X.shape[0], self.nfeatures()))
-        for i in range(X.shape[0]):
-            new_cuts = self._transform_cuts(X[i], req[i])
-            if self._segments:
-                for j in range(1, len(new_cuts)):
-                    result[i, j-1] = np.max(X[i, new_cuts[j-1]-1:new_cuts[j]])
-            else:
-                for j in range(len(new_cuts)):
-                    result[i, j] = np.max(X[i, :new_cuts[j]])
-        return result
+        cuts = self._get_transformed_cuts(X, **kwargs)
+        return MAX._backend(X, cuts)
 
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
@@ -134,13 +138,12 @@ class MAX(ExplicitSieve):
 
         :rtype: MAX
         """
-        fs = MAX(self._cut, self._segments)
+        fs = MAX(self._cut)
         return fs
 
     def __str__(self) -> str:
         string = "MAX(" + \
-                f"cut={self._cut}, " + \
-                f"segments={self._segments})"
+                f"cut={self._cut})"
         return string
 
 
@@ -158,11 +161,20 @@ class MIN(ExplicitSieve):
     """
 
     def __init__(self,
-                 cut: int = -1,
-                 segments: bool = False):
-        super().__init__(cut, segments, "Minimum value")
+                 cut: Union[List[float], float] = -1):
+        super().__init__(cut, True, "Minimum value")
 
-    def sieve(self, X: np.ndarray) -> np.ndarray:
+    @staticmethod
+    @numba.njit("float64[:,:](float64[:,:], int64[:,:])",
+                parallel=True, cache=True)
+    def _backend(X: np.ndarray, cuts: np.ndarray) -> np.ndarray:
+        result = np.zeros((X.shape[0], cuts.shape[1] - 1))
+        for i in numba.prange(X.shape[0]):  # pylint: disable=not-an-iterable
+            for j in range(1, cuts.shape[1]):
+                result[i, j-1] = np.min(X[i, cuts[i, j-1]-1:cuts[i, j]])
+        return result
+
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
 
@@ -170,18 +182,8 @@ class MIN(ExplicitSieve):
         :returns: Array of features.
         :rtype: np.ndarray
         """
-        req = self._get_requisite(X)[:, 0, :]
-        result = np.zeros((X.shape[0], self.nfeatures()))
-        for i in range(X.shape[0]):
-            new_cuts = self._transform_cuts(X[i], req[i])
-            if self._segments:
-                new_cuts = sorted(list(new_cuts))
-                for j in range(1, len(new_cuts)):
-                    result[i, j-1] = np.min(X[i, new_cuts[j-1]-1:new_cuts[j]])
-            else:
-                for j in range(len(new_cuts)):
-                    result[i, j] = np.min(X[i, :new_cuts[j]])
-        return result
+        cuts = self._get_transformed_cuts(X, **kwargs)
+        return MIN._backend(X, cuts)
 
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
@@ -198,13 +200,12 @@ class MIN(ExplicitSieve):
 
         :rtype: MIN
         """
-        fs = MIN(self._cut, self._segments)
+        fs = MIN(self._cut)
         return fs
 
     def __str__(self) -> str:
         string = "MIN(" + \
-                f"cut={self._cut}, " + \
-                f"segments={self._segments})"
+                f"cut={self._cut})"
         return string
 
 
@@ -221,10 +222,10 @@ class END(ExplicitSieve):
     """
 
     def __init__(self,
-                 cut: int = -1):
+                 cut: Union[List[float], float] = -1):
         super().__init__(cut, False, "Last value")
 
-    def sieve(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
 
@@ -232,12 +233,14 @@ class END(ExplicitSieve):
         :returns: Array of features.
         :rtype: np.ndarray
         """
-        req = self._get_requisite(X)[:, 0, :]
+        cuts = self._get_transformed_cuts(X, **kwargs)
         result = np.zeros((X.shape[0], self.nfeatures()))
-        for i in range(X.shape[0]):
-            new_cuts = self._transform_cuts(X[i], req[i])
-            for j in range(len(new_cuts)):
-                result[i, j] = X[i, new_cuts[j]-1]
+        for j in range(cuts.shape[1]):
+            result[:, j] = np.take_along_axis(
+                X,
+                cuts[:, j:j+1]-1,
+                axis=1
+            )[:, 0]
         return result
 
     def summary(self) -> str:
@@ -283,13 +286,22 @@ class PIA(ExplicitSieve):
     """
 
     def __init__(self,
-                 cut: int = -1,
-                 segments: bool = False,
-                 div_on_slice: bool = False):
-        super().__init__(cut, segments, "Proportion of incremental alteration")
-        self._dos = div_on_slice
+                 cut: Union[List[float], float] = -1):
+        super().__init__(cut, False, "Proportion of incremental alteration")
 
-    def sieve(self, X: np.ndarray) -> np.ndarray:
+    @staticmethod
+    @numba.njit("float64[:,:](float64[:,:], int64[:,:])",
+                parallel=True, cache=True)
+    def _backend(X: np.ndarray, cuts: np.ndarray) -> np.ndarray:
+        result = np.zeros((X.shape[0], cuts.shape[1]))
+        X_inc = _increments(np.expand_dims(X, axis=1))[:, 0, :]
+        for i in numba.prange(X.shape[0]):  # pylint: disable=not-an-iterable
+            for j in range(cuts.shape[1]):
+                result[i, j] = np.sum(X_inc[i, :cuts[i, j]] > 0)
+        result[:, :] /= X.shape[1]
+        return result
+
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
 
@@ -297,40 +309,14 @@ class PIA(ExplicitSieve):
         :returns: Array of features.
         :rtype: np.ndarray
         """
-        req = self._get_requisite(X)[:, 0, :]
-        result = np.zeros((X.shape[0], self.nfeatures()))
-        X_inc = _increments(np.expand_dims(X, axis=1))[:, 0, :]
-        for i in range(X.shape[0]):
-            new_cuts = self._transform_cuts(X[i], req[i])
-            if self._segments:
-                for j in range(1, len(new_cuts)):
-                    result[i, j-1] = np.sum(
-                        X_inc[i, new_cuts[j-1]-1:new_cuts[j]] > 0)
-                    if self._dos:
-                        result[i, j-1] /= new_cuts[j] - new_cuts[j-1] + 1
-                    else:
-                        result[i, j-1] /= X.shape[1]
-            else:
-                for j in range(len(new_cuts)):
-                    result[i, j] = np.sum(X_inc[i, :new_cuts[j]] > 0)
-                    if self._dos:
-                        result[i, j] /= new_cuts[j]
-                    else:
-                        result[i, j] /= X.shape[1]
-        return result
+        cuts = self._get_transformed_cuts(X, **kwargs)
+        return PIA._backend(X, cuts)
 
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
         string = f"PIA"
-        if self._segments or self._dos:
-            string += " ["
-            if self._segments:
-                string += "segments"
-                if self._dos:
-                    string += ", "
-            if self._dos:
-                string += "div_on_slice"
-            string += "]"
+        if self._segments:
+            string += " [segments]"
         string += f" -> {self.nfeatures()}:"
         for x in self._cut:
             string += f"\n   > {x}"
@@ -341,14 +327,12 @@ class PIA(ExplicitSieve):
 
         :rtype: PIA
         """
-        fs = PIA(self._cut, self._segments, self._dos)
+        fs = PIA(self._cut)
         return fs
 
     def __str__(self) -> str:
         string = "PIA(" + \
-                f"cut={self._cut}, " + \
-                f"segments={self._segments}, " + \
-                f"div_on_slice={self._dos})"
+                f"cut={self._cut})"
         return string
 
 
@@ -364,11 +348,11 @@ class LCS(ExplicitSieve):
     """
 
     def __init__(self,
-                 cut: int = -1,
+                 cut: Union[List[float], float] = -1,
                  segments: bool = False):
         super().__init__(cut, segments, "Length of coquantile slices")
 
-    def sieve(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed data. See the class definition for
         detailed information.
 
@@ -376,16 +360,14 @@ class LCS(ExplicitSieve):
         :returns: Array of features.
         :rtype: np.ndarray
         """
-        req = self._get_requisite(X)[:, 0, :]
+        cuts = self._get_transformed_cuts(X, **kwargs)
         result = np.zeros((X.shape[0], self.nfeatures()))
-        for i in range(X.shape[0]):
-            new_cuts = self._transform_cuts(X[i], req[i])
-            if self._segments:
-                for j in range(1, len(new_cuts)):
-                    result[i, j-1] = new_cuts[j] - new_cuts[j-1] + 1
-            else:
-                for j in range(len(new_cuts)):
-                    result[i, j] = new_cuts[j]
+        if self._segments:
+            for j in range(1, cuts.shape[1]):
+                result[:, j-1] = cuts[:, j] - cuts[:, j-1] + 1
+        else:
+            for j in range(cuts.shape[1]):
+                result[:, j] = cuts[:, j]
         return result
 
     def summary(self) -> str:

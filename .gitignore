@@ -6,6 +6,9 @@ __pycache__/
 .DS_store
 *.swp
 
+# Editor
+.vscode/
+
 # C extensions
 *.so
 

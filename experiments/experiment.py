@@ -1,8 +1,9 @@
-"""This python module contains a class FRUITSExperiment, that can be
-used to perform a classification task for multidimensional time series
-data using a Fruit feature extractor from the package fruits.
-A comet_ml experiment can be supplied to the class for tracking the
-results of the experiment.
+"""This python module is an appendix to the package FRUITS.
+
+It contains the class FRUITSExperiment, that can be used to perform a
+classification task for multidimensional time series data using a
+feature extractor from the package fruits. A comet_ml experiment can be
+supplied to the class for tracking the results of the experiment.
 """
 
 import os
@@ -71,7 +72,6 @@ class FRUITSExperiment:
         # dictionary self._datasets[path] = ([datasets in path], univariate?)
         self._datasets = dict()
         self._comet_exp = comet_experiment
-        self._fruit = None
         if classifier is None:
             self._classifier = RidgeClassifierCV(alphas=np.logspace(-3, 3, 10),
                                                  normalize=True)
@@ -120,7 +120,6 @@ class FRUITSExperiment:
 
     def classify(self,
                  fruit: Union[fruits.Fruit, None] = None,
-                 fit_sample_size: Union[float, int] = 1,
                  cache_results: Union[str, None] = None,
                  verbose: bool = True):
         """Classifies all datasets added earlier and summarizes the
@@ -180,7 +179,7 @@ class FRUITSExperiment:
                     fruit = fruits.build(X_train)
 
                 start = Timer()
-                fruit.fit(X_train, fit_sample_size)
+                fruit.fit(X_train)
                 X_train_feat = fruit.transform(X_train)
                 X_test_feat = fruit.transform(X_test)
                 results.append(Timer() - start)
@@ -246,6 +245,8 @@ class FRUITSExperiment:
             accuracy results., defaults to False
         :type csv: bool, optional
         """
+        if not hasattr(self, "_fruit"):
+            raise RuntimeError("Missing call of self.classify")
         filename = filename.split(".")[0]
 
         if (os.path.isfile(filename + ".txt")
