@@ -1,10 +1,10 @@
-from abc import abstractmethod
-from typing import Dict, List
+from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 
 
-class DataPreparateur:
+class DataPreparateur(ABC):
     """Abstract class for a data preparateur.
 
     A preparateur can be fitted on a three dimensional numpy array
@@ -19,21 +19,15 @@ class DataPreparateur:
     :type name: str, optional
     """
 
-    name: str
-
     def __init__(self, name: str = ""):
         self.name = name
 
     def fit(self, X: np.ndarray, **kwargs) -> None:
-        """Fits the DataPreparateur to the given dataset.
-
-        :type X: np.ndarray
-        """
-        pass
+        """Fits the DataPreparateur to the given dataset."""
 
     @abstractmethod
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        pass
+        """Transforms the given timeseries dataset."""
 
     def fit_transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Equivalent of calling ``DataPreparateur.fit`` and
@@ -46,7 +40,7 @@ class DataPreparateur:
         self.fit(X, **kwargs)
         return self.transform(X, **kwargs)
 
-    def _get_cache_keys(self) -> Dict[str, List[str]]:
+    def _get_cache_keys(self) -> dict[str, list[str]]:
         # returns keys for cache needed in the sieve
         return dict()
 
@@ -54,7 +48,7 @@ class DataPreparateur:
     def copy(self) -> "DataPreparateur":
         pass
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         return False
 
     def __repr__(self) -> str:

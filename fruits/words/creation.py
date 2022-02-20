@@ -1,5 +1,5 @@
 import itertools
-from typing import Generator, Union, List
+from typing import Generator, Union
 
 from fruits.words.word import SimpleWord, Word
 from fruits.words.letters import (
@@ -17,8 +17,10 @@ def _partitions_of(n, start: int = 1):
             yield (i,) + p
 
 
-def _extended_letters_by_weight(w: int,
-                                d: int = 1) -> List[str]:
+def _extended_letters_by_weight(
+    w: int,
+    d: int = 1
+) -> list[str]:
     return [
         "["
         + "".join(["(" + str(x) + ")" if len(str(x)) > 1 else str(x)
@@ -29,7 +31,7 @@ def _extended_letters_by_weight(w: int,
     ]
 
 
-def simplewords_by_weight(w: int, dim: int = 1) -> List[SimpleWord]:
+def simplewords_by_weight(w: int, dim: int = 1) -> list[SimpleWord]:
     """Returns a list of all possible and unique SimpleWords that have
     exactly the given number of letters ('weight' of the words).
     For ``w=2`` and ``dim=2`` this will return a list containing::
@@ -94,9 +96,10 @@ def _replace_letters_complexword(word, letter_gen):
     return complexword
 
 
-def replace_letters(word: Union[Word, List[Word]],
-                    letter_gen: Generator[BOUND_LETTER_TYPE, None, None]) \
-                     -> Union[Word, List[Word]]:
+def replace_letters(
+    word: Union[Word, list[Word]],
+    letter_gen: Generator[BOUND_LETTER_TYPE, None, None],
+) -> Union[Word, list[Word]]:
     """Replaces the letters in the given word(s) by the iteration
     results from the supplied generator.
 

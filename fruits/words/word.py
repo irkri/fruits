@@ -1,5 +1,5 @@
 import re
-from typing import Union, List
+from typing import Union
 
 from fruits.words.letters import ExtendedLetter
 
@@ -59,13 +59,13 @@ class Word:
     """
 
     def __init__(self, word_string: str = ""):
-        self._alpha: Union[float, List[float]] = 0.0
-        self._extended_letters: List[ExtendedLetter] = []
+        self._alpha: Union[float, list[float]] = 0.0
+        self._extended_letters: list[ExtendedLetter] = []
         if word_string != "":
             self.multiply(word_string)
 
     @property
-    def alpha(self) -> List[float]:
+    def alpha(self) -> list[float]:
         """Penalization term for the calculation of iterated sums.
         Sums that use multiplication of indices that are further away
         are scaled down. The ammount of downscaling depends on this
@@ -80,7 +80,7 @@ class Word:
         return self._alpha
 
     @alpha.setter
-    def alpha(self, alpha: Union[float, List[float]]):
+    def alpha(self, alpha: Union[float, list[float]]) -> None:
         if isinstance(alpha, list):
             if len(alpha) != len(self) - 1:
                 raise ValueError("alpha has to have the same length as " +
@@ -89,7 +89,7 @@ class Word:
             raise ValueError("alpha has to be a float or list of floats")
         self._alpha = alpha
 
-    def multiply(self, other: Union["Word", ExtendedLetter, str]):
+    def multiply(self, other: Union["Word", ExtendedLetter, str]) -> None:
         """Appends one or more extended letters to the word. A group of
         extended letters have to be given as another Word object.
 
@@ -119,7 +119,7 @@ class Word:
     def __len__(self) -> int:
         return len(self._extended_letters)
 
-    def __iter__(self):
+    def __iter__(self) -> "Word":
         self._el_iterator_index = -1
         return self
 
@@ -132,7 +132,7 @@ class Word:
     def __copy__(self) -> "Word":
         return self.copy()
 
-    def __eq__(self, other: object):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Word):
             raise NotImplementedError
         return False
@@ -200,27 +200,27 @@ class SimpleWord(Word):
 
     def __init__(self, string: str):
         super().__init__()
-        self._extended_letters: List[List[int]] = []
+        self._extended_letters: list[list[int]] = []
         self._max_dim = 0
         self._name = ""
         self.multiply(string)
 
-    def multiply(self, string: Union[Word, ExtendedLetter, str]):
+    def multiply(self, other: Union[Word, ExtendedLetter, str]):
         """Multiplies another word with the SimpleWord object.
         The word is given as a string matching the examples given in
         the class definition.
 
-        :type string: str
+        :type other: str
         """
-        if not isinstance(string, str):
+        if not isinstance(other, str):
             raise NotImplementedError
-        if not re.fullmatch(r"(\[(\d|\(\d+\))+\])+", string):
+        if not re.fullmatch(r"(\[(\d|\(\d+\))+\])+", other):
             raise ValueError("SimpleWord can only be multiplied with a "
                              "string matching the regular expression "
                              r"'(\[(\d|\(\d+\))+\])+'")
-        self._name = self._name + string
-        els_raw = [x[1:] for x in string.split("]")][:-1]
-        els_int: List[List[int]] = []
+        self._name = self._name + other
+        els_raw = [x[1:] for x in other.split("]")][:-1]
+        els_int: list[list[int]] = []
         for i in range(len(els_raw)):
             els_int.append([])
             j = 0
@@ -258,7 +258,7 @@ class SimpleWord(Word):
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
 
-    def __eq__(self, other: object):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, SimpleWord):
             raise NotImplementedError
         return list(self._extended_letters) == list(other._extended_letters)

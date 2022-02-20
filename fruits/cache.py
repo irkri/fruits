@@ -1,4 +1,4 @@
-from typing import List, Protocol, Dict
+from typing import Protocol
 
 import numpy as np
 
@@ -10,23 +10,13 @@ class Cache(Protocol):
     a time series dataset and using a key for accessing the results.
     """
 
-    cache: Dict[str, np.ndarray]
+    cache: dict[str, np.ndarray]
 
     def get(self, key: str) -> np.ndarray:
-        """Returns the cached results for the given key.
+        ...
 
-        :type key: str
-        :rtype: np.ndarray
-        """
-
-    def process(self, X: np.ndarray, keys: List[str]) -> None:
-        """Processes the given time series dataset and caches the
-        results.
-
-        :type X: np.ndarray
-        :param keys: Keys on which the results are calculated.
-        :type keys: List[str]
-        """
+    def process(self, X: np.ndarray, keys: list[str]) -> None:
+        ...
 
 
 class CoquantileCache:
@@ -35,7 +25,7 @@ class CoquantileCache:
     in a :class:`~fruits.core.fruit.Fruit`.
     """
 
-    cache: Dict[str, np.ndarray]
+    cache: dict[str, np.ndarray]
 
     def __init__(self):
         self.cache = dict()
@@ -47,12 +37,12 @@ class CoquantileCache:
         """
         return self.cache[key]
 
-    def process(self, X: np.ndarray, keys: List[str]) -> None:
+    def process(self, X: np.ndarray, keys: list[str]) -> None:
         """Processes the given time series dataset and caches the
         resulting coquantiles for the given keys.
 
         :type X: np.ndarray
-        :type keys: List[str]
+        :type keys: list[str]
         """
         for key in keys:
             self.cache[key] = _coquantile(X, float(key))

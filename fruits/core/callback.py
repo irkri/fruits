@@ -16,7 +16,6 @@ class AbstractCallback(ABC):
         :class:`~fruits.core.fruit.FruitBranch` in a
         :class:`~fruits.core.fruit.Fruit` object is switched.
         """
-        pass
 
     def on_preparateur(self, X: np.ndarray):
         """Called after the calculation of prepared data for each
@@ -24,7 +23,6 @@ class AbstractCallback(ABC):
 
         :type X: np.ndarray
         """
-        pass
 
     def on_preparation_end(self, X: np.ndarray):
         """Called once after the calculation of the prepared data with
@@ -32,7 +30,6 @@ class AbstractCallback(ABC):
 
         :type X: np.ndarray
         """
-        pass
 
     def on_iterated_sum(self, X: np.ndarray):
         """Called for every iterated sum calculated for each single
@@ -40,7 +37,6 @@ class AbstractCallback(ABC):
 
         :type X: np.ndarray
         """
-        pass
 
     def on_sieve(self, X: np.ndarray):
         """Called after each use of a
@@ -48,11 +44,9 @@ class AbstractCallback(ABC):
 
         :type X: np.ndarray
         """
-        pass
 
     def on_sieving_end(self, X: np.ndarray):
         """Called once at the end of the feature calculation.
 
         :type X: np.ndarray
         """
-        pass

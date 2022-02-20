@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import List, Callable
+from typing import Callable
 
 import numpy as np
 
@@ -26,12 +26,12 @@ class ExtendedLetter:
     """
 
     def __init__(self, letter_string: str = ""):
-        self._letters: List[FREE_LETTER_TYPE] = []
-        self._dimensions: List[int] = []
+        self._letters: list[FREE_LETTER_TYPE] = []
+        self._dimensions: list[int] = []
         self._string_repr = ""
         self.append_from_string(letter_string)
 
-    def append(self, letter: FREE_LETTER_TYPE, dim: int = 0):
+    def append(self, letter: FREE_LETTER_TYPE, dim: int = 0) -> None:
         """Appends a letter to the ExtendedLetter object.
 
         :param letter: Function that was decorated with
@@ -52,7 +52,7 @@ class ExtendedLetter:
             self._string_repr += letter.__dict__[LETTER_NAME]
             self._string_repr += "(" + str(dim+1) + ")"
 
-    def append_from_string(self, letter_string: str):
+    def append_from_string(self, letter_string: str) -> None:
         letters = letter_string.split(")")[:-1]
         for letter in letters:
             l, d = letter.split("(")
@@ -69,7 +69,7 @@ class ExtendedLetter:
         el._string_repr = self._string_repr
         return el
 
-    def __iter__(self):
+    def __iter__(self) -> "ExtendedLetter":
         self._iter_index = -1
         return self
 
@@ -87,13 +87,13 @@ class ExtendedLetter:
         return self._letters[i](self._dimensions[i])
 
     def __str__(self) -> str:
-        return "["+self._string_repr+"]"
+        return "[" + self._string_repr + "]"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "fruits.words.letters.ExtendedLetter"
 
 
-def letter(*args, name: str = None):
+def letter(*args, name: str = None) -> Callable:
     """Decorator for the implementation of a letter appendable to an
     :class:`~fruits.words.letters.ExtendedLetter` object.
 
@@ -166,7 +166,7 @@ def letter(*args, name: str = None):
 _AVAILABLE = dict()
 
 
-def _log(name: str, func: FREE_LETTER_TYPE):
+def _log(name: str, func: FREE_LETTER_TYPE) -> None:
     if name in _AVAILABLE:
         raise RuntimeError(f"Letter with name '{name}' already exists")
     _AVAILABLE[name] = func
@@ -179,7 +179,7 @@ def _get(name: str) -> FREE_LETTER_TYPE:
     return _AVAILABLE[name]
 
 
-def get_available() -> List[str]:
+def get_available() -> list[str]:
     """Returns a list of all available letter names to use in a
     :class:`~fruits.words.letters.ExtendedLetter`.
 
@@ -188,7 +188,7 @@ def get_available() -> List[str]:
     return list(_AVAILABLE.keys())
 
 
-def _configure_letter(func: BOUND_LETTER_TYPE, name: str):
+def _configure_letter(func: BOUND_LETTER_TYPE, name: str) -> None:
     # marks the input callable as a letter
     if func.__code__.co_argcount != 2:
         raise RuntimeError("Wrong number of arguments at decorated function " +

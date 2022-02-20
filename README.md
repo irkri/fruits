@@ -7,6 +7,7 @@ __FRUITS__ can be installed on your local machine by using the file [setup.py](s
 ```
   $ python setup.py install
 ```
+If you are interested in exploring details of the package, I recommend using poetry and the file [pyproject.toml](pyproject.toml).
 
 ## Documentation
 The documentation of __FRUITS__ can be created by calling `make html` in the [docs](docs) folder. This will need a few dependencies to work. Please install the following packages using `pip` or `conda` before executing the `make` command.
@@ -30,7 +31,7 @@ Time series datasets go through different `fruits.FruitBranch` objects within th
   The total number of features per time series is the number of sieves times the number of words added to the `fruits.Fruit`.
 
 A single _fruit_ can have multiple _fruit branches_. The features of each branch will be concatenated at the end of the extraction process.
-  
+
 ## Example
 A simple example could look like this:
 ```python

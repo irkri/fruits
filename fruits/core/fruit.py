@@ -1,5 +1,5 @@
 import inspect
-from typing import List, Union, Set, Any
+from typing import Optional, Union, Any
 
 import numpy as np
 
@@ -58,21 +58,12 @@ class Fruit:
     def __init__(self, name: str = ""):
         self.name: str = name
         # list of FruitBranches
-        self._branches: List[FruitBranch] = []
+        self._branches: list[FruitBranch] = []
         # pointer for the current branch index
         self._cbi: int = 0
         self._fitted: bool = False
 
-    @property
-    def name(self) -> str:
-        """Simple identifier for the Fruit object."""
-        return self._name
-
-    @name.setter
-    def name(self, name: str):
-        self._name = name
-
-    def fork(self, branch: "FruitBranch" = None):
+    def fork(self, branch: "FruitBranch" = None) -> None:
         """Adds a new branch to the pipeline. If none is given, an
         empty FruitBranch will be created and switched to.
 
@@ -84,7 +75,7 @@ class Fruit:
         self._cbi = len(self._branches) - 1
         self._fitted = False
 
-    def branch(self, index: int = None):
+    def branch(self, index: Optional[int] = None) -> "FruitBranch":
         """Returns the currently selected branch or the branch with the
         given index.
 
@@ -94,14 +85,14 @@ class Fruit:
             return self._branches[self._cbi]
         return self._branches[index]
 
-    def branches(self) -> list:
+    def branches(self) -> list["FruitBranch"]:
         """Returns all branches of this Fruit object.
 
         :rtype: list
         """
         return self._branches
 
-    def switch_branch(self, index: int):
+    def switch_branch(self, index: int) -> None:
         """Switches to the branch with the given index.
 
         :param index: Integer in ``[0, 1, ..., len(self.branches())-1]``
@@ -111,7 +102,7 @@ class Fruit:
             raise IndexError("Index has to be in [0, len(self.branches()))")
         self._cbi = index
 
-    def add(self, *objects: Union[FitTransform, Word, type]):
+    def add(self, *objects: Union[FitTransform, Word, type]) -> None:
         """Adds one or multiple object(s) to the currently selected
         branch.
 
@@ -136,7 +127,7 @@ class Fruit:
         """
         return sum([branch.nfeatures() for branch in self._branches])
 
-    def configure(self, **kwargs: Any):
+    def configure(self, **kwargs: Any) -> None:
         """Makes changes to the default configuration of a all branches
         if arguments differ from ``None``.
 
@@ -147,7 +138,7 @@ class Fruit:
         for branch in self._branches:
             branch.configure(**kwargs)
 
-    def fit(self, X: np.ndarray):
+    def fit(self, X: np.ndarray) -> None:
         """Fits all branches to the given data.
 
         :param X: (Multidimensional) time series dataset as an array
@@ -159,8 +150,11 @@ class Fruit:
             branch.fit(X)
         self._fitted = True
 
-    def transform(self, X: np.ndarray,
-                  callbacks: List[AbstractCallback] = []) -> np.ndarray:
+    def transform(
+        self,
+        X: np.ndarray,
+        callbacks: Optional[list[AbstractCallback]] = None,
+    ) -> np.ndarray:
         """Returns a two dimensional array of all features from all
         branches this Fruit object contains.
 
@@ -168,14 +162,16 @@ class Fruit:
             of three dimensions. Have a look at
             :meth:`~fruits.scope.force_input_shape`.
         :type X: np.ndarray
-        :param callbacks: List of callbacks. To write your own callback,
+        :param callbacks: list of callbacks. To write your own callback,
             override the class
             :class:`~fruits.core.callback.AbstractCallback`.,
             defaults to None
-        :type callbacks: List[AbstractCallback], optional
+        :type callbacks: list[AbstractCallback], optional
         :rtype: np.ndarray
         :raises: RuntimeError if Fruit.fit wasn't called
         """
+        if callbacks is None:
+            callbacks = []
         if not self._fitted:
             raise RuntimeError("Missing call of self.fit")
         result = np.zeros((X.shape[0], self.nfeatures()))
@@ -212,7 +208,7 @@ class Fruit:
         summary += f"\nFeatures: {self.nfeatures()}"
         for branch in self.branches():
             summary += "\n\n" + branch.summary()
-        summary += "\n{:=^80}".format(f"End of Summary")
+        summary += f"\n{'End of Summary' : =^80}"
         return summary
 
     def copy(self) -> "Fruit":
@@ -268,17 +264,20 @@ class FruitBranch:
 
     def __init__(self):
         # lists of used classes for data processing
-        self._preparateurs: list = []
-        self._words: list = []
-        self._sieves: list = []
+        self._preparateurs: list[DataPreparateur] = []
+        self._words: list[Word] = []
+        self._sieves: list[FeatureSieve] = []
 
         # calculator options used in the ISS calculation
-        self._calculator_options: dict = {"batch_size": 1, "mode": "single"}
+        self._calculator_options: dict[str, Union[int, str]] = {
+            "batch_size": 1,
+            "mode": "single",
+        }
 
         # list with inner lists containing sieves
         # all sieves in one list are trained on one specific output
         # of an ISS-result
-        self._sieves_extended: list = []
+        self._sieves_extended: list[list[FeatureSieve]] = []
 
         # configurations for fitting
         self._fitted: bool = False
@@ -288,10 +287,12 @@ class FruitBranch:
         # transformation process
         self._cache: Cache
 
-    def configure(self,
-                  mode: str = None,
-                  batch_size: int = None,
-                  fit_sample_size: Union[float, int] = None):
+    def configure(
+        self,
+        mode: str = None,
+        batch_size: int = None,
+        fit_sample_size: Optional[Union[float, int]] = None,
+    ) -> None:
         """Makes changes to the default configuration of a fruit branch
         if arguments differ from ``None``.
 
@@ -316,7 +317,7 @@ class FruitBranch:
         if fit_sample_size is not None:
             self._fit_sample_size = fit_sample_size
 
-    def add_preparateur(self, preparateur: DataPreparateur):
+    def add_preparateur(self, preparateur: DataPreparateur) -> None:
         """Adds a preparateur to the branch.
 
         :type preparateur: DataPreparateur
@@ -326,20 +327,20 @@ class FruitBranch:
         self._preparateurs.append(preparateur)
         self._fitted = False
 
-    def get_preparateurs(self) -> List[DataPreparateur]:
+    def get_preparateurs(self) -> list[DataPreparateur]:
         """Returns a list of all preparateurs added to the
         branch.
 
-        :rtype: List[DataPreparateur]
+        :rtype: list[DataPreparateur]
         """
         return self._preparateurs
 
-    def clear_preparateurs(self):
+    def clear_preparateurs(self) -> None:
         """Removes all preparateurs that were added to this branch."""
         self._preparateurs = []
         self._fitted = False
 
-    def add_word(self, word: Word):
+    def add_word(self, word: Word) -> None:
         """Adds a word to the branch.
 
         :type word: Word
@@ -349,20 +350,20 @@ class FruitBranch:
         self._words.append(word)
         self._fitted = False
 
-    def get_words(self) -> List[Word]:
+    def get_words(self) -> list[Word]:
         """Returns a list of all words in the branch.
 
-        :rtype: List[Word]
+        :rtype: list[Word]
         """
         return self._words
 
-    def clear_words(self):
+    def clear_words(self) -> None:
         """Removes all words that were added to this branch."""
         self._words = []
         self._sieves_extended = []
         self._fitted = False
 
-    def add_sieve(self, sieve: FeatureSieve):
+    def add_sieve(self, sieve: FeatureSieve) -> None:
         """Appends a new feature sieve to the FruitBranch.
 
         :type sieve: FeatureSieve
@@ -372,21 +373,20 @@ class FruitBranch:
         self._sieves.append(sieve)
         self._fitted = False
 
-    def get_sieves(self) -> List[FeatureSieve]:
+    def get_sieves(self) -> list[FeatureSieve]:
         """Returns a list of all feature sieves added to the branch.
 
-        :rtype: List[FeatureSieve]
+        :rtype: list[FeatureSieve]
         """
         return self._sieves
 
-    def clear_sieves(self):
+    def clear_sieves(self) -> None:
         """Removes all feature sieves that were added to this branch."""
         self._sieves = []
-        self._sieve_prerequisites = None
         self._sieves_extended = []
         self._fitted = False
 
-    def add(self, *objects: Union[FitTransform, Word, type]):
+    def add(self, *objects: Union[FitTransform, Word, type]) -> None:
         """Adds one or multiple object(s) to the branch.
 
         :type objects: One or more objects of the following types:
@@ -408,7 +408,7 @@ class FruitBranch:
             else:
                 raise TypeError("Cannot add variable of type"+str(type(obj)))
 
-    def clear(self):
+    def clear(self) -> None:
         """Clears all settings, configurations and calculated results
         the branch has.
 
@@ -439,7 +439,7 @@ class FruitBranch:
                 * len(self._words)
             )
 
-    def _compile(self):
+    def _compile(self) -> None:
         # checks if the FruitBranch is configured correctly and ready
         # for fitting
         if not self._words:
@@ -447,9 +447,9 @@ class FruitBranch:
         if not self._sieves:
             raise RuntimeError("No FeatureSieve objects specified")
 
-    def _collect_cache_keys(self) -> Set[str]:
+    def _collect_cache_keys(self) -> set[str]:
         # collects cache keys of all FitTransformers in the branch
-        keys: Set[str] = set()
+        keys: set[str] = set()
         for prep in self._preparateurs:
             prep_keys = prep._get_cache_keys()
             if 'coquantile' in prep_keys:
@@ -460,7 +460,7 @@ class FruitBranch:
                 keys = keys.union(sieve_keys['coquantile'])
         return keys
 
-    def _get_cache(self, X: np.ndarray):
+    def _get_cache(self, X: np.ndarray) -> None:
         # returns the already processed cache needed in this branch
         self._cache = CoquantileCache()
         self._cache.process(X, list(self._collect_cache_keys()))
@@ -478,7 +478,7 @@ class FruitBranch:
             indices = np.random.choice(X.shape[0], size=s, replace=False)
             return X[indices, :, :]
 
-    def fit(self, X: np.ndarray):
+    def fit(self, X: np.ndarray) -> None:
         """Fits the branch to the given dataset. What this action
         explicitly does depends on the FruitBranch configuration.
 
@@ -511,8 +511,11 @@ class FruitBranch:
             self._sieves_extended.append(sieves_copy)
         self._fitted = True
 
-    def transform(self, X: np.ndarray,
-                  callbacks: List[AbstractCallback] = []) -> np.ndarray:
+    def transform(
+        self,
+        X: np.ndarray,
+        callbacks: Optional[list[AbstractCallback]] = None,
+    ) -> np.ndarray:
         """Transforms the given time series dataset. The results are
         the calculated features for the different time series.
 
@@ -520,14 +523,16 @@ class FruitBranch:
             of three dimensions. Have a look at
             :meth:`~fruits.scope.force_input_shape`.
         :type X: np.ndarray
-        :param callbacks: List of callbacks. To write your own callback,
+        :param callbacks: list of callbacks. To write your own callback,
             override the class
             :class:`~fruits.core.callback.AbstractCallback`.,
             defaults to []
-        :type callbacks: List[AbstractCallback], optional
+        :type callbacks: list[AbstractCallback], optional
         :rtype: np.ndarray
         :raises: RuntimeError if ``self.fit`` wasn't called
         """
+        if callbacks is None:
+            callbacks = []
         if not self._fitted:
             raise RuntimeError("Missing call of self.fit")
 

@@ -1,10 +1,9 @@
-from abc import abstractmethod
-from typing import Dict, List
+from abc import ABC, abstractmethod
 
 import numpy as np
 
 
-class FeatureSieve:
+class FeatureSieve(ABC):
     """Abstract class for a feature sieve. Sieves are the last part of a
     :class:`~fruits.core.fruit.Fruit`.
 
@@ -16,8 +15,6 @@ class FeatureSieve:
         defaults to ""
     :type name: str, optional
     """
-
-    name: str
 
     def __init__(self, name: str = ""):
         self.name = name
@@ -48,7 +45,7 @@ class FeatureSieve:
         self.fit(X, **kwargs)
         return self.transform(X, **kwargs)
 
-    def _get_cache_keys(self) -> Dict[str, List[str]]:
+    def _get_cache_keys(self) -> dict[str, list[str]]:
         # returns keys for cache needed in the sieve
         return dict()
 

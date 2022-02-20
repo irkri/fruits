@@ -36,7 +36,7 @@ class ONE(DataPreparateur):
         return True
 
     def __str__(self) -> str:
-        return f"ONE()"
+        return "ONE()"
 
     def __repr__(self) -> str:
         return "fruits.preparation.dimension.ONE"
