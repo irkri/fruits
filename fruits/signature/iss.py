@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import Union
 
 import numpy as np
 
@@ -13,11 +13,11 @@ class CachePlan:
     to "extended". The plan removes repetition in calculation.
     """
 
-    def __init__(self, words: List[Word]):
+    def __init__(self, words: list[Word]):
         self._words = words
         self._create_plan()
 
-    def _create_plan(self):
+    def _create_plan(self) -> None:
         # prefix search in the word strings generates a cache plan
         self._plan = []
         word_strings = [str(word) for word in self._words]
@@ -48,7 +48,7 @@ class CachePlan:
         """
         return self._plan[index]
 
-    def n_iterated_sums(self, word_indices: List[int]) -> int:
+    def n_iterated_sums(self, word_indices: list[int]) -> int:
         """Returns the number of iterated sums that have to be
         calculated using this plan for the words with the given indices.
 
@@ -66,17 +66,21 @@ class SignatureCalculation:
     ``batch_size``.
     """
 
-    def __init__(self,
-                 X: np.ndarray,
-                 words: List[Word],
-                 mode: str = "single",
-                 batch_size: int = -1):
+    def __init__(
+        self,
+        X: np.ndarray,
+        words: list[Word],
+        mode: str = "single",
+        batch_size: int = -1
+    ):
         self._X = X
         self._words = words
         if mode not in ["single", "extended"]:
             raise ValueError("mode can either be 'single' or 'extended'")
         self._mode = mode
         self._batch_size = batch_size
+        self._cache_plan: CachePlan
+        self._real_batch_size: int = 0
 
     def _transform_simple_word(self, word: SimpleWord) -> np.ndarray:
         # transforms all simplewords for faster calculation with a
@@ -88,7 +92,7 @@ class SignatureCalculation:
                 word_transformed[i, j] = simple_word_raw[i][j]
         return word_transformed
 
-    def _n_iterated_sums(self, words: List[Word]) -> int:
+    def _n_iterated_sums(self, words: list[Word]) -> int:
         # returns the number of iterated sums this object produces
         if self._mode == "extended":
             return CachePlan(words).n_iterated_sums(list(range(len(words))))
@@ -97,10 +101,9 @@ class SignatureCalculation:
 
     def _get_alpha(self, word: Word) -> np.ndarray:
         # returns a better format of the weighting of the given word
-        return np.array([0.0] + word.alpha + [0.0],
-                        dtype=np.float32)
+        return np.array([0.0] + word.alpha + [0.0], dtype=np.float32)
 
-    def __iter__(self):
+    def __iter__(self) -> "SignatureCalculation":
         if self._mode == "extended":
             self._cache_plan = CachePlan(self._words)
         self._current_word = 0
@@ -202,9 +205,11 @@ class SignatureCalculator:
         )
 
 
-def ISS(X: np.ndarray,
-        words: Union[List[Word], Word],
-        mode: str = "single") -> np.ndarray:
+def ISS(
+    X: np.ndarray,
+    words: Union[list[Word], Word],
+    mode: str = "single"
+) -> np.ndarray:
     """Takes in a number of time series and a list of words and
     calculates the iterated sums for each time series in ``X``. This
     function is just used as a convenience wrapper of the class

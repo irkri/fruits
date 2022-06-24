@@ -8,7 +8,7 @@ supplied to the class for tracking the results of the experiment.
 
 import os
 import time
-from typing import Union, List
+from typing import Optional, Union
 from timeit import default_timer as Timer
 
 import numpy as np
@@ -16,7 +16,7 @@ import pandas as pd
 from sklearn.linear_model import RidgeClassifierCV
 from sklearn.preprocessing import FunctionTransformer
 
-from context import fruits
+import fruits
 import tsdata
 
 
@@ -47,6 +47,7 @@ class FRUITSExperiment:
         defaults to None
     :type comet_experiment: comet_ml.Experiment, optional
     """
+
     output_header_names = [
         "Dataset",
         "TrS",
@@ -59,11 +60,13 @@ class FRUITSExperiment:
         "M",
     ]
 
-    def __init__(self,
-                 rocket_csv=None,
-                 classifier=None,
-                 scaler=None,
-                 comet_experiment=None):
+    def __init__(
+        self,
+        rocket_csv=None,
+        classifier=None,
+        scaler=None,
+        comet_experiment=None,
+    ):
         self._results = pd.DataFrame(columns=self.output_header_names)
         if rocket_csv is not None:
             self._rocket_csv = pd.read_csv(rocket_csv)
@@ -82,10 +85,12 @@ class FRUITSExperiment:
         else:
             self._scaler = scaler
 
-    def append_data(self,
-                    path: str,
-                    names: Union[List[str], str, None] = None,
-                    univariate: bool = True):
+    def append_data(
+        self,
+        path: str,
+        names: Optional[Union[list[str], str]] = None,
+        univariate: bool = True,
+    ) -> None:
         """Finds time series datasets in the specified directory for
         later usage.
 
@@ -118,10 +123,12 @@ class FRUITSExperiment:
         if len(self._datasets[path][0]) == 0:
             del self._datasets[path]
 
-    def classify(self,
-                 fruit: Union[fruits.Fruit, None] = None,
-                 cache_results: Union[str, None] = None,
-                 verbose: bool = True):
+    def classify(
+        self,
+        fruit: Optional[fruits.Fruit] = None,
+        cache_results: Optional[str] = None,
+        verbose: bool = True,
+    ) -> None:
         """Classifies all datasets added earlier and summarizes the
         results in a pandas DataFrame.
 
@@ -226,10 +233,12 @@ class FRUITSExperiment:
         if verbose:
             print(f"\nDone")
 
-    def produce_output(self,
-                       filename: str,
-                       txt: bool = True,
-                       csv: bool = False):
+    def produce_output(
+        self,
+        filename: str,
+        txt: bool = True,
+        csv: bool = False,
+    ) -> None:
         """Outputs all results of classified datasets to the file(s).
 
         :param filename: Name of the file (without extension) that is

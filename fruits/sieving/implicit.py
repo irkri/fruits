@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Union
 
 import numpy as np
 
@@ -47,21 +47,23 @@ class PPV(FeatureSieve):
     :type segments: bool, optional
     """
 
-    def __init__(self,
-                 quantile: Union[List[float], float] = 0.5,
-                 constant: Union[List[bool], bool] = False,
-                 sample_size: float = 1.0,
-                 segments: bool = False):
+    def __init__(
+        self,
+        quantile: Union[list[float], float] = 0.5,
+        constant: Union[list[bool], bool] = False,
+        sample_size: float = 1.0,
+        segments: bool = False,
+    ):
         super().__init__("Proportion of positive values")
         if isinstance(quantile, list):
             if not isinstance(constant, list):
-                constant = [constant for i in range(len(quantile))]
+                constant = [constant for _ in range(len(quantile))]
             elif len(quantile) != len(constant):
                 raise ValueError("If 'quantile' is a list, then 'constant' "
                                  + "also has to be a list of same length or "
                                  + "a single boolean.")
             for q, c in zip(quantile, constant):
-                if not c and not (0 <= q <= 1):
+                if not c and not 0 <= q <= 1:
                     raise ValueError("If 'constant' is set to False, "
                                      + "'quantile' has to be a value in [0,1]")
         else:
@@ -77,7 +79,7 @@ class PPV(FeatureSieve):
             self._q_c_input = sorted(self._q_c_input, key=lambda x: x[0])
         else:
             self._q_c_input = list(zip(quantile, constant))
-        self._q: List[float]
+        self._q: list[float]
         if not 0 < sample_size <= 1:
             raise ValueError("'sample_size' has to be a float in (0, 1]")
         self._sample_size = sample_size
@@ -102,18 +104,20 @@ class PPV(FeatureSieve):
         :type X: np.ndarray
         """
         self._q = [x[0] for x in self._q_c_input]
-        for i in range(len(self._q)):
+        for i, q in enumerate(self._q):
             if not self._q_c_input[i][1]:
                 sample_size = int(self._sample_size * len(X))
                 if sample_size < 1:
                     sample_size = 1
-                selection = np.random.choice(np.arange(len(X)),
-                                             size=sample_size,
-                                             replace=False)
-                self._q[i] = np.quantile(np.array(
-                                            [X[i] for i in selection]
-                                         ).flatten(),
-                                         self._q[i])
+                selection = np.random.choice(
+                    np.arange(len(X)),
+                    size=sample_size,
+                    replace=False,
+                )
+                self._q[i] = np.quantile(
+                    np.array([X[i] for i in selection]).flatten(),
+                    q,
+                )
 
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed data. See the class definition for
@@ -129,14 +133,14 @@ class PPV(FeatureSieve):
         result = np.zeros((X.shape[0], self.nfeatures()))
         if self._segments:
             for j in range(1, len(self._q)):
-                result[:, j-1] = np.sum(np.logical_and(
-                                            self._q[j-1] <= X,
-                                            X < self._q[j]),
-                                        axis=1)
+                result[:, j-1] = np.sum(
+                    np.logical_and(self._q[j-1] <= X, X < self._q[j]),
+                    axis=1
+                )
                 result[:, j-1] /= X.shape[1]
         else:
-            for j in range(len(self._q)):
-                result[:, j] = np.sum((X >= self._q[j]), axis=1)
+            for j, q in enumerate(self._q):
+                result[:, j] = np.sum((X >= q), axis=1)
                 result[:, j] /= X.shape[1]
         return result
 
@@ -197,8 +201,8 @@ class CPV(PPV):
     """
 
     def __init__(self,
-                 quantile: Union[List[float], float] = 0.5,
-                 constant: Union[List[bool], bool] = False,
+                 quantile: Union[list[float], float] = 0.5,
+                 constant: Union[list[bool], bool] = False,
                  sample_size: float = 1.0,
                  segments: bool = False):
         super().__init__(quantile,
@@ -231,10 +235,10 @@ class CPV(PPV):
                                     axis=1))[:, 0, :]
                 result[:, j-1] = 2 * np.sum(diff == 1, axis=-1) / n
         else:
-            for j in range(len(self._q)):
-                diff = _increments(np.expand_dims(
-                                    (X >= self._q[j]).astype(np.float64),
-                                    axis=1))[:, 0, :]
+            for j, q in enumerate(self._q):
+                diff = _increments(
+                    np.expand_dims((X >= q).astype(np.float64), axis=1)
+                )[:, 0, :]
                 result[:, j] = 2 * np.sum(diff == 1, axis=-1) / n
         return result
 

@@ -1,6 +1,6 @@
 import numpy as np
 
-from context import fruits
+import fruits
 
 np.random.seed(62)
 

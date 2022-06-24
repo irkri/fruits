@@ -10,18 +10,10 @@ class FitTransform(Protocol):
     """
 
     def fit(self, X: np.ndarray, **kwargs) -> None:
-        """Fits the object to the given time series dataset.
-
-        :type X: np.ndarray
-        """
+        ...
 
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Transforms the given time series dataset.
-
-        :type X: np.ndarray
-        :returns: Transformed time series dataset.
-        :rtype: np.ndarray
-        """
+        ...
 
 
 def force_input_shape(X: np.ndarray) -> np.ndarray:

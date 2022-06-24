@@ -6,25 +6,41 @@ objects).
 This file can also be used as a scripted invoked from the command line.
 You get all available arguments with
 
-    >>> python configs_compare.py -h
+    >>> python comparision.py -h
 
 The module can also be used without any dependencies to fruits.
 """
 
 import os
 import argparse
-from typing import List, Union, Tuple
+from typing import Union
 
 import networkx as nx
 import numpy as np
 import pandas as pd
-import scipy as sp
+from scipy import stats
+from matplotlib import cm
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
-from fruitalyser import _get_color
-
 DEFAULT_COMPARISION_COLUMN = "FRUITS Acc"
+
+_COLORS: list[tuple[int, int, int]] = [
+    (0, 100, 173),
+    (181, 22, 33),
+    (87, 40, 98),
+    (0, 48, 100),
+    (140, 25, 44),
+]
+
+
+def _get_color(i: int) -> tuple[float, float, float]:
+    if i < 5:
+        return tuple(x/255 for x in _COLORS[i])
+    elif i < 20:
+        return cm.get_cmap("tab20b").colors[2:][i-5]
+    else:
+        return tuple(x/255 for x in _COLORS[i % len(_COLORS)])
 
 
 class ClassifierComparision:
@@ -45,9 +61,11 @@ class ClassifierComparision:
     :type label2: str
     """
 
-    def __init__(self,
-                 accuracies: np.ndarray,
-                 labels: List[str]):
+    def __init__(
+        self,
+        accuracies: np.ndarray,
+        labels: list[str],
+    ):
         self._ndatasets = accuracies.shape[0]
         self._nclassifiers = accuracies.shape[1]
         if len(labels) != self._nclassifiers:
@@ -58,9 +76,11 @@ class ClassifierComparision:
             self._accuracies /= maximum
         self._labels = labels
 
-    def scatterplot(self,
-                    indices: Union[List[Tuple[int, int]], None] = None,
-                    opacity: Union[List[float], None] = None) -> tuple:
+    def scatterplot(
+        self,
+        indices: Union[list[tuple[int, int]], None] = None,
+        opacity: Union[list[float], None] = None,
+    ) -> tuple:
         """Creates a 2D scatter plot for each pair of the given
         accuracy results.
 
@@ -115,17 +135,17 @@ class ClassifierComparision:
                                    color=_get_color(1), ls="--")
                     axs[i][j].plot([0.05, 1], [0, 0.95],
                                    transform=axs[i][j].transAxes,
-                                   color=_get_color(1)+(0.3,), ls="--")
+                                   color=_get_color(1) + (0.3,), ls="--")
                     axs[i][j].plot([0, 0.95], [0.05, 1],
                                    transform=axs[i][j].transAxes,
-                                   color=_get_color(1)+(0.3,), ls="--")
+                                   color=_get_color(1) + (0.3,), ls="--")
 
                     meanii = self._accuracies[:, ii].mean()
                     meanjj = self._accuracies[:, jj].mean()
                     axs[i][j].axhline(meanii, xmin=0, xmax=meanii,
-                                      color=_get_color(3)+(0.5,), ls="--")
+                                      color=_get_color(3) + (0.5,), ls="--")
                     axs[i][j].axvline(meanjj, ymin=0, ymax=meanjj,
-                                      color=_get_color(3)+(0.5,), ls="--")
+                                      color=_get_color(3) + (0.5,), ls="--")
 
                     axs[i][j].text(0.02, 0.98, self._labels[ii],
                                    size="large", ha="left", va="top")
@@ -145,9 +165,11 @@ class ClassifierComparision:
         :returns: Value of the test function and p-value of the test.
         :rtype: tuple
         """
-        stat, p = sp.stats.wilcoxon(self._accuracies[:, i],
-                                    self._accuracies[:, j],
-                                    alternative="greater")
+        stat, p = stats.wilcoxon(
+            self._accuracies[:, i],
+            self._accuracies[:, j],
+            alternative="greater",
+        )
         return stat, p
 
     def critical_difference_diagram(self, alpha: float = 0.05):
@@ -169,16 +191,18 @@ class ClassifierComparision:
         c = 0
         for i in range(self._nclassifiers - 1):
             for j in range(i+1, self._nclassifiers):
-                p[c] = sp.stats.wilcoxon(self._accuracies[:, i],
-                                         self._accuracies[:, j],
-                                         zero_method='pratt')[1]
+                p[c] = stats.wilcoxon(
+                    self._accuracies[:, i],
+                    self._accuracies[:, j],
+                    zero_method='pratt',
+                )[1]
                 c += 1
         p_order = np.argsort(p)
         holm_bonferroni = alpha / np.arange(p.shape[0], 0, -1)
         p_significant = (p[p_order] <= holm_bonferroni)[p_order.argsort()]
 
         # calculate average ranks
-        avg_ranks = sp.stats.rankdata(self._accuracies, axis=1)
+        avg_ranks = stats.rankdata(self._accuracies, axis=1)
         avg_ranks = self._nclassifiers - avg_ranks + 1
         avg_ranks = avg_ranks.mean(axis=0)
         avg_ranks_order = avg_ranks.argsort()[::-1]
@@ -259,14 +283,18 @@ class ClassifierComparision:
                 c=markings_color,
                 lw=2.0,
             )
-            ax.text(lowest_rank + rank_xshift + i*label_xshift,
-                    first_marking + i*markings_vspace,
-                    f"{avg_ranks[index]:.2f}",
-                    ha="right", va="bottom", size=8)
-            ax.text(lowest_rank + i*label_xshift - label_offset,
-                    first_marking + i*markings_vspace,
-                    f"{self._labels[index]}",
-                    ha="left", va="center", size=14)
+            ax.text(
+                lowest_rank + rank_xshift + i*label_xshift,
+                first_marking + i*markings_vspace,
+                f"{avg_ranks[index]:.2f}",
+                ha="right", va="bottom", size=8,
+            )
+            ax.text(
+                lowest_rank + i*label_xshift - label_offset,
+                first_marking + i*markings_vspace,
+                f"{self._labels[index]}",
+                ha="left", va="center", size=14,
+            )
 
         # get cliques based on the calculated p-values
         adjacency_matrix = np.zeros((self._nclassifiers, self._nclassifiers))
@@ -289,7 +317,8 @@ class ClassifierComparision:
             first_clique_line = 0.97
         clique_line_diff = (1 - (first_marking + (half-1)*markings_vspace))
         clique_line_diff -= 0.001
-        clique_line_diff /= len(cliques)
+        if len(cliques) > 0:
+            clique_line_diff /= len(cliques)
         clique_line_y = first_clique_line
         for clique in cliques:
             left = min(clique)
@@ -380,7 +409,7 @@ def main():
     comparision = ClassifierComparision(accs, labels)
 
     if args.test:
-        print(f"\nOne-sided paired Wilcoxon signed-rank test")
+        print("\nOne-sided paired Wilcoxon signed-rank test")
         print("------------------------------------------")
         for i in range(len(files)):
             for j in range(len(files)):

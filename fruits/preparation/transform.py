@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any, Union
 
 import numpy as np
 
@@ -23,8 +23,7 @@ class INC(DataPreparateur):
     :type zero_padding: bool, optional
     """
 
-    def __init__(self,
-                 zero_padding: bool = True):
+    def __init__(self, zero_padding: bool = True):
         super().__init__("Increments")
         self._zero_padding = zero_padding
 
@@ -48,9 +47,8 @@ class INC(DataPreparateur):
         return dp
 
     def __eq__(self, other) -> bool:
-        if not isinstance(other, INC):
-            return False
-        if self._zero_padding == other._zero_padding:
+        if (isinstance(other, INC)
+                and self._zero_padding == other._zero_padding):
             return True
         return False
 
@@ -104,7 +102,9 @@ class STD(DataPreparateur):
         """
         return STD()
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, STD):
+            return False
         return True
 
     def __str__(self) -> str:
@@ -131,7 +131,7 @@ class MAV(DataPreparateur):
             if not 0.0 < width < 1.0:
                 raise ValueError("If width is a float, it has to be in (0,1)")
         elif isinstance(width, int):
-            if not width > 0:
+            if width <= 0:
                 raise ValueError("If width is an integer, it has to be > 0")
         else:
             raise TypeError("width has to be an integer or a float in (0,1)")
@@ -173,8 +173,10 @@ class MAV(DataPreparateur):
         """
         return MAV(self._w_given)
 
-    def __eq__(self, other) -> bool:
-        return (self._w_given == other._w_given)
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, MAV):
+            return False
+        return self._w_given == other._w_given
 
     def __str__(self) -> str:
         return f"MAV(width={self._w_given})"
@@ -217,11 +219,13 @@ class LAG(DataPreparateur):
         """
         return LAG()
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, LAG):
+            return False
         return True
 
     def __str__(self) -> str:
-        return f"LAG()"
+        return "LAG()"
 
     def __repr__(self) -> str:
         return "fruits.preparation.transform.LAG"

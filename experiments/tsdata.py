@@ -3,22 +3,25 @@ series data.
 """
 
 import os
+from typing import Optional
 
 import numpy as np
 from scipy.io import arff
 
 
-def _multisine(x, coeff):
+def _multisine(x, coeff) -> float:
     return sum([coeff[i, 0]*np.sin(coeff[i, 1]*x+coeff[i, 2])
                 for i in range(len(coeff))])
 
 
-def multisine(train_size: int = 100,
-              test_size: int = 1000,
-              length: int = 100,
-              n_classes: int = 2,
-              used_sines: int = 3,
-              coefficients: list = None) -> tuple:
+def multisine(
+    train_size: int = 100,
+    test_size: int = 1000,
+    length: int = 100,
+    n_classes: int = 2,
+    used_sines: int = 3,
+    coefficients: Optional[np.ndarray] = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Generates a time series dataset based on a linear concatenation
     of sine functions with random parameters for period length and more.
     These concatenations are the models for each class and a single
@@ -64,7 +67,7 @@ def multisine(train_size: int = 100,
 
     x_range = np.linspace(0, 2*np.pi, num=length)
     if coefficients is None:
-        coefficients = 2*np.random.rand(n_classes, used_sines, 3)
+        coefficients = 2 * np.random.rand(n_classes, used_sines, 3)
 
     models = [np.vectorize(lambda x: _multisine(x, coefficients[i]))(x_range)
               for i in range(n_classes)]
@@ -96,9 +99,11 @@ def multisine(train_size: int = 100,
     return X_train, y_train, X_test, y_test
 
 
-def load_dataset(path: str,
-                 univariate: bool = True,
-                 cache: bool = True) -> tuple:
+def load_dataset(
+    path: str,
+    univariate: bool = True,
+    cache: bool = True,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Returns a time series dataset that is formatted as a .txt file
     and readable with numpy.
 
@@ -201,7 +206,7 @@ def load_dataset(path: str,
     return X_train, y_train, X_test, y_test
 
 
-def nan_to_num(X: np.ndarray, value: float = 0.0):
+def nan_to_num(X: np.ndarray, value: float = 0.0) -> None:
     """Sets all NaN values in X to the given value.
 
     :type X: np.ndarray
@@ -210,7 +215,7 @@ def nan_to_num(X: np.ndarray, value: float = 0.0):
     return np.nan_to_num(X, value)
 
 
-def analyse(X: np.ndarray):
+def analyse(X: np.ndarray) -> None:
     """Takes in a three dimensional numpy array containing
     multidimensional time series and prints out an analysis of the
     dataset.
@@ -227,8 +232,10 @@ def analyse(X: np.ndarray):
     print(string)
 
 
-def implant_stuttering(X: np.ndarray,
-                       stutter_length: float = 0.1) -> np.ndarray:
+def implant_stuttering(
+    X: np.ndarray,
+    stutter_length: float = 0.1,
+) -> np.ndarray:
     """Implants some 'stuttering' to a given array of time series.
     That is, at some indices in each time series a value will be
     repeated consecutively a (random) number of times.
@@ -280,8 +287,7 @@ def implant_stuttering(X: np.ndarray,
     return X_new
 
 
-def lengthen(X: np.ndarray,
-             length: float = 0.1) -> np.ndarray:
+def lengthen(X: np.ndarray, length: float = 0.1) -> np.ndarray:
     """Lengthens each time series in the given array.
 
     :param X: 3-dim array of multidimensional time series

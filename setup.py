@@ -2,10 +2,10 @@ from setuptools import setup
 
 metadata = dict(
     name="fruits",
-    version="0.9.2",
+    version="0.9.3",
     author="alienkrieg",
     author_email="alienkrieg@gmail.com",
-    description="Feature extRation Using ITerated Sums",
+    description="Feature Extraction Using Iterated Sums",
     packages=[
         "fruits",
         "fruits.core",
@@ -18,9 +18,8 @@ metadata = dict(
     install_requires=[
         "numpy >= 1.19.2",
         "numba >= 0.52.0",
-        "pytest >= 6.2.4",
     ],
-    python_requires=">=3.8, <3.10",
+    python_requires=">=3.9, <3.10",
 )
 
 if __name__ == "__main__":

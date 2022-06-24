@@ -12,7 +12,11 @@ Extra dependecies may be needed for the execution of some of the here listed app
 - ``comet_ml>=3.13.1``
 - ``networkx>=2.6.2``
 
-Earlier versions of the named packages could work too, but aren't tested.
+Earlier versions of the named packages could work too, but aren't tested. You can install these
+additional dependencies using poetry and the file [pyproject.toml](/pyproject.toml).
+```
+    $ poetry install -E experiment-dependencies
+```
 
 ## Execution
 

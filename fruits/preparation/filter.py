@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Union
 
 import numpy as np
 
@@ -26,7 +26,7 @@ class DIL(DataPreparateur):
         super().__init__("Dilation")
         self._clusters = clusters
         self._indices: np.ndarray
-        self._lengths: List[int]
+        self._lengths: list[int]
 
     def fit(self, X: np.ndarray, **kwargs) -> None:
         """Fits the preparateur to the given dataset by randomizing the
@@ -66,8 +66,8 @@ class DIL(DataPreparateur):
         if not hasattr(self, "_indices") or not hasattr(self, "_lengths"):
             raise RuntimeError("Missing call of self.fit()")
         X_new = X.copy()
-        for i in range(len(self._indices)):
-            X_new[:, :, self._indices[i]:self._indices[i]+self._lengths[i]] = 0
+        for i, index in enumerate(self._indices):
+            X_new[:, :, index:index+self._lengths[i]] = 0
         return X_new
 
     def copy(self) -> "DIL":
@@ -291,8 +291,9 @@ class PDD(DataPreparateur):
         self._width = int(p / points)
         if points == X.shape[2]-self._width:
             points -= 1
-        self._indices = np.linspace(0, X.shape[2]-self._width, points,
-                                    dtype="int")
+        self._indices = np.linspace(
+            0, X.shape[2]-self._width, points, dtype="int",
+        )
 
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Returns the transformed dataset.
@@ -303,8 +304,8 @@ class PDD(DataPreparateur):
         if not hasattr(self, "_width") or not hasattr(self, "_indices"):
             raise RuntimeError("Missing call of self.fit()")
         out = X.copy()
-        for i in range(len(self._indices)):
-            out[:, :, self._indices[i]:self._indices[i]+self._width] = 0
+        for index in self._indices:
+            out[:, :, index:index+self._width] = 0
         return out
 
     def copy(self) -> "PDD":

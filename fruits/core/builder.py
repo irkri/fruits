@@ -1,4 +1,3 @@
-from typing import List, Tuple
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -20,7 +19,7 @@ class FruitBuilder(ABC):
     """
 
     @abstractmethod
-    def build(self, X: np.ndarray) -> Fruit:
+    def build(self, X_train: np.ndarray) -> Fruit:
         """Builds a Fruit based on the given dataset.
 
         :param X_train: Three dimensional numpy array containing
@@ -83,9 +82,11 @@ class UnivariateFruitBuilder(FruitBuilder):
 
         return fruit
 
-    def _choose_preparateurs(self,
-                             mode: str,
-                             length: int) -> List[DataPreparateur]:
+    def _choose_preparateurs(
+        self,
+        mode: str,
+        length: int,
+    ) -> list[DataPreparateur]:
         if mode == "single":
             return [
                 preparation.dimension.DIM(
@@ -99,8 +100,9 @@ class UnivariateFruitBuilder(FruitBuilder):
             for i in range(n):
                 filters.append(preparation.filter.DIL())
             return filters
+        raise ValueError(f"Unknown mode supplied: {mode!r}")
 
-    def _choose_words(self, mode: str) -> Tuple[List[Word], str]:
+    def _choose_words(self, mode: str) -> tuple[list[Word], str]:
         # returns a list of words and a calculator mode
         if mode == "leading":
             words = simplewords_by_weight(4, 1)
@@ -117,8 +119,9 @@ class UnivariateFruitBuilder(FruitBuilder):
             return simplewords_by_weight(3, 1), "extended"
         elif mode == "large":
             return simplewords_by_weight(4, 1), "extended"
+        raise ValueError(f"Unknown mode supplied: {mode!r}")
 
-    def _choose_sieves(self, size: str) -> List[FeatureSieve]:
+    def _choose_sieves(self, size: str) -> list[FeatureSieve]:
         # returns the best working sieve configurations
         if size == "large":
             return [
@@ -135,6 +138,7 @@ class UnivariateFruitBuilder(FruitBuilder):
                 sieving.explicit.PIA([0.5, -1]),
                 sieving.explicit.END([0.5, -1]),
             ]
+        raise ValueError(f"Unknown size supplied: {size!r}")
 
 
 class MultivariateFruitBuilder(FruitBuilder):
@@ -172,7 +176,7 @@ class MultivariateFruitBuilder(FruitBuilder):
 
         return fruit
 
-    def _choose_words(self, dim: int) -> Tuple[List[Word], str]:
+    def _choose_words(self, dim: int) -> tuple[list[Word], str]:
         # chooses fitting words, calculator mode based on dimensionality
         if 2 <= dim <= 3:
             return simplewords_by_weight(6 - dim, dim), "extended"
@@ -203,7 +207,7 @@ class MultivariateFruitBuilder(FruitBuilder):
             words.append(SimpleWord(f"[({dim})]"))
             return words, "extended"
 
-    def _choose_sieves(self, dim: int) -> List[FeatureSieve]:
+    def _choose_sieves(self, dim: int) -> list[FeatureSieve]:
         # chooses fitting sieves based on dimensionality
         if 2 <= dim <= 3:
             return [

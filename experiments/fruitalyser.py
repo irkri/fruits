@@ -10,14 +10,14 @@ from timeit import default_timer as Timer
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib as mpl
+from matplotlib import cm
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.linear_model import RidgeClassifierCV, SGDClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 
-from context import fruits
+import fruits
 
 _CLASSIFIERS = [
     (RidgeClassifierCV, {"alphas": np.logspace(-3, 3, 10),
@@ -37,7 +37,7 @@ _CLASSIFIERS = [
         [100, 1000, 10_000, 50_000, 100_000]),
 ]
 
-_COLORS = [
+_COLORS: list[tuple[int, int, int]] = [
     (0, 100, 173),
     (181, 22, 33),
     (87, 40, 98),
@@ -46,16 +46,19 @@ _COLORS = [
 ]
 
 
-def _get_color(i: int):
+def _get_color(i: int) -> tuple[float, float, float]:
     if i < 5:
         return tuple(x/255 for x in _COLORS[i])
     elif i < 20:
-        return mpl.cm.get_cmap("tab20b").colors[2:][i-5]
+        return cm.get_cmap("tab20b").colors[2:][i-5]
     else:
-        return [x/255 for x in _COLORS[i % len(_COLORS)]]
+        return tuple(x/255 for x in _COLORS[i % len(_COLORS)])
 
 
 class TransformationCallback(fruits.callback.AbstractCallback):
+    """Callback that is needed to extract processed timeseries datasets
+    within a fruit.
+    """
     def __init__(self, branch: int = 0):
         self._branch = branch
         self._current_branch = -1
@@ -63,18 +66,18 @@ class TransformationCallback(fruits.callback.AbstractCallback):
         self.iterated_sums = []
         self.sieved_data = None
 
-    def on_next_branch(self):
+    def on_next_branch(self) -> None:
         self._current_branch += 1
 
-    def on_preparation_end(self, X: np.ndarray):
+    def on_preparation_end(self, X: np.ndarray) -> None:
         if self._current_branch == self._branch:
             self.prepared_data = X
 
-    def on_iterated_sum(self, X: np.ndarray):
+    def on_iterated_sum(self, X: np.ndarray) -> None:
         if self._current_branch == self._branch:
             self.iterated_sums.append(X)
 
-    def on_sieving_end(self, X: np.ndarray):
+    def on_sieving_end(self, X: np.ndarray) -> None:
         if self._current_branch == self._branch:
             self.sieved_data = X
 
@@ -93,9 +96,11 @@ class Fruitalyser:
     :type data: tuple
     """
 
-    def __init__(self,
-                 fruit: fruits.Fruit,
-                 data: tuple):
+    def __init__(
+        self,
+        fruit: fruits.Fruit,
+        data: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+    ):
         self.fruit = fruit
         self._extracted = None
         self.X_train, self.y_train, self.X_test, self.y_test = data
@@ -103,12 +108,15 @@ class Fruitalyser:
         self.X_test = np.nan_to_num(self.X_test)
         self.X = self.X_test
         self.y = self.y_test
+        self.callback = TransformationCallback()
 
-    def classify(self,
-                 classifier=None,
-                 scaler=None,
-                 watch_branch: int = 0,
-                 test_set: bool = True):
+    def classify(
+        self,
+        classifier=None,
+        scaler=None,
+        watch_branch: int = 0,
+        test_set: bool = True,
+    ) -> None:
         """Classifies the specified data by first extracting the
         features of the time series using the fruits.Fruit object.
 
@@ -205,11 +213,13 @@ class Fruitalyser:
         dec_exp = np.exp(dec)
         return dec_exp / np.sum(dec_exp)
 
-    def test_classifier(self,
-                        classifier,
-                        variable: str = None,
-                        test_cases: list = None,
-                        **kwargs):
+    def test_classifier(
+        self,
+        classifier,
+        variable: str = None,
+        test_cases: list = None,
+        **kwargs,
+    ) -> tuple:
         """Tests a classifier for its accuracy on the features of the
         input data. The classifier is initialized with different
         configurations and a 2D-plot is created for visualisation of the
@@ -283,20 +293,27 @@ class Fruitalyser:
         """
         print(self.fruit.summary())
 
-    def _get_plot_template(self,
-                           rows: int = 1,
-                           cols: int = 1,
-                           **kwargs) -> tuple:
+    def _get_plot_template(
+        self,
+        rows: int = 1,
+        cols: int = 1,
+        **kwargs,
+    ) -> tuple:
         # returns a plotting template as a tuple (figure, axis)
         fig, axs = plt.subplots(rows, cols, figsize=(10*cols, 5*rows),
                                 **kwargs)
         return fig, axs
 
-    def _plot(self, X, y, on_axis,
-              mean: bool,
-              bounds: bool,
-              nseries: int,
-              per_class: bool) -> tuple:
+    def _plot(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        on_axis,
+        mean: bool,
+        bounds: bool,
+        nseries: int,
+        per_class: bool,
+    ) -> tuple:
         classes = sorted(list(set(y)))
         if mean:
             for i in range(len(classes)):
@@ -328,13 +345,15 @@ class Fruitalyser:
                 for i in indices:
                     on_axis.plot(X[i, :])
 
-    def plot_input_data(self,
-                        dim: int = 0,
-                        mean: bool = False,
-                        bounds: bool = False,
-                        nseries: int = 1,
-                        per_class: bool = True,
-                        on_axis: plt.Axes = None) -> tuple:
+    def plot_input_data(
+        self,
+        dim: int = 0,
+        mean: bool = False,
+        bounds: bool = False,
+        nseries: int = 1,
+        per_class: bool = True,
+        on_axis: plt.Axes = None,
+    ) -> tuple:
         """Plots the unchanged input data.
 
         :param dim: Dimension of each time series to plot.,
@@ -372,13 +391,15 @@ class Fruitalyser:
         if on_axis is None:
             return fig, ax
 
-    def plot_prepared_data(self,
-                           dim: int = 0,
-                           mean: bool = False,
-                           bounds: bool = False,
-                           nseries: int = 1,
-                           per_class: bool = True,
-                           on_axis: plt. Axes = None) -> tuple:
+    def plot_prepared_data(
+        self,
+        dim: int = 0,
+        mean: bool = False,
+        bounds: bool = False,
+        nseries: int = 1,
+        per_class: bool = True,
+        on_axis: plt. Axes = None,
+    ) -> tuple:
         """Plots specified dimension of the prepared data.
         This method can only be used if ``self.classify()`` was
         called before.
@@ -418,13 +439,15 @@ class Fruitalyser:
         if on_axis is None:
             return fig, ax
 
-    def plot_iterated_sums(self,
-                           word_indices: list = None,
-                           mean: bool = False,
-                           bounds: bool = False,
-                           nseries: int = 1,
-                           per_class: bool = True,
-                           on_axes: plt.Axes = None) -> tuple:
+    def plot_iterated_sums(
+        self,
+        word_indices: list = None,
+        mean: bool = False,
+        bounds: bool = False,
+        nseries: int = 1,
+        per_class: bool = True,
+        on_axes: plt.Axes = None,
+    ) -> tuple:
         """Plots the iterated sums calculated in the specified
         fruits.Fruit object with ``fruitalyser.msplot()``.
         This method can only be used if ``self.classify()`` was called
@@ -477,9 +500,11 @@ class Fruitalyser:
         if on_axes is None:
             return fig, axs
 
-    def plot_features(self,
-                      sieve_index: int,
-                      word_index: int) -> sns.PairGrid:
+    def plot_features(
+        self,
+        sieve_index: int,
+        word_index: int,
+    ) -> sns.PairGrid:
         """Plots the features of the watched ``fruits.FruitBranch``
         object. The ``seaborn.pairplot`` function is used to create
         a plot based on a ``pandas.DataFrame`` consisting of the
@@ -514,9 +539,11 @@ class Fruitalyser:
 
         return pp
 
-    def get_feature_dataframe(self,
-                              sieve_index: int,
-                              word_index: int) -> np.ndarray:
+    def get_feature_dataframe(
+        self,
+        sieve_index: int,
+        word_index: int,
+    ) -> np.ndarray:
         """Returns a ``pandas.DataFrame`` object with all features
         matching the following specifications.
         This method can only be used if ``self.classify()`` was called
@@ -569,8 +596,10 @@ class Fruitalyser:
             raise ValueError("One of the two arguments has to be an integer, "
                              + "the other one a list.")
 
-    def pca_correlation(self,
-                        components: int) -> pd.DataFrame:
+    def pca_correlation(
+        self,
+        components: int
+    ) -> pd.DataFrame:
         """Returns a ``pandas.DataFrame`` object containing the
         correlation of the calculated features with the features given
         by a fitted ``sklearn.decomposition.PCA`` object.
@@ -631,8 +660,9 @@ class Fruitalyser:
             if sieve_index < s+n_i:
                 return i
             s += n_i
+        return s
 
-    def split_feature_index(self, index: int) -> tuple:
+    def split_feature_index(self, index: int) -> tuple[int, int]:
         """For a given index for one of the calculated features from
         the ``fruits.Fruit`` object, this method returns a tuple
         containing the index of the word and the index of

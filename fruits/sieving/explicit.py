@@ -1,4 +1,5 @@
-from typing import Union, List, Dict
+from abc import ABC
+from typing import Union
 
 import numba
 import numpy as np
@@ -8,7 +9,7 @@ from fruits._backend import _increments
 from fruits.cache import CoquantileCache
 
 
-class ExplicitSieve(FeatureSieve):
+class ExplicitSieve(FeatureSieve, ABC):
     """Abstract class that has the ability to calculate cutting points
     as indices in the time series based on a given 'coquantile'.
     A (non-scaled) value returned by an explicit sieve always also is a
@@ -33,17 +34,19 @@ class ExplicitSieve(FeatureSieve):
 
     _CACHE_KEY = 'coquantile'
 
-    def __init__(self,
-                 cut: Union[List[float], float] = -1,
-                 segments: bool = False,
-                 name: str = "Abstract Explicit Sieve"):
+    def __init__(
+        self,
+        cut: Union[list[float], float] = -1,
+        segments: bool = False,
+        name: str = "Abstract Explicit Sieve",
+    ):
         super().__init__(name)
         self._cut = cut if isinstance(cut, list) else [cut]
         if len(self._cut) == 1 and segments:
             self._cut = [1, self._cut[0]]
         self._segments = segments
 
-    def _get_cache_keys(self) -> Dict[str, List[str]]:
+    def _get_cache_keys(self) -> dict[str, list[str]]:
         # transforms the input cuts based on the given time series
         keys = [str(cut) for cut in self._cut if isinstance(cut, float)]
         return {self._CACHE_KEY: keys}
@@ -98,13 +101,15 @@ class MAX(ExplicitSieve):
     :type cut: int/float or list of integers/floats, optional
     """
 
-    def __init__(self,
-                 cut: Union[List[float], float] = -1):
+    def __init__(self, cut: Union[list[float], float] = -1):
         super().__init__(cut, True, "Maximal value")
 
     @staticmethod
-    @numba.njit("float64[:,:](float64[:,:], int64[:,:])",
-                parallel=True, cache=True)
+    @numba.njit(
+        "float64[:,:](float64[:,:], int64[:,:])",
+        parallel=True,
+        cache=True,
+    )
     def _backend(X: np.ndarray, cuts: np.ndarray) -> np.ndarray:
         result = np.zeros((X.shape[0], cuts.shape[1] - 1))
         for i in numba.prange(X.shape[0]):  # pylint: disable=not-an-iterable
@@ -125,7 +130,7 @@ class MAX(ExplicitSieve):
 
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
-        string = f"MAX"
+        string = "MAX"
         if self._segments:
             string += " [segments]"
         string += f" -> {self.nfeatures()}:"
@@ -160,8 +165,7 @@ class MIN(ExplicitSieve):
     :type segments: bool, optional
     """
 
-    def __init__(self,
-                 cut: Union[List[float], float] = -1):
+    def __init__(self, cut: Union[list[float], float] = -1):
         super().__init__(cut, True, "Minimum value")
 
     @staticmethod
@@ -187,7 +191,7 @@ class MIN(ExplicitSieve):
 
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
-        string = f"MIN"
+        string = "MIN"
         if self._segments:
             string += " [segments]"
         string += f" -> {self.nfeatures()}:"
@@ -221,8 +225,7 @@ class END(ExplicitSieve):
     :type cut: int/float or list of integers/floats, optional
     """
 
-    def __init__(self,
-                 cut: Union[List[float], float] = -1):
+    def __init__(self, cut: Union[list[float], float] = -1):
         super().__init__(cut, False, "Last value")
 
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
@@ -285,8 +288,7 @@ class PIA(ExplicitSieve):
     :type div_on_slice: bool, optional
     """
 
-    def __init__(self,
-                 cut: Union[List[float], float] = -1):
+    def __init__(self, cut: Union[list[float], float] = -1):
         super().__init__(cut, False, "Proportion of incremental alteration")
 
     @staticmethod
@@ -314,7 +316,7 @@ class PIA(ExplicitSieve):
 
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
-        string = f"PIA"
+        string = "PIA"
         if self._segments:
             string += " [segments]"
         string += f" -> {self.nfeatures()}:"
@@ -347,9 +349,11 @@ class LCS(ExplicitSieve):
     :type segments: bool, optional
     """
 
-    def __init__(self,
-                 cut: Union[List[float], float] = -1,
-                 segments: bool = False):
+    def __init__(
+        self,
+        cut: Union[list[float], float] = -1,
+        segments: bool = False,
+    ):
         super().__init__(cut, segments, "Length of coquantile slices")
 
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
@@ -372,7 +376,7 @@ class LCS(ExplicitSieve):
 
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
-        string = f"LCS"
+        string = "LCS"
         if self._segments:
             string += " [segments]"
         string += f" -> {self.nfeatures()}:"
