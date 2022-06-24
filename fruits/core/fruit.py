@@ -208,7 +208,7 @@ class Fruit:
         summary += f"\nFeatures: {self.nfeatures()}"
         for branch in self.branches():
             summary += "\n\n" + branch.summary()
-        summary += f"\n{'End of Summary' : =^80}"
+        summary += f"\n{'End of Summary':=^80}"
         return summary
 
     def copy(self) -> "Fruit":
