@@ -1,5 +1,5 @@
 import re
-from typing import Union
+from typing import Optional, Union
 
 from fruits.words.letters import ExtendedLetter
 
@@ -52,16 +52,17 @@ class Word:
 
         fruits.signature.ISS(X, SimpleWord("[11][122]"))
 
-    :param word_string: String representation of the word. Names of available
-        letters can be used like ``[ABS(1)SIMPLE(2)][ABS(1)]`` to create
-        the corresponding word., defaults to ""
-    :type word_string: str, optional
+    Args:
+        word_string (str, optional): String representation of the word.
+            Names of available letters can be used like
+            ``[ABS(1)SIMPLE(2)][ABS(1)]`` to create the corresponding
+            word.
     """
 
-    def __init__(self, word_string: str = ""):
+    def __init__(self, word_string: Optional[str] = None) -> None:
         self._alpha: Union[float, list[float]] = 0.0
         self._extended_letters: list[ExtendedLetter] = []
-        if word_string != "":
+        if word_string is not None:
             self.multiply(word_string)
 
     @property
@@ -91,9 +92,8 @@ class Word:
 
     def multiply(self, other: Union["Word", ExtendedLetter, str]) -> None:
         """Appends one or more extended letters to the word. A group of
-        extended letters have to be given as another Word object.
-
-        :type other: Union[Word, ExtendedLetter]
+        extended letters have to be given as another Word object or as
+        a string.
         """
         if isinstance(other, ExtendedLetter):
             self._extended_letters.append(other)
@@ -108,10 +108,6 @@ class Word:
             raise TypeError(f"Cannot multiply Word with {type(other)}")
 
     def copy(self) -> "Word":
-        """Returns a copy of this word.
-
-        :rtype: Word
-        """
         sw = Word()
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
@@ -192,10 +188,10 @@ class SimpleWord(Word):
     Enclose dimensions with normal brackets that have two or more
     digits, like ``SimpleWord("[122(10)(62)][(24)5]")``.
 
-    :param string: Will be used to create the SimpleWord as
-        shown in the example above. It has to match the regular
-        expression ``([d+])+`` where ``d+`` denotes one or more digits.
-    :type string: str
+    Args:
+        string (str): Will be used to create the SimpleWord as
+            shown in the example above. It has to match the regular
+            expression ``(\\[(\\d|\\(\\d+\\))+\\])+``.
     """
 
     def __init__(self, string: str):
@@ -209,8 +205,6 @@ class SimpleWord(Word):
         """Multiplies another word with the SimpleWord object.
         The word is given as a string matching the examples given in
         the class definition.
-
-        :type other: str
         """
         if not isinstance(other, str):
             raise NotImplementedError
@@ -250,10 +244,6 @@ class SimpleWord(Word):
             self._extended_letters.append(el)
 
     def copy(self) -> "SimpleWord":
-        """Returns a copy of this SimpleWord.
-
-        :rtype: SimpleWord
-        """
         sw = SimpleWord(self._name)
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw

@@ -7,7 +7,7 @@ from fruits._backend import _coquantile
 
 class Cache(Protocol):
     """Protocol for classes that cache their calculation results of
-    a time series dataset and using a key for accessing the results.
+    a time series dataset and use a key for accessing the results.
     """
 
     cache: dict[str, np.ndarray]
@@ -27,22 +27,16 @@ class CoquantileCache:
 
     cache: dict[str, np.ndarray]
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.cache = dict()
 
     def get(self, key: str) -> np.ndarray:
-        """Returns the cached coquantiles.
-
-        :rtype: np.ndarray
-        """
+        """Returns cached coquantiles for the given key."""
         return self.cache[key]
 
     def process(self, X: np.ndarray, keys: list[str]) -> None:
         """Processes the given time series dataset and caches the
         resulting coquantiles for the given keys.
-
-        :type X: np.ndarray
-        :type keys: list[str]
         """
         for key in keys:
             self.cache[key] = _coquantile(X, float(key))

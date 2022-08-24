@@ -12,24 +12,15 @@ class ONE(DataPreparateur):
     of only ones.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("One")
 
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the transformed dataset.
-
-        :type X: np.ndarray
-        :rtype: np.ndarray
-        """
         X_new = np.ones((X.shape[0], X.shape[1]+1, X.shape[2]))
         X_new[:, :X.shape[1], :] = X[:, :, :]
         return X_new
 
     def copy(self) -> "ONE":
-        """Returns a copy of this preparateur.
-
-        :rtype: ONE
-        """
         return ONE()
 
     def __eq__(self, other) -> bool:
@@ -48,23 +39,19 @@ class DIM(DataPreparateur):
     Creates a new dimension in the given (multidimensional) time series
     dataset based on the supplied function.
 
-    :param f: Function that takes in a three dimensional numpy array of
-        shape ``(n, d, l)`` and returns an array of shape ``(n, p, l)``
-        where ``p`` is an arbitrary integer matching the number of new
-        dimensions that will be added to the input array.
-    :type f: Callable
+    Args:
+        f (Callable): Function that takes in a three dimensional numpy
+            array of shape ``(n, d, l)`` and returns an array of shape
+            ``(n, p, l)`` where ``p`` is an arbitrary integer matching
+            the number of new dimensions that will be added to the input
+            array.
     """
 
-    def __init__(self, f: Callable[[np.ndarray], np.ndarray]):
+    def __init__(self, f: Callable[[np.ndarray], np.ndarray]) -> None:
         super().__init__("Dimension Creator")
         self._function = f
 
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the transformed dataset.
-
-        :type X: np.ndarray
-        :rtype: np.ndarray
-        """
         new_dims = self._function(X)
         X_new = np.zeros((X.shape[0],
                           X.shape[1] + new_dims.shape[1],
@@ -74,10 +61,6 @@ class DIM(DataPreparateur):
         return X_new
 
     def copy(self) -> "DIM":
-        """Returns a copy of this preparateur.
-
-        :rtype: DIM
-        """
         return DIM(self._function)
 
     def __eq__(self, other) -> bool:

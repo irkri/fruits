@@ -32,7 +32,7 @@ def _extended_letters_by_weight(
 
 
 def simplewords_by_weight(w: int, dim: int = 1) -> list[SimpleWord]:
-    """Returns a list of all possible and unique SimpleWords that have
+    """Returns a list of all possible and unique simple words that have
     exactly the given number of letters ('weight' of the words).
     For ``w=2`` and ``dim=2`` this will return a list containing::
 
@@ -40,11 +40,10 @@ def simplewords_by_weight(w: int, dim: int = 1) -> list[SimpleWord]:
         SimpleWord("[1][1]"), SimpleWord("[1][2]"),
         SimpleWord("[2][1]"), SimpleWord("[2][2]")
 
-    :param w: Weight of the words, i.e. number of letters.
-    :type w: int
-    :param dim: Highest dimension of a letter., defaults to 1
-    :type dim: int, optional
-    :rtype: List[SimpleWord]
+    Args:
+        w (int): Weight of the words, i.e. number of letters.
+        dim (int, optional): Highest dimension of a letter.
+            Defaults to 1.
     """
     extended_letters = []
     words = []
@@ -103,13 +102,16 @@ def replace_letters(
     """Replaces the letters in the given word(s) by the iteration
     results from the supplied generator.
 
-    :type word: Union[Word, List[Word]]
-    :param letter_gen: Generator that returns functions correctly
-        decorated with :meth:`~fruits.words.letters.letter``.
-        If the iteration through the generator is stopped, all left
-        letters in the word will not be changed.
-    :type letter_gen: generator
-    :rtype: Union[Word, List[Word]]
+    Args:
+        word (Word, list[Word]): Words with letters to replace.
+        letter_gen (Generator): Generator that returns functions
+            correctly decorated with
+            :meth:`~fruits.words.letters.letter``. If the iteration
+            through the generator is stopped, all left letters in the
+            word will not be changed.
+
+    Returns:
+        Word or list of Words based on the input.
     """
     if isinstance(word, list):
         complexwords = []

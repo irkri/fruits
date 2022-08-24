@@ -13,7 +13,7 @@ class CachePlan:
     to "extended". The plan removes repetition in calculation.
     """
 
-    def __init__(self, words: list[Word]):
+    def __init__(self, words: list[Word]) -> None:
         self._words = words
         self._create_plan()
 
@@ -42,17 +42,12 @@ class CachePlan:
     def unique_el_depth(self, index: int) -> int:
         """Returns the total number of iterated sums to be calculated
         for the word with the given index.
-
-        :type index: int
-        :rtype: int
         """
         return self._plan[index]
 
     def n_iterated_sums(self, word_indices: list[int]) -> int:
         """Returns the number of iterated sums that have to be
         calculated using this plan for the words with the given indices.
-
-        :rtype: int
         """
         return sum(self._plan[i] for i in word_indices)
 
@@ -71,8 +66,8 @@ class SignatureCalculation:
         X: np.ndarray,
         words: list[Word],
         mode: str = "single",
-        batch_size: int = -1
-    ):
+        batch_size: int = -1,
+    ) -> None:
         self._X = X
         self._words = words
         if mode not in ["single", "extended"]:
@@ -140,14 +135,14 @@ class SignatureCalculation:
                     self._X,
                     self._transform_simple_word(self._words[i]),
                     alphas,
-                    ext
+                    ext,
                 )
             elif isinstance(self._words[i], Word):
                 results[:, index:index+ext, :] = _slow_ISS(
                     self._X,
                     self._words[i],
                     alphas,
-                    ext
+                    ext,
                 )
             else:
                 raise TypeError(f"Unknown word type: {type(self._words[i])}")
@@ -163,41 +158,40 @@ class SignatureCalculator:
     """
 
     def fit(self, X: np.ndarray, **kwargs) -> None:
-        """Fits the calculator on the given time series dataset.
-
-        :type X: np.ndarray
-        :param kwargs:
-        """
+        """Fits the calculator on the given time series dataset."""
 
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Starts and returns an iterated sums signature calculation.
 
-        :param kwargs: Has to include the argument ``words`` as a list
-            of :class:`~fruits.signature.wording.Word` objects.
-            Possible optional arguments are:
+        Args:
+            X (np.ndarray): Input time series dataset.
+            kwargs: Has to include the argument ``words`` as a list
+                of :class:`~fruits.signature.wording.Word` objects.
+                Possible optional arguments are:
 
-            - ``batch_size``: Batch size of the calculaor.
-                Number of words for which the iterated sums are
-                calculated at once when starting the iterator of this
-                calculator. This doesn't have to be the same number as
-                the actual number of iterated sums returned.
-                Default value is -1, which means the results of all
-                words are given at once.
-            - ``mode``: Mode of the calculator.
-                Following options are available.
+                - ``batch_size``: Batch size of the calculaor.
+                    Number of words for which the iterated sums are
+                    calculated at once when starting the iterator of
+                    this calculator. This doesn't have to be the same
+                    number as the actual number of iterated sums
+                    returned. Default value is -1, which means the
+                    results of all words are given at once.
+                - ``mode``: Mode of the calculator.
+                    Following options are available.
 
-                - 'single':
-                    Calculates one iterated sum for each given word.
-                - 'extended':
-                    For each given word, the iterated sum for
-                    each sequential combination of extended letters in
-                    that word will be calculated. So for a simple word
-                    like ``[21][121][1]`` the calculator returns the
-                    iterated sums for ``[21]``, ``[21][121]`` and
-                    ``[21][121][1]``.
-        :returns: A numpy array with only one object of type
+                    - 'single':
+                        Calculates one iterated sum for each given word.
+                    - 'extended':
+                        For each given word, the iterated sum for
+                        each sequential combination of extended letters
+                        in that word will be calculated. So for a simple
+                        word like ``[21][121][1]`` the calculator
+                        returns the iterated sums for ``[21]``,
+                        ``[21][121]`` and ``[21][121][1]``.
+
+        Returns:
+            A numpy array with only one object of type
             :class:`~fruits.signature.iss.SignatureCalculation`.
-        :rtype: np.ndarray
         """
         return np.array(
             [SignatureCalculation(X, **kwargs)],
@@ -208,7 +202,7 @@ class SignatureCalculator:
 def ISS(
     X: np.ndarray,
     words: Union[list[Word], Word],
-    mode: str = "single"
+    mode: str = "single",
 ) -> np.ndarray:
     """Takes in a number of time series and a list of words and
     calculates the iterated sums for each time series in ``X``. This
@@ -217,16 +211,15 @@ def ISS(
     For more information on the calculation of the iterated sums
     signature, have a look at the calculator.
 
-    :param X: Three dimensional numpy array containing a
-        multidimensional time series dataset.
-    :type X: numpy.ndarray
-    :type words: Union[List[Word], Word]
-    :param mode: Mode of the used calculator. Has to be either "single"
-        or "extended".
-    :type mode: str
-    :returns: Numpy array of shape
-        ``(X.shape[0], len(words), X.shape[2])``.
-    :rtype: numpy.ndarray
+    Args:
+        X (np.ndarray): Three dimensional numpy array containing a
+            multidimensional time series dataset.
+        words (one or a list of Words): Words to calculate the ISS for.
+        mode (str): Mode of the used calculator. Has to be either
+            "single" or "extended".
+
+    Returns
+        Numpy array of shape ``(X.shape[0], len(words), X.shape[2])``.
     """
     words = [words] if isinstance(words, Word) else words
 

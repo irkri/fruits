@@ -11,12 +11,12 @@ class FeatureSieve(ABC):
     array containing iterated sums into a one dimensional numpy array of
     features.
 
-    :param name: Identification string of the feature sieve.,
-        defaults to ""
-    :type name: str, optional
+    Args:
+        name (str, optional): Identification string of the feature
+            sieve. Defaults to an empty string.
     """
 
-    def __init__(self, name: str = ""):
+    def __init__(self, name: str = "") -> None:
         self.name = name
 
     @abstractmethod
@@ -26,21 +26,17 @@ class FeatureSieve(ABC):
     def fit(self, X: np.ndarray, **kwargs) -> None:
         """Fits the sieve to the dataset.
 
-        :param X: 2-dimensional numpy array of iterated sums.
-        :type X: np.ndarray
+        Args:
+            X (np.ndarray): 2-dimensional array of iterated sums.
         """
 
     @abstractmethod
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        pass
+        """Transforms the given timeseries dataset."""
 
     def fit_transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Equivalent of calling ``FeatureSieve.fit`` and
         ``FeatureSieve.transform`` consecutively.
-
-        :param X: 2-dimensional numpy array of iterated sums.
-        :type X: np.ndarray
-        :rtype: np.ndarray
         """
         self.fit(X, **kwargs)
         return self.transform(X, **kwargs)

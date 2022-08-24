@@ -17,32 +17,24 @@ class INC(DataPreparateur):
 
         X_inc = [0, x_2-x_1, x_3-x_2, ..., x_n-x_{n-1}].
 
-    :param zero_padding: If set to True, then the first entry in each
-        time series will be set to 0. If False, it isn't changed at
-        all., defaults to True
-    :type zero_padding: bool, optional
+    Args:
+        zero_padding (bool, optional): If set to True, then the first
+            entry in each time series will be set to 0. If False, it
+            is set to the first value of the original time series.
+            Defaults to True.
     """
 
-    def __init__(self, zero_padding: bool = True):
+    def __init__(self, zero_padding: bool = True) -> None:
         super().__init__("Increments")
         self._zero_padding = zero_padding
 
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the increments of all time series in ``X``.
-
-        :type X: np.ndarray
-        :rtype: np.ndarray
-        """
         out = _increments(X)
         if not self._zero_padding:
             out[:, :, 0] = X[:, :, 0]
         return out
 
     def copy(self) -> "INC":
-        """Returns a copy of this preparateur.
-
-        :rtype: INC
-        """
         dp = INC(self._zero_padding)
         return dp
 
@@ -64,10 +56,12 @@ class INC(DataPreparateur):
 class STD(DataPreparateur):
     """DataPreparateur: Standardization
 
-    Used for standardization of a given time series dataset.
+    Used for standardization of a given time series dataset. The
+    transformation returns ``(X-mu)/std`` where ``mu`` and ``std`` are
+    the parameters calculated in :meth:`STD.fit`.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("Standardization")
         self._mean = None
         self._std = None
@@ -75,31 +69,17 @@ class STD(DataPreparateur):
     def fit(self, X: np.ndarray, **kwargs) -> None:
         """Fits the STD object to the given dataset by calculating the
         mean and standard deviation of the flattened dataset.
-
-        :type X: np.ndarray
         """
         self._mean = np.mean(X)
         self._std = np.std(X)
 
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the standardized dataset ``(X-mu)/std`` where ``mu``
-        and ``std`` are the parameters calculated in :meth:`STD.fit`.
-
-        :type X: np.ndarray
-        :returns: Standardized dataset.
-        :rtype: np.ndarray
-        :raises: RuntimeError if self.fit() wasn't called
-        """
         if self._mean is None or self._std is None:
             raise RuntimeError("Missing call of self.fit()")
         out = (X - self._mean) / self._std
         return out
 
     def copy(self) -> "STD":
-        """Returns a copy of this preparateur.
-
-        :rtype: STD
-        """
         return STD()
 
     def __eq__(self, other: Any) -> bool:
@@ -119,13 +99,14 @@ class MAV(DataPreparateur):
 
     Applies a moving average to the given time series dataset.
 
-    :param width: Window width for the moving average. This is either a
-        float that will be multiplied by the length of the time series
-        or an integer., defaults to 5
-    :type width: Union[int, float], optional
+    Args:
+        width (int or float, optional): Window width for the moving
+            average. This is either a float that will be multiplied by
+            the length of the time series or an integer. Defaults to
+            ``5``.
     """
 
-    def __init__(self, width: Union[int, float] = 5):
+    def __init__(self, width: Union[int, float] = 5) -> None:
         super().__init__("Moving Average")
         if isinstance(width, float):
             if not 0.0 < width < 1.0:
@@ -141,8 +122,6 @@ class MAV(DataPreparateur):
     def fit(self, X: np.ndarray, **kwargs) -> None:
         """Fits the MAV preparateur to the given dataset by calculating
         the window width if needed.
-
-        :type X: np.ndarray
         """
         if isinstance(self._w_given, float):
             self._w = int(self._w_given * X.shape[2])
@@ -152,12 +131,6 @@ class MAV(DataPreparateur):
             self._w = self._w_given
 
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the transformed dataset.
-
-        :type X: np.ndarray
-        :rtype: np.ndarray
-        :raises: RuntimeError if self.fit() wasn't called
-        """
         if not hasattr(self, "_w"):
             raise RuntimeError("Missing call of self.fit()")
         out = np.cumsum(X, axis=2)
@@ -167,10 +140,6 @@ class MAV(DataPreparateur):
         return out
 
     def copy(self) -> "MAV":
-        """Returns a copy of this preparateur.
-
-        :rtype: MAV
-        """
         return MAV(self._w_given)
 
     def __eq__(self, other: Any) -> bool:
@@ -195,15 +164,10 @@ class LAG(DataPreparateur):
     ``[(x_1,x_1),(x_2,x_1),(x_2,x_2),(x_3,x_2),...,(x_n,x_n)]``.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("Lead-Lag transform")
 
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the transformed dataset.
-
-        :type X: np.ndarray
-        :rtype: np.ndarray
-        """
         X_new = np.zeros((X.shape[0], 2 * X.shape[1], 2 * X.shape[2] - 1))
         for i in range(X.shape[1]):
             X_new[:, 2*i, 0::2] = X[:, i, :]
@@ -213,10 +177,6 @@ class LAG(DataPreparateur):
         return X_new
 
     def copy(self) -> "LAG":
-        """Returns a copy of this preparateur.
-
-        :rtype: LAG
-        """
         return LAG()
 
     def __eq__(self, other: Any) -> bool:

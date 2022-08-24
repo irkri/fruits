@@ -25,9 +25,8 @@ def force_input_shape(X: np.ndarray) -> np.ndarray:
     - ``X.shape[1]``: Number of dimensions in each time series
     - ``X.shape[2]``: Length of each time series
 
-    :type X: np.ndarray
-    :rtype: np.ndarray
-    :raises: ValueError if ``X.ndim > 3``
+    Raises:
+        ValueError: If ``X.ndim > 3``.
     """
     if X.ndim < 3:
         warnings.warn("The input shape of the time series dataset "

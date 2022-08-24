@@ -14,12 +14,12 @@ class DataPreparateur(ABC):
     A class derived from DataPreparateur can be added to a
     ``fruits.Fruit`` object for the preprocessing step.
 
-    :param name: Identification string of the feature sieve.,
-        defaults to ""
-    :type name: str, optional
+    Args:
+        name (str, optional): Identification string of the feature
+            sieve. Defaults to an empty string.
     """
 
-    def __init__(self, name: str = ""):
+    def __init__(self, name: str = "") -> None:
         self.name = name
 
     def fit(self, X: np.ndarray, **kwargs) -> None:
@@ -33,9 +33,8 @@ class DataPreparateur(ABC):
         """Equivalent of calling ``DataPreparateur.fit`` and
         ``DataPreparateur.transform`` consecutively.
 
-        :param X: 2-dimensional numpy array of iterated sums.
-        :type X: np.ndarray
-        :rtype: np.ndarray
+        Args:
+            X (np.ndarray): 2-dimensional array of iterated sums.
         """
         self.fit(X, **kwargs)
         return self.transform(X, **kwargs)

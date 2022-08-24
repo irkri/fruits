@@ -102,7 +102,7 @@ def _fast_ISS(
     Z: np.ndarray,
     word: np.ndarray,
     alphas: np.ndarray,
-    extended: int
+    extended: int,
 ) -> np.ndarray:
     # accelerated function for calculation of
     # fruits.core.ISS(X, [SimpleWord(...)])

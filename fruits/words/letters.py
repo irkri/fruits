@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -18,11 +18,12 @@ class ExtendedLetter:
     functions that were decorated with
     :meth:`~fruits.words.letters.letter`.
 
-    :param letter_string: A string like ``f1(i)f2(j)f3(k)``, where
-        ``f1,f2,f3`` are the names of decorated letters and ``i,j,k``
-        are integers representing dimensions. For available letters call
-        :meth:`fruits.words.letters.get_available`.
-    :type letter_string: str
+    Args:
+        letter_string (str, optional): A string like
+            ``f1(i)f2(j)f3(k)``, where ``f1,f2,f3`` are the names of
+            decorated letters and ``i,j,k`` are integers representing
+            dimensions. For available letters call
+            :meth:`fruits.words.letters.get_available`.
     """
 
     def __init__(self, letter_string: str = ""):
@@ -34,12 +35,11 @@ class ExtendedLetter:
     def append(self, letter: FREE_LETTER_TYPE, dim: int = 0) -> None:
         """Appends a letter to the ExtendedLetter object.
 
-        :param letter: Function that was decorated with
-            :meth:`~fruits.words.letters.letter`.
-        :type letter: callable
-        :param int: Dimension of the letter that is going to be used as
-            its second argument, if it has one., defaults to 0
-        :type dim: int, optional
+        Args:
+            letter (callable): Function that was decorated with
+                :meth:`~fruits.words.letters.letter`.
+            dim (int): Dimension of the letter that is going to be used
+                as its second argument, if it has one. Defaults to 0.
         """
         if not callable(letter):
             raise TypeError("Argument letter has to be a callable function")
@@ -59,10 +59,6 @@ class ExtendedLetter:
             self.append(_get(l), int(d)-1)
 
     def copy(self) -> "ExtendedLetter":
-        """Returns a copy of this extended letter.
-
-        :rtype: ExtendedLetter
-        """
         el = ExtendedLetter()
         el._letters = self._letters.copy()
         el._dimensions = self._dimensions.copy()
@@ -93,7 +89,7 @@ class ExtendedLetter:
         return "fruits.words.letters.ExtendedLetter"
 
 
-def letter(*args, name: str = None) -> Callable:
+def letter(*args, name: Optional[str] = None) -> Callable:
     """Decorator for the implementation of a letter appendable to an
     :class:`~fruits.words.letters.ExtendedLetter` object.
 
@@ -122,11 +118,12 @@ def letter(*args, name: str = None) -> Callable:
         - ``simple``: Extracts a single dimension
         - ``absolute``: Extracts the absolute value of a single dim.
 
-    :param name: You can supply a name to the function. This name will
-        be used for documentation in an ``ExtendedLetter`` object. If
-        no name is supplied, then the name of the function is used.
-        Each letter has to have a unique name., defaults to None
-    :type name: str, optional
+    Args:
+        name (str, optional): You can supply a name to the function.
+            This name will be used for documentation in an
+            ``ExtendedLetter`` object. If no name is supplied, then the
+            name of the function is used. Each letter has to have a
+            unique name.
     """
     if name is not None and not isinstance(name, str):
         raise TypeError("Unknown argument type for name")
@@ -182,8 +179,6 @@ def _get(name: str) -> FREE_LETTER_TYPE:
 def get_available() -> list[str]:
     """Returns a list of all available letter names to use in a
     :class:`~fruits.words.letters.ExtendedLetter`.
-
-    :rtype: List[str]
     """
     return list(_AVAILABLE.keys())
 

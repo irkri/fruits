@@ -20,31 +20,24 @@ class FruitBuilder(ABC):
 
     @abstractmethod
     def build(self, X_train: np.ndarray) -> Fruit:
-        """Builds a Fruit based on the given dataset.
+        """Builds and returns a :class:`~fruits.core.fruit.Fruit` based
+        on the given dataset.
 
-        :param X_train: Three dimensional numpy array containing
-            multidimensional time series data.
-        :type X_train: np.ndarray
-        :rtype: Fruit
+        Args:
+            X_train (np.ndarray): Three dimensional array containing
+                multidimensional time series data.
         """
 
 
 class UnivariateFruitBuilder(FruitBuilder):
     """Class that builds a :class:`~fruits.core.fruit.Fruit` object for
-    a given multivariate time series dataset.
+    a given univariate time series dataset.
 
     The returned fruit is expected to be a good candidate for the
     classification of the given dataset.
     """
 
     def build(self, X_train: np.ndarray) -> Fruit:
-        """Builds a Fruit based on the given dataset.
-
-        :param X_train: Three dimensional numpy array containing
-            multidimensional time series data.
-        :type X_train: np.ndarray
-        :rtype: Fruit
-        """
         X_train = force_input_shape(X_train)
         length = X_train.shape[2]
         fruit = Fruit("Built by UnivariateFruitBuilder")
@@ -150,13 +143,6 @@ class MultivariateFruitBuilder(FruitBuilder):
     """
 
     def build(self, X_train: np.ndarray) -> Fruit:
-        """Builds a Fruit based on the given dataset.
-
-        :param X_train: Three dimensional numpy array containing
-            multidimensional time series data.
-        :type X_train: np.ndarray
-        :rtype: Fruit
-        """
         X_train = force_input_shape(X_train)
         fruit = Fruit("Built by MultivariateFruitBuilder")
 
@@ -245,11 +231,10 @@ def build(X_train: np.ndarray) -> Fruit:
     The returned fruit is expected to be a good candidate for the
     classification of the given dataset.
 
-    :param X: Time series dataset (preferably the training set).
-        This should be a three dimensional numpy array. Check
-        :meth:`~fruits.scope.force_input_shape`.
-    :type X: np.ndarray
-    :rtype: Fruit
+    Args:
+        X (np.ndarray): Time series dataset (preferably the training
+            set). This should be a three dimensional numpy array. Check
+            :meth:`~fruits.scope.force_input_shape`.
     """
     X_train = force_input_shape(X_train)
     if X_train.shape[1] == 1:
