@@ -38,9 +38,7 @@ class ExplicitSieve(FeatureSieve, ABC):
         self,
         cut: Union[list[float], float] = -1,
         segments: bool = False,
-        name: str = "Abstract Explicit Sieve",
     ) -> None:
-        super().__init__(name)
         self._cut = cut if isinstance(cut, list) else [cut]
         if len(self._cut) == 1 and segments:
             self._cut = [1, self._cut[0]]
@@ -78,7 +76,7 @@ class ExplicitSieve(FeatureSieve, ABC):
             new_cuts = np.sort(new_cuts)
         return new_cuts.astype(np.int64)
 
-    def nfeatures(self) -> int:
+    def _nfeatures(self) -> int:
         """Returns the number of features this sieve produces."""
         if self._segments:
             return len(self._cut) - 1
@@ -97,7 +95,7 @@ class MAX(ExplicitSieve):
     """
 
     def __init__(self, cut: Union[list[float], float] = -1) -> None:
-        super().__init__(cut, True, "Maximal value")
+        super().__init__(cut, True)
 
     @staticmethod
     @numba.njit(
@@ -112,11 +110,11 @@ class MAX(ExplicitSieve):
                 result[i, j-1] = np.max(X[i, cuts[i, j-1]-1:cuts[i, j]])
         return result
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         cuts = self._get_transformed_cuts(X, **kwargs)
         return MAX._backend(X, cuts)
 
-    def summary(self) -> str:
+    def _summary(self) -> str:
         string = "MAX"
         if self._segments:
             string += " [segments]"
@@ -125,14 +123,11 @@ class MAX(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self) -> "MAX":
-        fs = MAX(self._cut)
-        return fs
+    def _copy(self) -> "MAX":
+        return MAX(self._cut)
 
     def __str__(self) -> str:
-        string = "MAX(" + \
-                f"cut={self._cut})"
-        return string
+        return f"MAX(cut={self._cut})"
 
 
 class MIN(ExplicitSieve):
@@ -146,7 +141,7 @@ class MIN(ExplicitSieve):
     """
 
     def __init__(self, cut: Union[list[float], float] = -1) -> None:
-        super().__init__(cut, True, "Minimum value")
+        super().__init__(cut, True)
 
     @staticmethod
     @numba.njit("float64[:,:](float64[:,:], int64[:,:])",
@@ -158,11 +153,11 @@ class MIN(ExplicitSieve):
                 result[i, j-1] = np.min(X[i, cuts[i, j-1]-1:cuts[i, j]])
         return result
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         cuts = self._get_transformed_cuts(X, **kwargs)
         return MIN._backend(X, cuts)
 
-    def summary(self) -> str:
+    def _summary(self) -> str:
         string = "MIN"
         if self._segments:
             string += " [segments]"
@@ -171,14 +166,11 @@ class MIN(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self) -> "MIN":
-        fs = MIN(self._cut)
-        return fs
+    def _copy(self) -> "MIN":
+        return MIN(self._cut)
 
     def __str__(self) -> str:
-        string = "MIN(" + \
-                f"cut={self._cut})"
-        return string
+        return f"MIN(cut={self._cut})"
 
 
 class END(ExplicitSieve):
@@ -192,9 +184,9 @@ class END(ExplicitSieve):
     """
 
     def __init__(self, cut: Union[list[float], float] = -1) -> None:
-        super().__init__(cut, False, "Last value")
+        super().__init__(cut, False)
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         cuts = self._get_transformed_cuts(X, **kwargs)
         result = np.zeros((X.shape[0], self.nfeatures()))
         for j in range(cuts.shape[1]):
@@ -205,20 +197,17 @@ class END(ExplicitSieve):
             )[:, 0]
         return result
 
-    def summary(self) -> str:
+    def _summary(self) -> str:
         string = f"END -> {self.nfeatures()}:"
         for x in self._cut:
             string += f"\n   > {x}"
         return string
 
-    def copy(self) -> "END":
-        fs = END(self._cut)
-        return fs
+    def _copy(self) -> "END":
+        return END(self._cut)
 
     def __str__(self) -> str:
-        string = "END(" + \
-                f"cut={self._cut})"
-        return string
+        return f"END(cut={self._cut})"
 
 
 class PIA(ExplicitSieve):
@@ -235,7 +224,7 @@ class PIA(ExplicitSieve):
     """
 
     def __init__(self, cut: Union[list[float], float] = -1) -> None:
-        super().__init__(cut, False, "Proportion of incremental alteration")
+        super().__init__(cut, False)
 
     @staticmethod
     @numba.njit("float64[:,:](float64[:,:], int64[:,:])",
@@ -249,11 +238,11 @@ class PIA(ExplicitSieve):
         result[:, :] /= X.shape[1]
         return result
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         cuts = self._get_transformed_cuts(X, **kwargs)
         return PIA._backend(X, cuts)
 
-    def summary(self) -> str:
+    def _summary(self) -> str:
         string = "PIA"
         if self._segments:
             string += " [segments]"
@@ -262,14 +251,11 @@ class PIA(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self) -> "PIA":
-        fs = PIA(self._cut)
-        return fs
+    def _copy(self) -> "PIA":
+        return PIA(self._cut)
 
     def __str__(self) -> str:
-        string = "PIA(" + \
-                f"cut={self._cut})"
-        return string
+        return f"PIA(cut={self._cut})"
 
 
 class LCS(ExplicitSieve):
@@ -285,9 +271,9 @@ class LCS(ExplicitSieve):
         cut: Union[list[float], float] = -1,
         segments: bool = False,
     ) -> None:
-        super().__init__(cut, segments, "Length of coquantile slices")
+        super().__init__(cut, segments)
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         cuts = self._get_transformed_cuts(X, **kwargs)
         result = np.zeros((X.shape[0], self.nfeatures()))
         if self._segments:
@@ -298,7 +284,7 @@ class LCS(ExplicitSieve):
                 result[:, j] = cuts[:, j]
         return result
 
-    def summary(self) -> str:
+    def _summary(self) -> str:
         string = "LCS"
         if self._segments:
             string += " [segments]"
@@ -307,12 +293,8 @@ class LCS(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self) -> "LCS":
-        fs = LCS(self._cut, self._segments)
-        return fs
+    def _copy(self) -> "LCS":
+        return LCS(self._cut, self._segments)
 
     def __str__(self) -> str:
-        string = "LCS(" + \
-                f"cut={self._cut}, " + \
-                f"segments={self._segments})"
-        return string
+        return f"LCS(cut={self._cut}, segments={self._segments})"

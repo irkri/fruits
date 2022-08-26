@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 
@@ -24,15 +24,11 @@ class DIL(DataPreparateur):
     """
 
     def __init__(self, clusters: Optional[float] = None) -> None:
-        super().__init__("Dilation")
         self._clusters = clusters
         self._indices: np.ndarray
         self._lengths: list[int]
 
-    def fit(self, X: np.ndarray, **kwargs) -> None:
-        """Fits the preparateur to the given dataset by randomizing the
-        starting points and lengths of the zero strips.
-        """
+    def _fit(self, X: np.ndarray, **kwargs) -> None:
         if self._clusters is not None:
             nclusters = int(self._clusters * X.shape[2])
         else:
@@ -55,7 +51,7 @@ class DIL(DataPreparateur):
                 max_length = self._indices[i+1] - self._indices[i]
             self._lengths.append(np.random.randint(1, max_length+1))
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         if not hasattr(self, "_indices") or not hasattr(self, "_lengths"):
             raise RuntimeError("Missing call of self.fit()")
         X_new = X.copy()
@@ -63,17 +59,11 @@ class DIL(DataPreparateur):
             X_new[:, :, index:index+self._lengths[i]] = 0
         return X_new
 
-    def copy(self) -> "DIL":
+    def _copy(self) -> "DIL":
         return DIL(self._clusters)
-
-    def __eq__(self, other) -> bool:
-        return False
 
     def __str__(self) -> str:
         return f"DIL(clusters={self._clusters})"
-
-    def __repr__(self) -> str:
-        return "fruits.preparation.filter.DIL"
 
 
 class WIN(DataPreparateur):
@@ -90,16 +80,11 @@ class WIN(DataPreparateur):
         end (float): Quantile end as a float between 0 and 1.
     """
 
-    def __init__(
-        self,
-        start: float,
-        end: float,
-    ) -> None:
-        super().__init__("Window")
+    def __init__(self, start: float, end: float) -> None:
         self._start = start
         self._end = end
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         coq_start = _coquantile(X.astype(np.float64), self._start)
         coq_end = _coquantile(X.astype(np.float64), self._end)
         print(coq_start, coq_end)
@@ -111,7 +96,7 @@ class WIN(DataPreparateur):
                 )
         return result
 
-    def copy(self) -> "WIN":
+    def _copy(self) -> "WIN":
         return WIN(self._start, self._end)
 
     def __eq__(self, other) -> bool:
@@ -122,9 +107,6 @@ class WIN(DataPreparateur):
 
     def __str__(self) -> str:
         return f"WIN(start={self._start}, end={self._end})"
-
-    def __repr__(self) -> str:
-        return "fruits.preparation.filter.WIN"
 
 
 class DOT(DataPreparateur):
@@ -150,7 +132,6 @@ class DOT(DataPreparateur):
         n: Union[int, float] = 2,
         first: Optional[Union[int, float]] = None,
     ) -> None:
-        super().__init__("Dotting")
         if isinstance(n, float) and not 0 < n < 1:
             raise ValueError("If n is a float, it has to satisfy 0 < n < 1")
         elif not isinstance(n, float) and not isinstance(n, int):
@@ -170,10 +151,7 @@ class DOT(DataPreparateur):
         self._first_given = first
         self._first: int
 
-    def fit(self, X: np.ndarray, **kwargs) -> None:
-        """Fits the preparateur to the given dataset by (if necessary)
-        calculating the value of ``n``.
-        """
+    def _fit(self, X: np.ndarray, **kwargs) -> None:
         if isinstance(self._n_given, float):
             self._n = int(self._n_given * X.shape[2])
             if self._n <= 0:
@@ -197,17 +175,17 @@ class DOT(DataPreparateur):
         else:
             self._first = self._n - 1
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         if not hasattr(self, "_n") or not hasattr(self, "_first"):
             raise RuntimeError("Missing call of self.fit()")
         out = np.zeros(X.shape)
         out[:, :, self._first::self._n] = X[:, :, self._first::self._n]
         return out
 
-    def copy(self) -> "DOT":
+    def _copy(self) -> "DOT":
         return DOT(self._n_given, self._first_given)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, DOT):
             raise TypeError(f"Cannot compare DOT with type {type(other)}")
         return ((self._n_given == other._n_given)
@@ -215,9 +193,6 @@ class DOT(DataPreparateur):
 
     def __str__(self) -> str:
         return f"DOT(n={self._n_given}, first={self._first_given})"
-
-    def __repr__(self) -> str:
-        return "fruits.preparation.filter.DOT"
 
 
 class PDD(DataPreparateur):
@@ -240,7 +215,6 @@ class PDD(DataPreparateur):
         density: float = 0.1,
         proportion: float = 0.5,
     ) -> None:
-        super().__init__("Proportion-Density-Drop")
         if not isinstance(density, float) or not 0.0 < density <= 1.0:
             raise ValueError("density has to be a float 0 < density <= 1")
         if not isinstance(proportion, float) or not 0.0 < proportion < 1.0:
@@ -251,7 +225,7 @@ class PDD(DataPreparateur):
         self._indices: np.ndarray
         self._width: int
 
-    def fit(self, X: np.ndarray, **kwargs) -> None:
+    def _fit(self, X: np.ndarray, **kwargs) -> None:
         """Fits the preparateur to the given dataset by calculating the
         actual values of ``density`` and ``proportion``.
         """
@@ -268,7 +242,7 @@ class PDD(DataPreparateur):
             0, X.shape[2]-self._width, points, dtype="int",
         )
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         if not hasattr(self, "_width") or not hasattr(self, "_indices"):
             raise RuntimeError("Missing call of self.fit()")
         out = X.copy()
@@ -276,7 +250,7 @@ class PDD(DataPreparateur):
             out[:, :, index:index+self._width] = 0
         return out
 
-    def copy(self) -> "PDD":
+    def _copy(self) -> "PDD":
         return PDD(self._d_given, self._p_given)
 
     def __eq__(self, other) -> bool:
@@ -287,6 +261,3 @@ class PDD(DataPreparateur):
 
     def __str__(self) -> str:
         return f"PDD(density={self._d_given}, proportion={self._p_given})"
-
-    def __repr__(self) -> str:
-        return "fruits.preparation.filter.PDD"

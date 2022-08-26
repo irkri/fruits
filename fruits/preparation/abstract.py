@@ -19,22 +19,24 @@ class DataPreparateur(ABC):
             sieve. Defaults to an empty string.
     """
 
-    def __init__(self, name: str = "") -> None:
-        self.name = name
+    def _fit(self, X: np.ndarray, **kwargs) -> None:
+        pass
 
     def fit(self, X: np.ndarray, **kwargs) -> None:
-        """Fits the DataPreparateur to the given dataset."""
+        """Fits the preparateur to the given dataset."""
+        self._fit(X, **kwargs)
 
     @abstractmethod
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        ...
+
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Transforms the given timeseries dataset."""
+        return self._transform(X, **kwargs)
 
     def fit_transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Equivalent of calling ``DataPreparateur.fit`` and
         ``DataPreparateur.transform`` consecutively.
-
-        Args:
-            X (np.ndarray): 2-dimensional array of iterated sums.
         """
         self.fit(X, **kwargs)
         return self.transform(X, **kwargs)
@@ -44,11 +46,12 @@ class DataPreparateur(ABC):
         return dict()
 
     @abstractmethod
+    def _copy(self) -> "DataPreparateur":
+        ...
+
     def copy(self) -> "DataPreparateur":
-        pass
+        """Returns a copy of this preparateur."""
+        return self._copy()
 
     def __eq__(self, other: Any) -> bool:
         return False
-
-    def __repr__(self) -> str:
-        return f"fruits.preparation.abstract.DataPreparateur('{self.name}')"

@@ -52,7 +52,6 @@ class PPV(FeatureSieve):
         sample_size: float = 1.0,
         segments: bool = False,
     ) -> None:
-        super().__init__("Proportion of positive values")
         if isinstance(quantile, list):
             if not isinstance(constant, list):
                 constant = [constant for _ in range(len(quantile))]
@@ -86,16 +85,14 @@ class PPV(FeatureSieve):
                              + "has to be a list of length >= 2.")
         self._segments = segments
 
-    def nfeatures(self) -> int:
+    def _nfeatures(self) -> int:
         """Returns the number of features this sieve produces."""
         if self._segments:
             return len(self._q_c_input) - 1
         else:
             return len(self._q_c_input)
 
-    def fit(self, X: np.ndarray, **kwargs) -> None:
-        """Calculates and remembers the quantile(s) of the input data.
-        """
+    def _fit(self, X: np.ndarray, **kwargs) -> None:
         self._q = [x[0] for x in self._q_c_input]
         for i, q in enumerate(self._q):
             if not self._q_c_input[i][1]:
@@ -112,13 +109,7 @@ class PPV(FeatureSieve):
                     q,
                 )
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the transformed data. See the class definition for
-        detailed information.
-
-        Raises:
-            RuntimeError: If ``self.fit`` wasn't called.
-        """
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         if not hasattr(self, "_q"):
             raise RuntimeError("Missing call of PPV.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))
@@ -135,14 +126,15 @@ class PPV(FeatureSieve):
                 result[:, j] /= X.shape[1]
         return result
 
-    def copy(self) -> "PPV":
-        fs = PPV([x[0] for x in self._q_c_input],
-                 [x[1] for x in self._q_c_input],
-                 self._sample_size,
-                 self._segments)
-        return fs
+    def _copy(self) -> "PPV":
+        return PPV(
+            quantile=[x[0] for x in self._q_c_input],
+            constant=[x[1] for x in self._q_c_input],
+            sample_size=self._sample_size,
+            segments=self._segments,
+        )
 
-    def summary(self) -> str:
+    def _summary(self) -> str:
         string = f"PPV [sampling={self._sample_size}"
         if self._segments:
             string += ", segments"
@@ -152,11 +144,11 @@ class PPV(FeatureSieve):
         return string
 
     def __str__(self) -> str:
-        return "PPV(" + \
-               f"quantile={[x[0] for x in self._q_c_input]}, " + \
-               f"constant={[x[1] for x in self._q_c_input]}, " + \
-               f"sample_size={self._sample_size}, " + \
-               f"segments={self._segments})"
+        return ("PPV("
+                f"quantile={[x[0] for x in self._q_c_input]}, "
+                f"constant={[x[1] for x in self._q_c_input]}, "
+                f"sample_size={self._sample_size}, "
+                f"segments={self._segments})")
 
 
 class CPV(PPV):
@@ -185,12 +177,8 @@ class CPV(PPV):
             sample_size,
             segments,
         )
-        self.name = "Proportion of connected components of positive values"
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the transformed data. See the class definition for
-        detailed information.
-        """
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         if not hasattr(self, "_q"):
             raise RuntimeError("Missing call of CPV.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))
@@ -212,14 +200,14 @@ class CPV(PPV):
                 result[:, j] = 2 * np.sum(diff == 1, axis=-1) / n
         return result
 
-    def copy(self) -> "CPV":
+    def _copy(self) -> "CPV":
         fs = CPV([x[0] for x in self._q_c_input],
                  [x[1] for x in self._q_c_input],
                  self._sample_size,
                  self._segments)
         return fs
 
-    def summary(self) -> str:
+    def _summary(self) -> str:
         string = f"CPV [sampling={self._sample_size}"
         if self._segments:
             string += ", segments"
@@ -229,9 +217,8 @@ class CPV(PPV):
         return string
 
     def __str__(self) -> str:
-        string = "CPV(" + \
-                f"quantile={[x[0] for x in self._q_c_input]}, " + \
-                f"constant={[x[1] for x in self._q_c_input]}, " + \
-                f"sample_size={self._sample_size}, " + \
-                f"segments={self._segments})"
-        return string
+        return ("CPV("
+                f"quantile={[x[0] for x in self._q_c_input]}, "
+                f"constant={[x[1] for x in self._q_c_input]}, "
+                f"sample_size={self._sample_size}, "
+                f"segments={self._segments})")

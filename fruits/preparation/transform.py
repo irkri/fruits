@@ -25,18 +25,16 @@ class INC(DataPreparateur):
     """
 
     def __init__(self, zero_padding: bool = True) -> None:
-        super().__init__("Increments")
         self._zero_padding = zero_padding
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         out = _increments(X)
         if not self._zero_padding:
             out[:, :, 0] = X[:, :, 0]
         return out
 
-    def copy(self) -> "INC":
-        dp = INC(self._zero_padding)
-        return dp
+    def _copy(self) -> "INC":
+        return INC(self._zero_padding)
 
     def __eq__(self, other) -> bool:
         if (isinstance(other, INC)
@@ -45,12 +43,7 @@ class INC(DataPreparateur):
         return False
 
     def __str__(self) -> str:
-        string = "INC(" + \
-                f"zero_padding={self._zero_padding})"
-        return string
-
-    def __repr__(self) -> str:
-        return "fruits.preparation.transform.INC"
+        return f"INC(zero_padding={self._zero_padding})"
 
 
 class STD(DataPreparateur):
@@ -62,24 +55,20 @@ class STD(DataPreparateur):
     """
 
     def __init__(self) -> None:
-        super().__init__("Standardization")
         self._mean = None
         self._std = None
 
-    def fit(self, X: np.ndarray, **kwargs) -> None:
-        """Fits the STD object to the given dataset by calculating the
-        mean and standard deviation of the flattened dataset.
-        """
+    def _fit(self, X: np.ndarray, **kwargs) -> None:
         self._mean = np.mean(X)
         self._std = np.std(X)
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         if self._mean is None or self._std is None:
             raise RuntimeError("Missing call of self.fit()")
         out = (X - self._mean) / self._std
         return out
 
-    def copy(self) -> "STD":
+    def _copy(self) -> "STD":
         return STD()
 
     def __eq__(self, other: Any) -> bool:
@@ -89,9 +78,6 @@ class STD(DataPreparateur):
 
     def __str__(self) -> str:
         return "STD"
-
-    def __repr__(self) -> str:
-        return "fruits.preparation.transform.STD"
 
 
 class MAV(DataPreparateur):
@@ -107,7 +93,6 @@ class MAV(DataPreparateur):
     """
 
     def __init__(self, width: Union[int, float] = 5) -> None:
-        super().__init__("Moving Average")
         if isinstance(width, float):
             if not 0.0 < width < 1.0:
                 raise ValueError("If width is a float, it has to be in (0,1)")
@@ -119,10 +104,7 @@ class MAV(DataPreparateur):
         self._w_given = width
         self._w: int
 
-    def fit(self, X: np.ndarray, **kwargs) -> None:
-        """Fits the MAV preparateur to the given dataset by calculating
-        the window width if needed.
-        """
+    def _fit(self, X: np.ndarray, **kwargs) -> None:
         if isinstance(self._w_given, float):
             self._w = int(self._w_given * X.shape[2])
             if self._w <= 0:
@@ -130,7 +112,7 @@ class MAV(DataPreparateur):
         else:
             self._w = self._w_given
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         if not hasattr(self, "_w"):
             raise RuntimeError("Missing call of self.fit()")
         out = np.cumsum(X, axis=2)
@@ -139,7 +121,7 @@ class MAV(DataPreparateur):
         out[:, :, :(self._w-1)] = X[:, :, :(self._w-1)]
         return out
 
-    def copy(self) -> "MAV":
+    def _copy(self) -> "MAV":
         return MAV(self._w_given)
 
     def __eq__(self, other: Any) -> bool:
@@ -149,9 +131,6 @@ class MAV(DataPreparateur):
 
     def __str__(self) -> str:
         return f"MAV(width={self._w_given})"
-
-    def __repr__(self) -> str:
-        return "fruits.preparation.transform.MAV"
 
 
 class LAG(DataPreparateur):
@@ -164,10 +143,7 @@ class LAG(DataPreparateur):
     ``[(x_1,x_1),(x_2,x_1),(x_2,x_2),(x_3,x_2),...,(x_n,x_n)]``.
     """
 
-    def __init__(self) -> None:
-        super().__init__("Lead-Lag transform")
-
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         X_new = np.zeros((X.shape[0], 2 * X.shape[1], 2 * X.shape[2] - 1))
         for i in range(X.shape[1]):
             X_new[:, 2*i, 0::2] = X[:, i, :]
@@ -176,7 +152,7 @@ class LAG(DataPreparateur):
             X_new[:, 2*i+1, 1::2] = X[:, i, :-1]
         return X_new
 
-    def copy(self) -> "LAG":
+    def _copy(self) -> "LAG":
         return LAG()
 
     def __eq__(self, other: Any) -> bool:
@@ -186,6 +162,3 @@ class LAG(DataPreparateur):
 
     def __str__(self) -> str:
         return "LAG()"
-
-    def __repr__(self) -> str:
-        return "fruits.preparation.transform.LAG"

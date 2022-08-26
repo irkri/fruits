@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Any, Callable
 
 import numpy as np
 
@@ -12,25 +12,21 @@ class ONE(DataPreparateur):
     of only ones.
     """
 
-    def __init__(self) -> None:
-        super().__init__("One")
-
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         X_new = np.ones((X.shape[0], X.shape[1]+1, X.shape[2]))
         X_new[:, :X.shape[1], :] = X[:, :, :]
         return X_new
 
-    def copy(self) -> "ONE":
+    def _copy(self) -> "ONE":
         return ONE()
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ONE):
+            return False
         return True
 
     def __str__(self) -> str:
         return "ONE()"
-
-    def __repr__(self) -> str:
-        return "fruits.preparation.dimension.ONE"
 
 
 class DIM(DataPreparateur):
@@ -48,10 +44,9 @@ class DIM(DataPreparateur):
     """
 
     def __init__(self, f: Callable[[np.ndarray], np.ndarray]) -> None:
-        super().__init__("Dimension Creator")
         self._function = f
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         new_dims = self._function(X)
         X_new = np.zeros((X.shape[0],
                           X.shape[1] + new_dims.shape[1],
@@ -60,14 +55,8 @@ class DIM(DataPreparateur):
         X_new[:, X.shape[1]:, :] = new_dims[:, :, :]
         return X_new
 
-    def copy(self) -> "DIM":
+    def _copy(self) -> "DIM":
         return DIM(self._function)
-
-    def __eq__(self, other) -> bool:
-        return False
 
     def __str__(self) -> str:
         return f"DIM(f={self._function.__name__})"
-
-    def __repr__(self) -> str:
-        return "fruits.preparation.dimension.DIM"

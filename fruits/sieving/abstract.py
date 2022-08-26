@@ -10,17 +10,16 @@ class FeatureSieve(ABC):
     A feature sieve is used to transforms a two-dimensional numpy
     array containing iterated sums into a one dimensional numpy array of
     features.
-
-    Args:
-        name (str, optional): Identification string of the feature
-            sieve. Defaults to an empty string.
     """
 
-    def __init__(self, name: str = "") -> None:
-        self.name = name
-
     @abstractmethod
+    def _nfeatures(self) -> int:
+        ...
+
     def nfeatures(self) -> int:
+        return self._nfeatures()
+
+    def _fit(self, X: np.ndarray, **kwargs) -> None:
         pass
 
     def fit(self, X: np.ndarray, **kwargs) -> None:
@@ -29,10 +28,15 @@ class FeatureSieve(ABC):
         Args:
             X (np.ndarray): 2-dimensional array of iterated sums.
         """
+        self._fit(X, **kwargs)
 
     @abstractmethod
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        ...
+
     def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Transforms the given timeseries dataset."""
+        return self._transform(X, **kwargs)
 
     def fit_transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """Equivalent of calling ``FeatureSieve.fit`` and
@@ -46,15 +50,20 @@ class FeatureSieve(ABC):
         return dict()
 
     @abstractmethod
+    def _copy(self) -> "FeatureSieve":
+        ...
+
     def copy(self) -> "FeatureSieve":
-        pass
+        """Returns a copy of this feature sieve."""
+        return self._copy()
+
+    @abstractmethod
+    def _summary(self) -> str:
+        ...
 
     def summary(self) -> str:
         """Returns a better formatted summary string for the sieve."""
-        return "FeatureSieve('" + self.name + "')"
+        return self._summary()
 
     def __copy__(self) -> "FeatureSieve":
         return self.copy()
-
-    def __repr__(self) -> str:
-        return f"fruits.sieving.abstract.FeatureSieve('{self.name}')"
