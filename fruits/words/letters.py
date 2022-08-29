@@ -1,12 +1,11 @@
-from functools import wraps
-from typing import Callable, Optional
+from functools import partial, wraps
+from typing import Callable, Optional, Union, overload
 
 import numpy as np
 
-LETTER_SIGNATURE = "fruits_letter"
-LETTER_NAME = "fruits_name"
+LETTER_NAME = "fruits_letter_name"
 
-BOUND_LETTER_TYPE = Callable[[np.ndarray, int], np.ndarray]
+BOUND_LETTER_TYPE = Callable[[np.ndarray], np.ndarray]
 FREE_LETTER_TYPE = Callable[[int], BOUND_LETTER_TYPE]
 
 
@@ -43,7 +42,7 @@ class ExtendedLetter:
         """
         if not callable(letter):
             raise TypeError("Argument letter has to be a callable function")
-        elif not _letter_configured(letter):
+        elif not _is_letter(letter):
             raise TypeError("Letter has the wrong signature. Perhaps it " +
                             "wasn't decorated correctly?")
         else:
@@ -85,11 +84,21 @@ class ExtendedLetter:
     def __str__(self) -> str:
         return "[" + self._string_repr + "]"
 
-    def __repr__(self) -> str:
-        return "fruits.words.letters.ExtendedLetter"
+
+@overload
+def letter(*args, name: None = None) -> FREE_LETTER_TYPE:
+    ...
 
 
-def letter(*args, name: Optional[str] = None) -> Callable:
+@overload
+def letter(*args, name: str = "") -> Callable[..., FREE_LETTER_TYPE]:
+    ...
+
+
+def letter(
+    *args,
+    name: Optional[str] = None,
+) -> Union[FREE_LETTER_TYPE, Callable[..., FREE_LETTER_TYPE]]:
     """Decorator for the implementation of a letter appendable to an
     :class:`~fruits.words.letters.ExtendedLetter` object.
 
@@ -125,8 +134,6 @@ def letter(*args, name: Optional[str] = None) -> Callable:
             name of the function is used. Each letter has to have a
             unique name.
     """
-    if name is not None and not isinstance(name, str):
-        raise TypeError("Unknown argument type for name")
     if len(args) > 1:
         raise RuntimeError("Too many arguments")
     if name is None and len(args) == 1 and callable(args[0]):
@@ -141,10 +148,11 @@ def letter(*args, name: Optional[str] = None) -> Callable:
 
         return wrapper
     else:
-        if name is None and len(args) > 0:
-            if not isinstance(args[0], str):
-                raise TypeError("Unknown argument type")
-            name = args[0]
+        if name is None:
+            raise ValueError(
+                "Please either specify the 'name' argument or use this "
+                "decorator without calling it."
+            )
 
         def letter_decorator(func):
             _configure_letter(func, name=name)
@@ -186,16 +194,16 @@ def get_available() -> list[str]:
 def _configure_letter(func: BOUND_LETTER_TYPE, name: str) -> None:
     # marks the input callable as a letter
     if func.__code__.co_argcount != 2:
-        raise RuntimeError("Wrong number of arguments at decorated function " +
-                           str(func.__name__) + ". Should be 2.")
-    func.__dict__[LETTER_SIGNATURE] = "letter"
+        raise RuntimeError(
+            "Wrong function signature for letter configuration. "
+            "Should be 'letter(X: numpy.ndarray, i: int)'."
+        )
     func.__dict__[LETTER_NAME] = name
 
 
-def _letter_configured(func: FREE_LETTER_TYPE) -> bool:
+def _is_letter(func: FREE_LETTER_TYPE) -> bool:
     # checks if the given callable is a letter
-    if (LETTER_SIGNATURE in func.__dict__
-            and LETTER_NAME in func.__dict__
+    if (LETTER_NAME in func.__dict__
             and func.__dict__[LETTER_NAME] in _AVAILABLE):
         return True
     return False

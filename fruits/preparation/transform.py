@@ -3,11 +3,11 @@ from typing import Any, Union
 import numpy as np
 
 from fruits._backend import _increments
-from fruits.preparation.abstract import DataPreparateur
+from fruits.preparation.abstract import Preparateur
 
 
-class INC(DataPreparateur):
-    """DataPreparateur: Increments
+class INC(Preparateur):
+    """Preparateur: Increments
 
     For one dimension of a time series::
 
@@ -46,8 +46,8 @@ class INC(DataPreparateur):
         return f"INC(zero_padding={self._zero_padding})"
 
 
-class STD(DataPreparateur):
-    """DataPreparateur: Standardization
+class STD(Preparateur):
+    """Preparateur: Standardization
 
     Used for standardization of a given time series dataset. The
     transformation returns ``(X-mu)/std`` where ``mu`` and ``std`` are
@@ -80,8 +80,8 @@ class STD(DataPreparateur):
         return "STD"
 
 
-class MAV(DataPreparateur):
-    """DataPreparateur: Moving Average
+class MAV(Preparateur):
+    """Preparateur: Moving Average
 
     Applies a moving average to the given time series dataset.
 
@@ -133,8 +133,8 @@ class MAV(DataPreparateur):
         return f"MAV(width={self._w_given})"
 
 
-class LAG(DataPreparateur):
-    """DataPreparateur: Lead-Lag transform
+class LAG(Preparateur):
+    """Preparateur: Lead-Lag transform
 
     This preparateur applies the so called lead-lag transform to every
     dimension of the given time series.

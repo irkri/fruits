@@ -62,14 +62,14 @@ def test_fast_slow_iss():
 
     X = np.random.random_sample((100, 2, 100))
 
-    result_fast = fruits.signature.ISS(X, [sit1, sit2])
-    result_slow = fruits.signature.ISS(X, [word1, word2])
+    result_fast = fruits.ISS(X, [sit1, sit2])
+    result_slow = fruits.ISS(X, [word1, word2])
 
     np.testing.assert_allclose(result_slow, result_fast)
 
     word1_copy = word1.copy()
     word2_copy = word2.copy()
-    result_slow_copy = fruits.signature.ISS(X, [word1_copy, word2_copy])
+    result_slow_copy = fruits.ISS(X, [word1_copy, word2_copy])
 
     np.testing.assert_allclose(result_slow, result_slow_copy)
 
@@ -87,7 +87,7 @@ def test_general_words():
 
     mix = [relu_word, fruits.words.SimpleWord("[111]")]
 
-    mix_result = fruits.signature.ISS(X_1, mix)
+    mix_result = fruits.ISS(X_1, mix)
 
     np.testing.assert_allclose(np.array([
         [[0, 0, 0, 0, 0],

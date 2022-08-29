@@ -2,12 +2,12 @@ from typing import Any, Optional, Union
 
 import numpy as np
 
-from fruits.preparation.abstract import DataPreparateur
+from fruits.preparation.abstract import Preparateur
 from fruits._backend import _coquantile
 
 
-class DIL(DataPreparateur):
-    """DataPreparateur: Dilation
+class DIL(Preparateur):
+    """Preparateur: Dilation
 
     This preparateur sets some slices in each time series in the
     given dataset to zero. The indices and lengths for those zero
@@ -66,8 +66,8 @@ class DIL(DataPreparateur):
         return f"DIL(clusters={self._clusters})"
 
 
-class WIN(DataPreparateur):
-    """DataPreparateur: Window
+class WIN(Preparateur):
+    """Preparateur: Window
 
     Outside of a certain window the time series is set to zero.
     The window is obtained according to 'quantiles' of a certain
@@ -109,8 +109,8 @@ class WIN(DataPreparateur):
         return f"WIN(start={self._start}, end={self._end})"
 
 
-class DOT(DataPreparateur):
-    """DataPreparateur: Dotting
+class DOT(Preparateur):
+    """Preparateur: Dotting
 
     Keeps every ``n``-th point of a time series while setting everything
     else to zero.
@@ -195,8 +195,8 @@ class DOT(DataPreparateur):
         return f"DOT(n={self._n_given}, first={self._first_given})"
 
 
-class PDD(DataPreparateur):
-    """DataPreparateur: Proportion-Density-Drop
+class PDD(Preparateur):
+    """Preparateur: Proportion-Density-Drop
 
     Sets values in the given time series to zero. The number of values
     and their distribution in the time domain is adjustable.

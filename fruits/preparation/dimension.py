@@ -2,11 +2,11 @@ from typing import Any, Callable
 
 import numpy as np
 
-from fruits.preparation.abstract import DataPreparateur
+from fruits.preparation.abstract import Preparateur
 
 
-class ONE(DataPreparateur):
-    """DataPreparateur: Ones
+class ONE(Preparateur):
+    """Preparateur: Ones
 
     Preparateur that appends a dimension to each time series consisting
     of only ones.
@@ -29,8 +29,8 @@ class ONE(DataPreparateur):
         return "ONE()"
 
 
-class DIM(DataPreparateur):
-    """DataPreparateur: Dimension Creator
+class DIM(Preparateur):
+    """Preparateur: Dimension Creator
 
     Creates a new dimension in the given (multidimensional) time series
     dataset based on the supplied function.

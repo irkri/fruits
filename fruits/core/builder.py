@@ -7,7 +7,7 @@ from fruits.scope import force_input_shape
 from fruits.words.word import Word, SimpleWord
 from fruits.words.creation import simplewords_by_weight
 
-from fruits.preparation.abstract import DataPreparateur
+from fruits.preparation.abstract import Preparateur
 from fruits.sieving.abstract import FeatureSieve
 from fruits import preparation
 from fruits import sieving
@@ -45,33 +45,33 @@ class UnivariateFruitBuilder(FruitBuilder):
         leadingwords, mode = self._choose_words("leading")
 
         fruit.fork()
-        fruit.add(preparation.transform.INC)
-        fruit.add(self._choose_preparateurs("single", length))
-        fruit.add(leadingwords)
+        fruit.add(preparation.INC)
+        fruit.add(*self._choose_preparateurs("single", length))
+        fruit.add(*leadingwords)
         fruit.branch().configure(mode=mode)
-        fruit.add(self._choose_sieves("small"))
+        fruit.add(*self._choose_sieves("small"))
 
         fruit.fork()
-        fruit.add(self._choose_preparateurs("single", length))
-        fruit.add(leadingwords)
+        fruit.add(*self._choose_preparateurs("single", length))
+        fruit.add(*leadingwords)
         fruit.branch().configure(mode=mode)
-        fruit.add(self._choose_sieves("small"))
+        fruit.add(*self._choose_sieves("small"))
 
         smallwords, mode = self._choose_words("small")
         filters = self._choose_preparateurs("filter", length)
         for fltr in filters:
             fruit.fork()
-            fruit.add(preparation.transform.INC)
+            fruit.add(preparation.INC)
             fruit.add(fltr)
-            fruit.add(smallwords)
+            fruit.add(*smallwords)
             fruit.branch().configure(mode=mode)
-            fruit.add(self._choose_sieves("small"))
+            fruit.add(*self._choose_sieves("small"))
 
             fruit.fork()
             fruit.add(fltr)
-            fruit.add(smallwords)
+            fruit.add(*smallwords)
             fruit.branch().configure(mode=mode)
-            fruit.add(self._choose_sieves("small"))
+            fruit.add(*self._choose_sieves("small"))
 
         return fruit
 
@@ -79,23 +79,22 @@ class UnivariateFruitBuilder(FruitBuilder):
         self,
         mode: str,
         length: int,
-    ) -> list[DataPreparateur]:
+    ) -> tuple[Preparateur, ...]:
         if mode == "single":
-            return [
-                preparation.dimension.DIM(
+            return (
+                preparation.DIM(
                     lambda X: np.expand_dims(
                         X[:, 0, :] * (X[:, 0, :] > 0), axis=1)
                 ),
-            ]
+            )
         elif mode == "filter":
-            filters = []
-            n = int(10 * np.floor(np.log10(length)))
-            for i in range(n):
-                filters.append(preparation.filter.DIL())
-            return filters
+            return tuple(
+                preparation.DIL()
+                for _ in range(int(10 * np.floor(np.log10(length))))
+            )
         raise ValueError(f"Unknown mode supplied: {mode!r}")
 
-    def _choose_words(self, mode: str) -> tuple[list[Word], str]:
+    def _choose_words(self, mode: str) -> tuple[tuple[Word, ...], str]:
         # returns a list of words and a calculator mode
         if mode == "leading":
             words = simplewords_by_weight(4, 1)
@@ -105,7 +104,7 @@ class UnivariateFruitBuilder(FruitBuilder):
                 w = preword.copy()
                 w.multiply(str(word))
                 leading_words.append(w)
-            return leading_words, "extended"
+            return tuple(leading_words), "extended"
         elif mode == "double":
             return simplewords_by_weight(3, 2), "single"
         elif mode == "small":
@@ -118,18 +117,18 @@ class UnivariateFruitBuilder(FruitBuilder):
         # returns the best working sieve configurations
         if size == "large":
             return [
-                sieving.implicit.PPV([i/6 for i in range(1, 6)]),
-                sieving.implicit.CPV([i/6 for i in range(1, 6)]),
-                sieving.explicit.PIA([0.2, 0.4, 0.6, 0.8, -1]),
-                sieving.explicit.MAX([1, 0.5, -1], segments=True),
-                sieving.explicit.MIN([1, 0.5, -1], segments=True),
-                sieving.explicit.END([i/10 for i in range(1, 10)]+[-1]),
+                sieving.PPV([i/6 for i in range(1, 6)]),
+                sieving.CPV([i/6 for i in range(1, 6)]),
+                sieving.PIA([0.2, 0.4, 0.6, 0.8, -1]),
+                sieving.MAX([1, 0.5, -1]),
+                sieving.MIN([1, 0.5, -1]),
+                sieving.END([i/10 for i in range(1, 10)]+[-1]),
             ]
         elif size == "small":
             return [
-                sieving.implicit.PPV([i/4 for i in range(1, 4)]),
-                sieving.explicit.PIA([0.5, -1]),
-                sieving.explicit.END([0.5, -1]),
+                sieving.PPV([i/4 for i in range(1, 4)]),
+                sieving.PIA([0.5, -1]),
+                sieving.END([0.5, -1]),
             ]
         raise ValueError(f"Unknown size supplied: {size!r}")
 
@@ -150,19 +149,19 @@ class MultivariateFruitBuilder(FruitBuilder):
         words, mode = self._choose_words(dim)
         sieves = self._choose_sieves(dim)
 
-        fruit.add(preparation.transform.INC)
-        fruit.add(words)
+        fruit.add(preparation.INC)
+        fruit.add(*words)
         fruit.branch().configure(mode=mode)
-        fruit.add(sieves)
+        fruit.add(*sieves)
 
         fruit.fork()
-        fruit.add(words)
+        fruit.add(*words)
         fruit.branch().configure(mode=mode)
-        fruit.add(sieves)
+        fruit.add(*sieves)
 
         return fruit
 
-    def _choose_words(self, dim: int) -> tuple[list[Word], str]:
+    def _choose_words(self, dim: int) -> tuple[tuple[Word, ...], str]:
         # chooses fitting words, calculator mode based on dimensionality
         if 2 <= dim <= 3:
             return simplewords_by_weight(6 - dim, dim), "extended"
@@ -176,7 +175,7 @@ class MultivariateFruitBuilder(FruitBuilder):
                         words.append(SimpleWord(f"[({i})][({i+d})]"))
                         words.append(SimpleWord(f"[({i})({i+d})]"))
             words.append(SimpleWord(f"[({dim})]"))
-            return words, "extended"
+            return tuple(words), "extended"
         elif 48 <= dim <= 100:
             words = []
             for d in range(1, 5):
@@ -184,44 +183,49 @@ class MultivariateFruitBuilder(FruitBuilder):
                     if i + d <= dim:
                         words.append(SimpleWord(f"[({i})][({i+d})]"))
             words.append(SimpleWord(f"[({dim})]"))
-            return words, "extended"
-        elif 100 < dim:
+            return tuple(words), "extended"
+        else:
             words = []
             for i in range(dim):
                 if i + 1 <= dim:
                     words.append(SimpleWord(f"[({i})][({i+1})]"))
             words.append(SimpleWord(f"[({dim})]"))
-            return words, "extended"
+            return tuple(words), "extended"
 
-    def _choose_sieves(self, dim: int) -> list[FeatureSieve]:
+    def _choose_sieves(self, dim: int) -> tuple[FeatureSieve, ...]:
         # chooses fitting sieves based on dimensionality
         if 2 <= dim <= 3:
-            return [
-                sieving.implicit.PPV([0.25, 0.5, 0.75]),
-                sieving.explicit.PIA(),
-                sieving.explicit.MAX(),
-                sieving.explicit.MIN(),
-                sieving.explicit.END([0.5, -1]),
-            ]
+            return (
+                sieving.PPV([0.25, 0.5, 0.75]),
+                sieving.PIA(),
+                sieving.MAX(),
+                sieving.MIN(),
+                sieving.END([0.5, -1]),
+            )
         elif 4 <= dim <= 8:
-            return [
-                sieving.implicit.PPV(),
-                sieving.explicit.PIA([0.2, 0.4, 0.6, 0.8, -1]),
-                sieving.explicit.MAX(),
-                sieving.explicit.MIN(),
-                sieving.explicit.END(),
-            ]
-        elif 9 <= dim <= 18 or 48 <= dim:
-            return [
-                sieving.implicit.PPV(),
-                sieving.explicit.END(),
-            ]
+            return (
+                sieving.PPV(),
+                sieving.PIA([0.2, 0.4, 0.6, 0.8, -1]),
+                sieving.MAX(),
+                sieving.MIN(),
+                sieving.END(),
+            )
+        elif 9 <= dim <= 18:
+            return (
+                sieving.PPV(),
+                sieving.END(),
+            )
         elif 19 <= dim <= 47:
-            return [
-                sieving.implicit.PPV(),
-                sieving.explicit.PIA(),
-                sieving.explicit.END(),
-            ]
+            return (
+                sieving.PPV(),
+                sieving.PIA(),
+                sieving.END(),
+            )
+        else:
+            return (
+                sieving.PPV(),
+                sieving.END(),
+            )
 
 
 def build(X_train: np.ndarray) -> Fruit:

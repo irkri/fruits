@@ -1,15 +1,15 @@
 import inspect
-from typing import Optional, Union, Any
+from typing import Callable, Optional, Union, Any
 
 import numpy as np
 
 from fruits.cache import Cache, CoquantileCache
-from fruits.scope import force_input_shape, FitTransform
+from fruits.scope import force_input_shape, Seed
 from fruits.core.callback import AbstractCallback
-from fruits.signature.iss import SignatureCalculator, CachePlan
+from fruits.iss import ISS, CachePlan
 from fruits.words.word import Word
 from fruits.sieving.abstract import FeatureSieve
-from fruits.preparation.abstract import DataPreparateur
+from fruits.preparation.abstract import Preparateur
 
 
 class Fruit:
@@ -96,7 +96,7 @@ class Fruit:
             raise IndexError("Index has to be in [0, len(self.branches()))")
         self._cbi = index
 
-    def add(self, *objects: Union[FitTransform, Word, type]) -> None:
+    def add(self, *objects: Union[Seed, Callable[[], Seed]]) -> None:
         """Adds one or multiple object(s) to the currently selected
         branch.
 
@@ -243,7 +243,7 @@ class FruitBranch:
 
     def __init__(self) -> None:
         # lists of used classes for data processing
-        self._preparateurs: list[DataPreparateur] = []
+        self._preparateurs: list[Preparateur] = []
         self._words: list[Word] = []
         self._sieves: list[FeatureSieve] = []
 
@@ -308,14 +308,14 @@ class FruitBranch:
         if fit_sample_size is not None:
             self._fit_sample_size = fit_sample_size
 
-    def add_preparateur(self, preparateur: DataPreparateur) -> None:
+    def add_preparateur(self, preparateur: Preparateur) -> None:
         """Adds a preparateur to the branch."""
-        if not isinstance(preparateur, DataPreparateur):
+        if not isinstance(preparateur, Preparateur):
             raise TypeError
         self._preparateurs.append(preparateur)
         self._fitted = False
 
-    def get_preparateurs(self) -> list[DataPreparateur]:
+    def get_preparateurs(self) -> list[Preparateur]:
         """Returns a list of all preparateurs added to the
         branch.
         """
@@ -360,7 +360,7 @@ class FruitBranch:
         self._sieves_extended = []
         self._fitted = False
 
-    def add(self, *objects: Union[FitTransform, Word, type]) -> None:
+    def add(self, *objects: Union[Seed, Callable[[], Seed]]) -> None:
         """Adds one or multiple object(s) to the branch.
 
         Args:
@@ -370,18 +370,18 @@ class FruitBranch:
                 - :class:`~fruits.words.word.Word`
                 - :class:`~fruits.sieving.abstract.FeatureSieve`
         """
-        objects_flattened = np.array(objects, dtype=object).flatten()
-        for obj in objects_flattened:
+        for obj in objects:
             if inspect.isclass(obj):
                 obj = obj()
-            if isinstance(obj, DataPreparateur):
+
+            if isinstance(obj, Preparateur):
                 self.add_preparateur(obj)
             elif isinstance(obj, Word):
                 self.add_word(obj)
             elif isinstance(obj, FeatureSieve):
                 self.add_sieve(obj)
             else:
-                raise TypeError("Cannot add variable of type"+str(type(obj)))
+                raise TypeError(f"Cannot add variable of type {type(obj)!s}")
 
     def clear(self) -> None:
         """Clears all settings, configurations and calculated results
@@ -469,15 +469,16 @@ class FruitBranch:
             prepared_data = prep.transform(prepared_data, cache=self._cache)
 
         self._sieves_extended = []
-        iss_calculations = SignatureCalculator().transform(
+        iss_calculations = ISS(
             prepared_data,
             words=self._words,
             **self._calculator_options
-        )[0]
+        )
         for iterated_data in iss_calculations:
-            iterated_data = iterated_data.reshape(iterated_data.shape[0]
-                                                  * iterated_data.shape[1],
-                                                  iterated_data.shape[2])
+            iterated_data = iterated_data.reshape(
+                iterated_data.shape[0] * iterated_data.shape[1],
+                iterated_data.shape[2],
+            )
             sieves_copy = [sieve.copy() for sieve in self._sieves]
             for sieve in sieves_copy:
                 sieve.fit(iterated_data[:, :])
@@ -521,11 +522,11 @@ class FruitBranch:
         sieved_data = np.zeros((prepared_data.shape[0],
                                 self.nfeatures()))
         k = 0
-        iss_calculations = SignatureCalculator().transform(
+        iss_calculations = ISS(
             prepared_data,
             words=self._words,
             **self._calculator_options
-        )[0]
+        )
         for i, iterated_data in enumerate(iss_calculations):
             for callback in callbacks:
                 callback.on_iterated_sum(iterated_data)

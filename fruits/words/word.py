@@ -1,10 +1,13 @@
 import re
 from typing import Optional, Union
 
+import numpy as np
+
+from fruits.scope import Seed
 from fruits.words.letters import ExtendedLetter
 
 
-class Word:
+class Word(Seed):
     """A word is a collection of
     :class:`~fruits.words.letter.ExtendedLetter` objects.
     An extended letter is a collection of letters.
@@ -107,7 +110,16 @@ class Word:
         else:
             raise TypeError(f"Cannot multiply Word with {type(other)}")
 
-    def copy(self) -> "Word":
+    def fit(self, X: np.ndarray, **kwargs) -> None:
+        pass
+
+    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        raise NotImplementedError(
+            "Please use fruits.ISS for the proper calculation of iterated sums"
+            " specifying this word as an argument"
+        )
+
+    def _copy(self) -> "Word":
         sw = Word()
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
@@ -125,9 +137,6 @@ class Word:
             return self._extended_letters[self._el_iterator_index]
         raise StopIteration()
 
-    def __copy__(self) -> "Word":
-        return self.copy()
-
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Word):
             raise NotImplementedError
@@ -135,9 +144,6 @@ class Word:
 
     def __str__(self) -> str:
         return "".join([str(el) for el in self._extended_letters])
-
-    def __repr__(self) -> str:
-        return f"fruits.words.word.Word('{self!s}')"
 
 
 class SimpleWord(Word):
@@ -243,7 +249,7 @@ class SimpleWord(Word):
                 el[letter-1] = el_int.count(letter)
             self._extended_letters.append(el)
 
-    def copy(self) -> "SimpleWord":
+    def _copy(self) -> "SimpleWord":
         sw = SimpleWord(self._name)
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
@@ -255,6 +261,3 @@ class SimpleWord(Word):
 
     def __str__(self) -> str:
         return self._name
-
-    def __repr__(self) -> str:
-        return f"fruits.words.word.SimpleWord('{self!s}')"
