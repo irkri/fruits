@@ -1,27 +1,20 @@
-# Experiment Instructions
+# Fruits Extension: Corbeille
 
-## Dependencies
+The small extension package [corbeille](/experiments/corbeille/) implements classes and methods
+that help with classification experiments using ``fruits`` and their analysis.
 
-Extra dependecies may be needed for the execution of some of the here listed appendix modules for
-``fruits``:
+## Installation
 
-- ``matplotlib>=3.3.4``
-- ``pandas>=1.2.5``
-- ``scikit-learn>=0.24.2``
-- ``seaborn>=0.11.1``
-- ``scipy>=1.7.1``
-- ``comet_ml>=3.13.1``
-- ``networkx>=2.6.2``
+Dependecies for ``corbeille`` are listed in the corresponding
+[pyproject.toml](/experiments/corbeille/pyproject.toml).
 
-Earlier versions of the named packages could work too, but aren't tested. You can install these
-additional dependencies using poetry and the file [pyproject.toml](/pyproject.toml).
-```
-    $ poetry install -E experiment-dependencies
-```
+You can install these additional dependencies as well as the package using poetry. Execute the following command within the root folder of this repository.
+
+    >>> poetry install --extras corbeille
 
 ## Execution
 
-There are predefined ``fruits`` configurations to test in the file
+There are predefined ``fruits`` configurations available for testing in the file
 [configs.py](/experiments/configs.py). A simple code to execute the experiments on data from
 [timeseriesclassification.com](https://timeseriesclassification.com) (readable with numpy as .txt
 format, see the module [tsdata](/experiments/tsdata.py)) could be:
@@ -41,6 +34,3 @@ for i, fruit in enumerate(CONFIGS):
         csv=True,
     )
 ```
-The docstrings provided in [fruitifier.py](/experiments/fruitifier.py),
-[fruitalyser.py](/experiments/fruitalyser.py) and [tsdata.py](/experiments/tsdata.py) should be
-enough to get a good understanding of what is possible to do with the defined classes.

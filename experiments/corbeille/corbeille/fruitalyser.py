@@ -1,13 +1,6 @@
-"""This python module is an appendix to the package FRUITS.
-
-The included class ``Fruitalyser`` implements methods that increase
-transparency of calculations in a ``fruits.Fruit`` and allow for a
-deeper analysis of the transformed time series features.
-"""
-
 from timeit import default_timer as Timer
 from typing import (Any, Callable, Literal, Optional, Protocol, Sequence,
-                    TypeVar, Union)
+                    TypeVar)
 
 import fruits
 import matplotlib.pyplot as plt
@@ -15,10 +8,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import cm
+from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from sklearn.decomposition import PCA
 from sklearn.linear_model import RidgeClassifierCV
-from sklearn.preprocessing import StandardScaler
+
+from .tools import split_index, transformation_string
 
 _COLORS: list[tuple[int, int, int]] = [
     (0, 100, 173),
@@ -29,9 +24,11 @@ _COLORS: list[tuple[int, int, int]] = [
 ]
 
 _TFitScoreSelf = TypeVar("_TFitScoreSelf", bound="FitScoreClassifier")
+_TFitTransformSelf = TypeVar("_TFitTransformSelf", bound="FitTransform")
 
 
 class FitScoreClassifier(Protocol):
+
     def score(self, X: np.ndarray, y: np.ndarray) -> Any:
         ...
 
@@ -40,6 +37,21 @@ class FitScoreClassifier(Protocol):
         X: np.ndarray,
         y: np.ndarray,
     ) -> _TFitScoreSelf:
+        ...
+
+
+class FitTransform(Protocol):
+
+    def fit(
+        self: _TFitTransformSelf,
+        X: np.ndarray,
+    ) -> _TFitTransformSelf:
+        ...
+
+    def transform(self, X: np.ndarray) -> Any:
+        ...
+
+    def fit_transform(self, X: np.ndarray) -> Any:
         ...
 
 
@@ -109,15 +121,16 @@ class Fruitalyser:
 
     def transform_all(
         self,
-        standardize: bool = True,
+        postprocess: Optional[FitTransform] = None,
         verbose: bool = False,
     ) -> None:
         """Transforms training and testing dataset.
 
         Args:
-            standardize (bool, optional): If set to true, standardize
-                the features before putting them in a classifier.
-                Defaults to True.
+            postprocess (FitTransform, optional): An object of a class
+                with methods ``fit`` and ``transform``. The features
+                calculated by the fruit will be transformed with this
+                transform.
             verbose (bool, optional): Increase verbosity of the
                 transformation. This will print out timings on
                 finished fit and transform steps. Defaults to False.
@@ -129,6 +142,8 @@ class Fruitalyser:
             print(f"Fitting took {Timer() - start} s")
         start = Timer()
         self.X_train_feat = self.fruit.transform(self.X_train)
+        if postprocess:
+            self.X_train_feat = postprocess.fit_transform(self.X_train_feat)
         if verbose:
             print(f"Transforming training set took {Timer() - start} s")
         start = Timer()
@@ -136,14 +151,10 @@ class Fruitalyser:
             self.X_test,
             callbacks=[self.callback],
         )
+        if postprocess is not None:
+            self.X_test_feat = postprocess.transform(self.X_test_feat)
         if verbose:
             print(f"Transforming testing set took {Timer() - start} s")
-        if standardize:
-            start = Timer()
-            scaler = StandardScaler()
-            self.X_train_feat = scaler.fit_transform(self.X_train_feat)
-            self.X_test_feat = scaler.transform(self.X_test_feat)
-            print(f"Standardization took {Timer() - start} s")
         self._extracted = True
 
     def classify(
@@ -158,12 +169,6 @@ class Fruitalyser:
             classifier (FitScoreClassifier, optional): Used classifier
                 with a ``fit`` and ``score`` method. Defaults to
                 ``RidgeClassifierCV(alphas=np.logspace(-3, 3, 10))``.
-            watch_branches (int, optional): A list of branch indices in
-                the given fruit from which all data is extracted.
-                Defaults to all branches.
-            standardize (bool, optional): If set to true, standardize
-                the features before putting them in a classifier.
-                Defaults to True.
             verbose (bool, optional): Increase verbosity of the
                 transformation. This will print out timings on
                 finished fit and transform steps. Defaults to False.
@@ -194,7 +199,7 @@ class Fruitalyser:
         variable: Optional[str] = None,
         test_cases: Optional[list] = None,
         **kwargs,
-    ) -> tuple[Figure, plt.Axes]:
+    ) -> tuple[Figure, Axes]:
         """Tests a classifier for its accuracy on the calculated
         features. The classifier is initialized with different
         configurations and a 2D-plot is created for visualisation of the
@@ -240,67 +245,11 @@ class Fruitalyser:
         ax.legend(loc="upper right")
         return fig, ax
 
-    def decode_index(
-        self,
-        index: int,
-        level: Literal["prepared", "iterated sums", "features"] = "features",
-    ) -> tuple[int, ...]:
-        """For a given index at the specified level
-        (preparateurs, words, feature sieves), returns the indices
-        needed to access the corresponding element in the fruit.
-        """
-        if level == "prepared":
-            for branch_index in range(len(self.fruit.branches())):
-                if index == 0:
-                    return (branch_index, )
-                index -= 1
-        elif level == "iterated sums":
-            for branch_index, branch in enumerate(self.fruit.branches()):
-                for word_index in range(len(branch.get_words())):
-                    if index == 0:
-                        return (branch_index, word_index)
-                    index -= 1
-        elif level == "features":
-            for branch_index, branch in enumerate(self.fruit.branches()):
-                for word_index in range(len(branch.get_words())):
-                    for sieve_index, sieve in enumerate(branch.get_sieves()):
-                        for feature_index in range(sieve.nfeatures()):
-                            if index == 0:
-                                return (
-                                    branch_index,
-                                    word_index,
-                                    sieve_index,
-                                    feature_index,
-                                )
-                            index -= 1
-        raise ValueError("Index out of range or unknown level")
-
-    def get_seed_string(
-        self,
-        index: Union[int, tuple[int, ...]],
-        level: Literal["prepared", "iterated sums", "features"] = "features",
-    ) -> str:
-        if isinstance(index, int):
-            index = self.decode_index(index, level=level)
-        branch = self.fruit.branch(index[0])
-        if level == "prepared":
-            return "->".join(map(str, branch.get_preparateurs()))
-        elif level == "iterated sums":
-            string = "->".join(map(str, branch.get_preparateurs()))
-            string += "->" + str(branch.get_words()[index[1]])
-            return string
-        elif level == "features":
-            string = "->".join(map(str, branch.get_preparateurs()))
-            string += "->" + str(branch.get_words()[index[1]])
-            string += "->" + str(branch.get_sieves()[index[2]])
-            string += f"({index[3]})" if len(index) >= 4 else ""
-        raise ValueError("Unknown level supplied")
-
     def _plot(
         self,
         X: np.ndarray,
         y: np.ndarray,
-        axis: plt.Axes,
+        axis: Axes,
         mean: bool,
         bounds: bool,
         nseries: int,
@@ -346,8 +295,8 @@ class Fruitalyser:
         bounds: bool = False,
         nseries: int = 1,
         per_class: bool = True,
-        axis: Optional[plt.Axes] = None,
-    ) -> Optional[tuple[Figure, plt.Axes]]:
+        axis: Optional[Axes] = None,
+    ) -> Optional[tuple[Figure, Axes]]:
         """Plots one dimension of the data for the given level.
 
         Args:
@@ -369,7 +318,7 @@ class Fruitalyser:
             per_class (bool, optional): If ``True``, plots ``nseries``
                 time series of each class in the dataset. Defaults to
                 True.
-            axis (plt.Axes, optional): Matplotlib axis to plot the data
+            axis (Axes, optional): Matplotlib axis to plot the data
                 on. If None is given, a seperate figure and axis
                 will be created and returned.
 
@@ -422,7 +371,8 @@ class Fruitalyser:
         if level == "input":
             ax.set_title("Input Data")
         else:
-            ax.set_title(self.get_seed_string(
+            ax.set_title(transformation_string(
+                self.fruit,
                 identifier if identifier is not None else 0,
                 level=level,
             ))
@@ -448,11 +398,13 @@ class Fruitalyser:
         )
         column_names = []
         for i, index in enumerate(indices):
-            bi, wi, si, fi = self.decode_index(index=index, level="features")
-            feat_table[i] = self.callback.sieved_data[bi][:, wi*(si+fi)]
-            column_names.append(self.get_seed_string((bi, wi, si, fi)))
+            sindex = split_index(self.fruit, index)
+            findex = index
+            for bindex in range(sindex[0]+1):
+                findex -= self.fruit.branch(bindex).nfeatures()
+            feat_table[i] = self.callback.sieved_data[sindex[0]][:, findex]
+            column_names.append(transformation_string(self.fruit, sindex))
         feats = pd.DataFrame(feat_table.T, columns=column_names)
-        feats["Class"] = self.y
         return feats
 
     def plot_features(
@@ -486,38 +438,49 @@ class Fruitalyser:
         self,
         components: int,
         indices: Optional[Sequence[int]] = None,
+        translate: bool = True,
     ) -> pd.DataFrame:
         """Returns a ``pandas.DataFrame`` object containing the
-        correlation of the calculated features with the features given
-        by a fitted ``sklearn.decomposition.PCA`` object.
+        projected features in the principal axes calculated with
+        ``sklearn.decomposition.PCA``.
 
         Args:
             components (int): Number of components for the PCA to
                 calculate.
             indices (Sequence of int, optional): List of feature indices
                 to use for the PCA. Defaults to all features.
+            translate (bool, optional): Whether to translate the feature
+                indices into readable string identifiers. Defaults to
+                True.
         """
         pca = PCA(n_components=components)
         if indices is None:
             indices = list(range(self.fruit.nfeatures()))
         features = self.get_feature_dataframe(indices).to_numpy()
         pca.fit(features)
+        if translate:
+            columns = [transformation_string(self.fruit, i) for i in indices]
+        else:
+            columns = list(indices)
         feature_pc_correlation = pd.DataFrame(
             pca.components_,  # type: ignore
-            columns=[self.get_seed_string(i) for i in indices],
+            columns=columns,
             index=[f"PC-{i+1}" for i in range(components)],
         )
         return feature_pc_correlation
 
-    def rank_features(self, n: int) -> tuple[str, ...]:
+    def rank_features(self, n: int, translate: bool = True) -> tuple[str, ...]:
         """Ranks features by variance using a PCA.
 
         Args:
             n (int): Number of features to rank.
+            translate (bool, optional): Whether to translate the feature
+                indices into readable string identifiers. Defaults to
+                True.
         """
-        correlation = self.pca_correlation(n)
+        correlation = self.pca_correlation(components=n, translate=translate)
         sorted_feature_indices = tuple(
-            np.argmax(correlation.iloc[i]) for i in range(n)
+            np.argmax(np.abs(correlation.iloc[i])) for i in range(n)
         )
         return tuple(
             str(correlation.columns[i]) for i in sorted_feature_indices

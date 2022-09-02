@@ -1,11 +1,3 @@
-"""This python module is an appendix to the package FRUITS.
-
-The implemented class ``Fruitifier`` performs classification tasks for
-multivariate time series data using a ``fruits.Fruit`` transformer.
-A comet_ml experiment can be supplied to the class for tracking the
-results of the experiment.
-"""
-
 import os
 import time
 from collections.abc import Sequence
@@ -20,9 +12,8 @@ from sklearn.linear_model import RidgeClassifierCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
-import tsdata
-from experiments.tsdata import nan_to_num
-from fruitalyser import FitScoreClassifier
+from .data import load
+from .fruitalyser import FitScoreClassifier
 
 
 class Fruitifier:
@@ -69,7 +60,7 @@ class Fruitifier:
         if classifier is None:
             self._classifier = Pipeline(steps=[
                 ("scaler", StandardScaler()),
-                ("nantonum", FunctionTransformer(nan_to_num)),
+                ("nantonum", FunctionTransformer(np.nan_to_num)),
                 ("ridge", RidgeClassifierCV(alphas=np.logspace(-3, 3, 10))),
             ])
         else:
@@ -172,12 +163,12 @@ class Fruitifier:
                 if self._comet_exp is not None:
                     self._comet_exp.set_step(i)
 
-                X_train, y_train, X_test, y_test = tsdata.load_dataset(
+                X_train, y_train, X_test, y_test = load(
                     os.path.join(path, dataset),
                     univariate=univariate,
                 )
-                X_train = tsdata.nan_to_num(X_train)
-                X_test = tsdata.nan_to_num(X_test)
+                X_train = np.nan_to_num(X_train)
+                X_test = np.nan_to_num(X_test)
 
                 fruit_ = fruit if fruit is not None else fruits.build(X_train)
 

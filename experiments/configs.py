@@ -1,12 +1,19 @@
-import numpy as np
+"""This python module defines some fruits to use for feature extraction.
+The dictionary ``basket`` contains grouped experiments where one element
+is a tuple of fruits all with small changes to compare different
+settings within a fruit.
+"""
+
+__all__ = ["basket"]
 
 import fruits
+import numpy as np
 
 np.random.seed(62)
 
 # Configuration 00 - Grape - INC preparateur
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 grape01 = fruits.Fruit("Grape_without")
 grape01.add(*words)
@@ -60,7 +67,7 @@ grape03.add(
 
 # Configuration 01 - Apple - Number of words
 
-words = fruits.words.simplewords_by_weight(3)
+words = fruits.words.of_weight(3)
 
 apple01 = fruits.Fruit("Apple_3")
 apple01.add(fruits.preparation.INC)
@@ -85,7 +92,7 @@ apple01.add(
     fruits.sieving.END,
 )
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 apple02 = fruits.Fruit("Apple_4")
 apple02.add(fruits.preparation.INC)
@@ -110,7 +117,7 @@ apple02.add(
     fruits.sieving.END,
 )
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 apple03 = fruits.Fruit("Apple_1_4")
 apple03.add(fruits.preparation.INC)
@@ -137,7 +144,7 @@ apple03.add(
 )
 apple03.branch().configure(mode="extended")
 
-words = fruits.words.simplewords_by_weight(5)
+words = fruits.words.of_weight(5)
 
 apple04 = fruits.Fruit("Apple_1_5")
 apple04.add(fruits.preparation.INC)
@@ -166,7 +173,7 @@ apple04.branch().configure(mode="extended")
 
 # Configuration 02 - Banana - Number of PPV Quantiles
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 banana01 = fruits.Fruit("Banana_1")
 banana01.add(fruits.preparation.INC)
@@ -236,7 +243,7 @@ banana06.add(fruits.sieving.PPV([i/20 for i in range(1, 20)]))
 
 # Configuration 03 - Plantain - Number of CPV Quantiles
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 plantain01 = fruits.Fruit("Plantain_1")
 plantain01.add(fruits.preparation.INC)
@@ -306,7 +313,7 @@ plantain06.add(fruits.sieving.CPV([i/20 for i in range(1, 20)]))
 
 # Configuration 04 - Orange - Number of cuts in MAX
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 orange01 = fruits.Fruit("Orange_2")
 orange01.add(fruits.preparation.INC)
@@ -354,7 +361,7 @@ orange04.add(fruits.sieving.MAX([i/20 for i in range(0, 21)]))
 
 # Configuration 05 - Tangerine - Number of cuts in MIN
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 tangerine01 = fruits.Fruit("Tangerine_2")
 tangerine01.add(fruits.preparation.INC)
@@ -402,7 +409,7 @@ tangerine04.add(fruits.sieving.MIN([i/20 for i in range(0, 21)]))
 
 # Configuration 06 - Apricot - Alpha value of words
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 for word in words:
     word.alpha = 0.0001
@@ -431,7 +438,7 @@ apricot01.add(
     fruits.sieving.END,
 )
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 for word in words:
     word.alpha = -0.0001
@@ -460,7 +467,7 @@ apricot02.add(
     fruits.sieving.END,
 )
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 for word in words:
     word.alpha = 0.0005
@@ -489,7 +496,7 @@ apricot03.add(
     fruits.sieving.END,
 )
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 for word in words:
     word.alpha = -0.0005
@@ -518,7 +525,7 @@ apricot04.add(
     fruits.sieving.END,
 )
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 for word in words:
     word.alpha = 0.001
@@ -547,7 +554,7 @@ apricot05.add(
     fruits.sieving.END,
 )
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 for word in words:
     word.alpha = -0.001
@@ -576,7 +583,7 @@ apricot06.add(
     fruits.sieving.END,
 )
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 for word in words:
     word.alpha = 0.005
@@ -605,7 +612,7 @@ apricot07.add(
     fruits.sieving.END,
 )
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 for word in words:
     word.alpha = -0.005
@@ -702,7 +709,7 @@ olive02.add(
     fruits.sieving.END,
 )
 
-words = fruits.words.simplewords_by_weight(3, 2)
+words = fruits.words.of_weight(3, 2)
 for word in words:
     word.alpha = -0.005
 
@@ -733,7 +740,7 @@ olive03.add(
 
 # Configuration 08 - Elderberry - Number of coquantiles in END
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 elderberry01 = fruits.Fruit("Elderberry_1")
 elderberry01.add(fruits.preparation.INC)
@@ -792,7 +799,7 @@ elderberry05.add(fruits.sieving.END([i/20 for i in range(1, 21)]))
 
 # Configuration 09 - Dragonfruit - DIL, WIN or DOT preparateur
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 dragonfruit01 = fruits.Fruit("Dragonfruit_DIL")
 for n in range(20):
@@ -909,7 +916,7 @@ for n in ns:
 
 # Configuration 10 - Pineapple - PIA Sieve
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 pineapple01 = fruits.Fruit("Pineapple_1")
 pineapple01.add(fruits.preparation.INC)
@@ -968,7 +975,7 @@ pineapple05.add(fruits.sieving.PIA([i/20 for i in range(1, 21)]))
 
 # Configuration 11 - Lychee - LCS Sieve
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 lychee01 = fruits.Fruit("Lychee_1")
 lychee01.add(fruits.preparation.INC)
@@ -1027,7 +1034,7 @@ lychee05.add(fruits.sieving.LCS([i/20 for i in range(0, 21)], segments=True))
 
 # Configuration 12 - Strawberry - Preparateur STD
 
-words = fruits.words.simplewords_by_weight(4)
+words = fruits.words.of_weight(4)
 
 strawberry = fruits.Fruit("Strawberry")
 strawberry.add(fruits.preparation.STD)
@@ -1056,31 +1063,34 @@ strawberry.add(
     fruits.sieving.END,
 )
 
-CONFIGS = [
-    grape01, grape02, grape03,
+basket = {
+    "grape": (grape01, grape02, grape03),
 
-    apple01, apple02, apple03, apple04,
+    "apple": (apple01, apple02, apple03, apple04),
 
-    banana01, banana02, banana03, banana04, banana05, banana06,
+    "banana": (banana01, banana02, banana03, banana04, banana05, banana06),
 
-    plantain01, plantain02, plantain03, plantain04, plantain05, plantain06,
+    "plantain": (plantain01, plantain02, plantain03, plantain04, plantain05,
+                 plantain06),
 
-    orange01, orange02, orange03, orange04,
+    "orange": (orange01, orange02, orange03, orange04),
 
-    tangerine01, tangerine02, tangerine03, tangerine04,
+    "tangerine": (tangerine01, tangerine02, tangerine03, tangerine04),
 
-    apricot01, apricot02, apricot03, apricot04, apricot05, apricot06,
-    apricot07, apricot08,
+    "apricot": (apricot01, apricot02, apricot03, apricot04, apricot05, apricot06,
+                apricot07, apricot08),
 
-    olive01, olive02, olive03,
+    "olive": (olive01, olive02, olive03),
 
-    elderberry01, elderberry02, elderberry03, elderberry04, elderberry05,
+    "elderberry": (elderberry01, elderberry02, elderberry03, elderberry04,
+                   elderberry05),
 
-    dragonfruit01, dragonfruit02, dragonfruit03,
+    "dragonfruit": (dragonfruit01, dragonfruit02, dragonfruit03),
 
-    pineapple01, pineapple02, pineapple03, pineapple04, pineapple05,
+    "pineapple": (pineapple01, pineapple02, pineapple03, pineapple04,
+                  pineapple05),
 
-    lychee01, lychee02, lychee03, lychee04, lychee05,
+    "lychee": (lychee01, lychee02, lychee03, lychee04, lychee05),
 
-    strawberry,
-]
+    "strawberry": (strawberry, ),
+}

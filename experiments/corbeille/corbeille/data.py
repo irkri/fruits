@@ -1,7 +1,3 @@
-"""Small python module for the creation/manipulation/reading of time
-series data.
-"""
-
 import os
 from typing import Optional
 
@@ -106,7 +102,7 @@ def multisine(
     return X_train, y_train, X_test, y_test
 
 
-def load_dataset(
+def load(
     path: str,
     univariate: bool = True,
     cache: bool = True,
@@ -132,7 +128,9 @@ def load_dataset(
             ``(X_train, y_train, X_test, y_test)``.
     """
     if univariate:
-        dataset = path.split("/")[-1]
+        if path.endswith("/"):
+            path = os.path.dirname(path)
+        dataset = os.path.basename(path)
         delim = None
         with open(f"{path}/{dataset}_TRAIN.txt") as f:
             if "," in f.readline():
@@ -211,26 +209,6 @@ def load_dataset(
                     y_test)
 
     return X_train, y_train, X_test, y_test
-
-
-def nan_to_num(X: np.ndarray, value: float = 0.0) -> np.ndarray:
-    """Sets all NaN values in X to the given value."""
-    return np.nan_to_num(X, nan=value)
-
-
-def analyse(X: np.ndarray) -> None:
-    """Takes in a three dimensional numpy array containing
-    multidimensional time series and prints out an analysis of the
-    dataset.
-    """
-    string = f"Shape: {X.shape}"
-    print(string)
-    string = f"Mean of means: {X.mean(axis=2)[:, 0].mean(axis=0):.4f}"
-    string += f" +- {X.mean(axis=2)[:, 0].std(axis=0):.2f}"
-    print(string)
-    string = f"Mean of stds: {X.std(axis=2)[:, 0].mean(axis=0):.4f}"
-    string += f" +- {X.std(axis=2)[:, 0].std(axis=0):.2f}"
-    print(string)
 
 
 def implant_stuttering(

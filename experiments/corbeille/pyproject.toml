@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "corbeille"
+version = "0.1.0"
+description = "Fruits Extension Module"
+authors = ["alienkrieg <alienkrieg@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = ">= 3.9, < 3.10"
+numpy = ">= 1.19.2"
+pandas = "^1.4.1"
+scipy = "^1.8.0"
+scikit-learn = "^1.0.2"
+matplotlib = "^3.5.1"
+seaborn = "^0.11.2"
+comet-ml = "^3.26.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
