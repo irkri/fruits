@@ -15,7 +15,7 @@ def test_n_features():
 
     fruit.add(fruits.preparation.INC(zero_padding=False))
 
-    fruit.add(*fruits.words.simplewords_by_weight(4, 2))
+    fruit.add(*fruits.words.of_weight(4, dim=2))
 
     assert len(fruit.branch().get_words()) == 82
 

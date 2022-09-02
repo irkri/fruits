@@ -1,15 +1,14 @@
-from collections.abc import Iterator, Sequence
 import itertools
+from collections.abc import Iterator, Sequence
 from typing import Union
 
-from fruits.words.word import SimpleWord, Word
 from fruits.words.letters import (
     FREE_LETTER_TYPE,
     ExtendedLetter,
     _is_letter,
-    simple,
-    BOUND_LETTER_TYPE,
+    simple
 )
+from fruits.words.word import SimpleWord, Word
 
 
 def _partitions_of(n, start: int = 1):
@@ -33,9 +32,9 @@ def _extended_letters_by_weight(
     ]
 
 
-def simplewords_by_weight(w: int, dim: int = 1) -> tuple[SimpleWord, ...]:
-    """Returns a list of all possible and unique simple words that have
-    exactly the given number of letters ('weight' of the words).
+def of_weight(w: int, dim: int = 1) -> tuple[SimpleWord, ...]:
+    """Returns a list of all possible and unique words that have exactly
+    the given number of (simple) letters ('weight' of the words).
     For ``w=2`` and ``dim=2`` this will return a list containing::
 
         SimpleWord("[11]"), SimpleWord("[12]"), SimpleWord("[22]"),
@@ -44,7 +43,7 @@ def simplewords_by_weight(w: int, dim: int = 1) -> tuple[SimpleWord, ...]:
 
     Args:
         w (int): Weight of the words, i.e. number of letters.
-        dim (int, optional): Highest dimension of a letter.
+        dim (int, optional): Highest dimension of a letter used.
             Defaults to 1.
     """
     extended_letters = []

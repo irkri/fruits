@@ -68,6 +68,6 @@ def test_theoretical_cases():
 
 def test_word_generation():
     for n in range(1, 7):
-        assert len(fruits.words.simplewords_by_weight(n, dim=1)) \
+        assert len(fruits.words.of_weight(n, dim=1)) \
             == 2**(n - 1)
-    assert len(fruits.words.simplewords_by_weight(4, dim=2)) == 82
+    assert len(fruits.words.of_weight(4, dim=2)) == 82

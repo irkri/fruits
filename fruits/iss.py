@@ -117,8 +117,8 @@ def _fast_ISS(
 class CachePlan:
     """Class that creates a plan for the efficient calculation of
     iterated sums using the given words. This plan is needed when the
-    mode of an :class:`~fruits.signature.iss.SignatureCalculator` is set
-    to "extended". The plan removes repetition in calculation.
+    mode of an :meth:`~fruits.iss.ISS` calculation is set to "extended".
+    The plan removes repetition in calculation.
     """
 
     def __init__(self, words: Sequence[Word]) -> None:
@@ -174,45 +174,50 @@ def _transform_simple_word(word: SimpleWord) -> np.ndarray:
 def _ISS(
     X: np.ndarray,
     words: Sequence[Word],
-    mode: Literal["single", "extended"] = "single",
-    batch_size: Optional[int] = None,
+    mode: Literal["single", "extended"],
+    batch_size: int,
 ) -> Iterator[np.ndarray]:
-    batch_size = len(words) if batch_size is None else batch_size
+    if batch_size > len(words):
+        raise ValueError("batch_size too large, has to be < len(words)")
 
-    cache_plan = CachePlan(words)
-    wi = 0
-    while wi < len(words):
-        n_iterated_sums = batch_size if mode == "single" else (
-            cache_plan.n_iterated_sums(list(range(wi, wi+batch_size)))
-        )
-        results = np.zeros((X.shape[0], n_iterated_sums, X.shape[2]))
+    cache_plan = CachePlan([])
+    if mode == "extended":
+        cache_plan = CachePlan(words)
+
+    i = 0
+    while i < len(words):
+        if i + batch_size > len(words):
+            batch_size = len(words) - i
+        results = np.zeros((
+            X.shape[0],
+            batch_size if mode == "single" else (
+                cache_plan.n_iterated_sums(range(i, i+batch_size))
+            ),
+            X.shape[2],
+        ))
         index = 0
-        for i in range(wi, wi+batch_size):
-            if i > len(words):
-                wi = len(words)
-                yield results[:, :i, :]
-                break
+        for word in words[i:i+batch_size]:
             ext = 1 if mode == "single" else cache_plan.unique_el_depth(i)
-            alphas = np.array([0.0] + words[i].alpha + [0.0], dtype=np.float32)
-            if isinstance(words[i], SimpleWord):
+            alphas = np.array([0.0] + word.alpha + [0.0], dtype=np.float32)
+            if isinstance(word, SimpleWord):
                 results[:, index:index+ext, :] = _fast_ISS(
                     X,
-                    _transform_simple_word(words[i]),  # type: ignore
+                    _transform_simple_word(word),
                     alphas,
                     ext,
                 )
-            elif isinstance(words[i], Word):
+            elif isinstance(word, Word):
                 results[:, index:index+ext, :] = _slow_ISS(
                     X,
-                    words[i],
+                    word,
                     alphas,
                     ext,
                 )
             else:
-                raise TypeError(f"Unknown word type: {type(words[i])}")
+                raise TypeError(f"Unknown word type: {type(word)}")
             index += ext
+            i += 1
         else:
-            wi += batch_size
             yield results
 
 
@@ -278,7 +283,7 @@ def ISS(
         X,
         words=words,
         mode=mode,
-        batch_size=batch_size,
+        batch_size=batch_size if batch_size is not None else len(words),
     )
     if batch_size is None:
         return next(iter(result_iterator))

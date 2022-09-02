@@ -1,3 +1,5 @@
+__all__ = ["ONE", "DIM"]
+
 from typing import Any, Callable
 
 import numpy as np

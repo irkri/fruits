@@ -38,7 +38,7 @@ def test_mode_in_branches():
 
     assert fruit.nfeatures() == 27
 
-    fruit.branch(0).configure(mode="extended")
+    fruit.branch(0).configure(iss_mode="extended")
 
     assert fruit.nfeatures() == 36
 

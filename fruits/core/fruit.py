@@ -1,5 +1,5 @@
 import inspect
-from typing import Callable, Optional, Union, Any
+from typing import Callable, Literal, Optional, Union, Any
 
 import numpy as np
 
@@ -247,11 +247,9 @@ class FruitBranch:
         self._words: list[Word] = []
         self._sieves: list[FeatureSieve] = []
 
-        # calculator options used in the ISS calculation
-        self._calculator_options: dict[str, Union[int, str]] = {
-            "batch_size": 1,
-            "mode": "single",
-        }
+        # options for the ISS calculation
+        self.iss_mode: Literal['single', 'extended'] = "single"
+        self.iss_batch_size = 1
 
         # list with inner lists containing sieves
         # all sieves in one list are trained on one specific output
@@ -260,7 +258,7 @@ class FruitBranch:
 
         # configurations for fitting
         self._fitted: bool = False
-        self._fit_sample_size: Union[float, int] = 1
+        self.fit_sample_size: Union[float, int] = 1
 
         # cache that is calculated at fitting and also used in the
         # transformation process
@@ -268,15 +266,16 @@ class FruitBranch:
 
     def configure(
         self,
-        mode: Optional[str] = None,
-        batch_size: Optional[int] = None,
-        fit_sample_size: Optional[Union[float, int]] = None,
+        *,
+        iss_mode: Literal['single', 'extended'] = "single",
+        iss_batch_size: int = 1,
+        fit_sample_size: Union[float, int] = 1,
     ) -> None:
         """Makes changes to the default configuration of a fruit branch
         if arguments differ from ``None``.
 
         Args:
-            mode (str, optional): Mode of the ISS calculator.
+            iss_mode (str, optional): Mode of the ISS calculator.
                 Following options are available.
 
                 - 'single':
@@ -292,21 +291,17 @@ class FruitBranch:
                 Number of words for which the iterated sums are
                 calculated at once when starting the iterator of the
                 calculator. This doesn't have to be the same number as
-                the actual number of iterated sums calculated. Default
-                value is -1, which means the results of all words are
-                given at once.
+                the actual number of iterated sums calculated. Defaults
+                to 1 in a fruit branch.
             fit_sample_size (float or int, optional): Size of the random
                 time series sample that is used for fitting. This is
                 represented as a float which will be multiplied by
                 ``X.shape[0]`` or ``1`` for one random time series.
-                Defaults to ``1``.
+                Defaults to 1.
         """
-        if mode is not None:
-            self._calculator_options["mode"] = mode
-        if batch_size is not None:
-            self._calculator_options["batch_size"] = batch_size
-        if fit_sample_size is not None:
-            self._fit_sample_size = fit_sample_size
+        self.iss_mode = iss_mode
+        self.iss_batch_size = iss_batch_size
+        self.fit_sample_size = fit_sample_size
 
     def add_preparateur(self, preparateur: Preparateur) -> None:
         """Adds a preparateur to the branch."""
@@ -393,24 +388,25 @@ class FruitBranch:
         self.clear_preparateurs()
         self.clear_words()
         self.clear_sieves()
-        self._calculator_options = {"batch_size": 1, "mode": "single"}
+        self.iss_mode = "single"
+        self.iss_batch_size = 1
+        self.fit_sample_size = 1
 
     def nfeatures(self) -> int:
         """Returns the total number of features the current
         configuration produces.
         """
-        if self._calculator_options["mode"] == "extended":
+        if self.iss_mode == "extended":
             return (
                 sum([s.nfeatures() for s in self._sieves])
                 * CachePlan(self._words).n_iterated_sums(
                     list(range(len(self._words)))
                   )
             )
-        else:
-            return (
-                sum([s.nfeatures() for s in self._sieves])
-                * len(self._words)
-            )
+        return (
+            sum([s.nfeatures() for s in self._sieves])
+            * len(self._words)
+        )
 
     def _compile(self) -> None:
         # checks if the FruitBranch is configured correctly and ready
@@ -440,12 +436,12 @@ class FruitBranch:
 
     def _select_fit_sample(self, X: np.ndarray) -> np.ndarray:
         # returns a sample of the data used for fitting
-        if (isinstance(self._fit_sample_size, int)
-                and self._fit_sample_size == 1):
+        if (isinstance(self.fit_sample_size, int)
+                and self.fit_sample_size == 1):
             ind = np.random.randint(0, X.shape[0])
             return X[ind:ind+1, :, :]
         else:
-            s = int(self._fit_sample_size * X.shape[0])
+            s = int(self.fit_sample_size * X.shape[0])
             if s < 1:
                 s = 1
             indices = np.random.choice(X.shape[0], size=s, replace=False)
@@ -472,7 +468,8 @@ class FruitBranch:
         iss_calculations = ISS(
             prepared_data,
             words=self._words,
-            **self._calculator_options
+            mode=self.iss_mode,
+            batch_size=self.iss_batch_size,
         )
         for iterated_data in iss_calculations:
             iterated_data = iterated_data.reshape(
@@ -525,7 +522,8 @@ class FruitBranch:
         iss_calculations = ISS(
             prepared_data,
             words=self._words,
-            **self._calculator_options
+            mode=self.iss_mode,
+            batch_size=self.iss_batch_size,
         )
         for i, iterated_data in enumerate(iss_calculations):
             for callback in callbacks:
@@ -609,5 +607,7 @@ class FruitBranch:
             copy_.add(iterator.copy())
         for sieve in self._sieves:
             copy_.add(sieve.copy())
-        copy_._calculator_options = self._calculator_options.copy()
+        copy_.iss_mode = self.iss_mode
+        copy_.iss_batch_size = self.iss_batch_size
+        copy_.fit_sample_size = self.fit_sample_size
         return copy_

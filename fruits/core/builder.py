@@ -5,7 +5,7 @@ import numpy as np
 from fruits.core.fruit import Fruit
 from fruits.scope import force_input_shape
 from fruits.words.word import Word, SimpleWord
-from fruits.words.creation import simplewords_by_weight
+from fruits.words.creation import of_weight
 
 from fruits.preparation.abstract import Preparateur
 from fruits.sieving.abstract import FeatureSieve
@@ -97,7 +97,7 @@ class UnivariateFruitBuilder(FruitBuilder):
     def _choose_words(self, mode: str) -> tuple[tuple[Word, ...], str]:
         # returns a list of words and a calculator mode
         if mode == "leading":
-            words = simplewords_by_weight(4, 1)
+            words = of_weight(4, 1)
             preword = SimpleWord("[2]")
             leading_words = []
             for word in words:
@@ -106,11 +106,11 @@ class UnivariateFruitBuilder(FruitBuilder):
                 leading_words.append(w)
             return tuple(leading_words), "extended"
         elif mode == "double":
-            return simplewords_by_weight(3, 2), "single"
+            return of_weight(3, 2), "single"
         elif mode == "small":
-            return simplewords_by_weight(3, 1), "extended"
+            return of_weight(3, 1), "extended"
         elif mode == "large":
-            return simplewords_by_weight(4, 1), "extended"
+            return of_weight(4, 1), "extended"
         raise ValueError(f"Unknown mode supplied: {mode!r}")
 
     def _choose_sieves(self, size: str) -> list[FeatureSieve]:
@@ -164,9 +164,9 @@ class MultivariateFruitBuilder(FruitBuilder):
     def _choose_words(self, dim: int) -> tuple[tuple[Word, ...], str]:
         # chooses fitting words, calculator mode based on dimensionality
         if 2 <= dim <= 3:
-            return simplewords_by_weight(6 - dim, dim), "extended"
+            return of_weight(6 - dim, dim), "extended"
         elif 4 <= dim <= 18:
-            return simplewords_by_weight(2, dim), "extended"
+            return of_weight(2, dim), "extended"
         elif 19 <= dim <= 47:
             words = []
             for d in range(1, 4):
