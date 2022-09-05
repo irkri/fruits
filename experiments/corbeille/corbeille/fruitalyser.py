@@ -196,8 +196,8 @@ class Fruitalyser:
     def test_classifier(
         self,
         classifier: Callable[..., FitScoreClassifier],
-        variable: Optional[str] = None,
-        test_cases: Optional[list] = None,
+        variable: str,
+        test_cases: Sequence[Any],
         **kwargs,
     ) -> tuple[Figure, Axes]:
         """Tests a classifier for its accuracy on the calculated
@@ -210,18 +210,16 @@ class Fruitalyser:
                 (uninitialized) classifiers class to test.
             variable (str, optional): String of the name of the variable
                 that is needed for initialization of the classifier.
-            test_cases (list): Different values the 'variable' argument
-                of the classifier can accept. The classifier is
-                initialized with all of these values and the results
-                (accuracy on test set) are plottet.
+            test_cases (sequence of values): Different values the
+                'variable' argument of the classifier can accept. The
+                classifier is initialized each time with a different
+                value and the corresponding accuracies on the test set
+                are plotted.
             kwargs: Keyword arguments passed to the classifier.
 
         Returns:
-            A tuple of figure and axis with the created plot(s).
+            A tuple of a matplotlib figure and axis.
         """
-        if variable is None or test_cases is None:
-            raise ValueError("Please specify a variable and a number of" +
-                             "test cases")
         accuracies = np.zeros(len(test_cases))
         for i, test_case in enumerate(test_cases):
             t = {variable: test_case}
@@ -289,7 +287,7 @@ class Fruitalyser:
     def plot(
         self,
         level: Literal["input", "prepared", "iterated sums"] = "input",
-        identifier: Optional[tuple[int, ...]] = None,
+        index: Optional[int] = None,
         dim: int = 0,
         mean: bool = False,
         bounds: bool = False,
@@ -304,6 +302,8 @@ class Fruitalyser:
                 the data from. Possible levels are
                 ``['input', 'prepared', 'iterated sums']``.
                 Defaults to plotting the input data.
+            index (int, optional): The index of the preparateur or word
+                in the fruit counting over all branches.
             dim (int, optional): Dimension of each time series to plot.
                 Defaults to 0.
             mean (bool, optional): If ``True``, plots the mean of all
@@ -340,10 +340,10 @@ class Fruitalyser:
                 per_class=per_class,
             )
         elif level == "prepared":
-            if identifier is None:
-                identifier = (0, )
+            if index is None:
+                index = 0
             self._plot(
-                self.callback.prepared_data[identifier[0]][:, dim, :],
+                self.callback.prepared_data[index][:, dim, :],
                 self.y,
                 axis=ax,
                 mean=mean,
@@ -352,12 +352,11 @@ class Fruitalyser:
                 per_class=per_class,
             )
         elif level == "iterated sums":
-            if identifier is None:
-                identifier = (0, 0)
+            if index is None:
+                index = 0
+            indices = split_index(self.fruit, index=index)
             self._plot(
-                self.callback.iterated_sums[identifier[0]][identifier[0]][
-                    :, dim, :
-                ],
+                self.callback.iterated_sums[indices[0]][indices[1]][:, dim, :],
                 self.y,
                 axis=ax,
                 mean=mean,
@@ -373,7 +372,7 @@ class Fruitalyser:
         else:
             ax.set_title(transformation_string(
                 self.fruit,
-                identifier if identifier is not None else 0,
+                index if index is not None else 0,
                 level=level,
             ))
 
@@ -381,7 +380,7 @@ class Fruitalyser:
             return fig, ax
         return None
 
-    def get_feature_dataframe(
+    def features(
         self,
         indices: Optional[Sequence[int]] = None,
     ) -> pd.DataFrame:
@@ -423,7 +422,7 @@ class Fruitalyser:
         Returns:
             seaborn.PairGrid: A PairGrid plot from the package seaborn.
         """
-        feats = self.get_feature_dataframe(indices)
+        feats = self.features(indices)
         pp = sns.pairplot(
             feats,
             hue="Class",
@@ -434,54 +433,80 @@ class Fruitalyser:
         pp.fig.suptitle(f"Features", y=1.01)
         return pp
 
-    def pca_correlation(
+    def feature_score(
         self,
         components: int,
         indices: Optional[Sequence[int]] = None,
-        translate: bool = True,
-    ) -> pd.DataFrame:
-        """Returns a ``pandas.DataFrame`` object containing the
-        projected features in the principal axes calculated with
-        ``sklearn.decomposition.PCA``.
+    ) -> list[float]:
+        """Returns a list of scores for each feature extracted based on
+        a principal component analysis. The score is a linear
+        combination of feature-to-principal-component correlation
+        weighted by the explained variance ratio of the principal
+        component.
 
         Args:
-            components (int): Number of components for the PCA to
+            components (int): Number of principal components to
                 calculate.
-            indices (Sequence of int, optional): List of feature indices
-                to use for the PCA. Defaults to all features.
-            translate (bool, optional): Whether to translate the feature
-                indices into readable string identifiers. Defaults to
-                True.
+            indices (Sequence of int, optional): Sequence of feature
+                indices to use in the PCA. Defaults to all features.
         """
         pca = PCA(n_components=components)
         if indices is None:
-            indices = list(range(self.fruit.nfeatures()))
-        features = self.get_feature_dataframe(indices).to_numpy()
-        pca.fit(features)
-        if translate:
-            columns = [transformation_string(self.fruit, i) for i in indices]
-        else:
-            columns = list(indices)
-        feature_pc_correlation = pd.DataFrame(
-            pca.components_,  # type: ignore
-            columns=columns,
-            index=[f"PC-{i+1}" for i in range(components)],
+            indices = range(self.fruit.nfeatures())
+        pca.fit(self.features(indices).to_numpy())
+        return (
+            pca.explained_variance_ratio_ @ pca.components_**2  # type: ignore
         )
-        return feature_pc_correlation
 
-    def rank_features(self, n: int, translate: bool = True) -> tuple[str, ...]:
-        """Ranks features by variance using a PCA.
+    def plot_feature_score(
+        self,
+        components: int,
+        indices: Optional[Sequence[int]] = None,
+        axis: Optional[Axes] = None,
+    ) -> Optional[tuple[Figure, Axes]]:
+        """Plots the :underline:`normalized` scores calculated with
+        :meth:`Fruitalyser.feature_score` in a bar chart.
+        If ``len(indices) > 20``, then the method plots ``20`` features
 
+        with the highest scores.
         Args:
-            n (int): Number of features to rank.
-            translate (bool, optional): Whether to translate the feature
-                indices into readable string identifiers. Defaults to
-                True.
+            components (int): Number of principal components to
+                calculate.
+            indices (Sequence of int, optional): Sequence of feature
+                indices to use in the PCA. Defaults to all features.
+            axis (Axes, optional): Matplotlib axis to plot the data
+                on. If None is given, a seperate figure and axis
+                will be created and returned.
+
+        Returns:
+            Tuple of a matplotlib figure and axes holding the inserted
+            plot or None if ``axis`` is provided.
         """
-        correlation = self.pca_correlation(components=n, translate=translate)
-        sorted_feature_indices = tuple(
-            np.argmax(np.abs(correlation.iloc[i])) for i in range(n)
-        )
-        return tuple(
-            str(correlation.columns[i]) for i in sorted_feature_indices
-        )
+        fig, ax = (None, axis) if axis is not None else plt.subplots(1, 1)
+        if indices is None:
+            indices = range(self.fruit.nfeatures())
+        scores = self.feature_score(components=components, indices=indices)
+        scores /= np.max(scores)
+        scores_order = np.argsort(scores)[::-1]
+        if len(scores) > 20:
+            scores_order = scores_order[:20]
+        scores = scores[scores_order]
+        x = np.array(indices, dtype=int)[scores_order]
+        ax.bar(range(len(x)), scores, color=get_color(0) + (0.8, ))
+        ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+        ax.set_yticks([], minor=True)
+        ax.set_xticks([])
+        ax.set_xticks([], minor=True)
+        for i, index in enumerate(x):
+            ax.annotate(
+                f"{transformation_string(self.fruit, int(index))}: {index}",
+                xy=(i, 0),
+                xytext=(0, 5),
+                textcoords="offset pixels",
+                rotation=90,
+                ha="center",
+                va="bottom",
+            )
+        if fig is not None:
+            return fig, ax
+        return None
