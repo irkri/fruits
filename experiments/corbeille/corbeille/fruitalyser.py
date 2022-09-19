@@ -1,6 +1,6 @@
 from timeit import default_timer as Timer
 from typing import (Any, Callable, Literal, Optional, Protocol, Sequence,
-                    TypeVar)
+                    TypeVar, Union, overload)
 
 import fruits
 import matplotlib.pyplot as plt
@@ -159,6 +159,7 @@ class Fruitalyser:
 
     def classify(
         self,
+        indices: Optional[Sequence[int]] = None,
         classifier: Optional[FitScoreClassifier] = None,
         verbose: bool = False,
     ) -> float:
@@ -180,13 +181,19 @@ class Fruitalyser:
             raise RuntimeError(
                 "Features not extracted, call ``transform_all`` first."
             )
-
         if classifier is None:
             classifier = RidgeClassifierCV(alphas=np.logspace(-3, 3, 10))
-        classifier.fit(self.X_train_feat, self.y_train)
-        self.test_score = float(
-            classifier.score(self.X_test_feat, self.y_test)
-        )
+
+        if indices is not None:
+            classifier.fit(self.X_train_feat[:, indices], self.y_train)
+            self.test_score = float(
+                classifier.score(self.X_test_feat[:, indices], self.y_test)
+            )
+        else:
+            classifier.fit(self.X_train_feat, self.y_train)
+            self.test_score = float(
+                classifier.score(self.X_test_feat, self.y_test)
+            )
 
         if verbose:
             print(f"Classification with {type(classifier)}")
@@ -283,6 +290,34 @@ class Fruitalyser:
                 indices = list(range(nseries))
                 for i in indices:
                     axis.plot(X[i, :])
+
+    @overload
+    def plot(
+        self,
+        level: Literal["input", "prepared", "iterated sums"] = "input",
+        index: Optional[int] = None,
+        dim: int = 0,
+        mean: bool = False,
+        bounds: bool = False,
+        nseries: int = 1,
+        per_class: bool = True,
+        axis: None = None,
+    ) -> tuple[Figure, Axes]:
+        ...
+
+    @overload
+    def plot(
+        self,
+        level: Literal["input", "prepared", "iterated sums"] = "input",
+        index: Optional[int] = None,
+        dim: int = 0,
+        mean: bool = False,
+        bounds: bool = False,
+        nseries: int = 1,
+        per_class: bool = True,
+        axis: Optional[Axes] = None,
+    ) -> None:
+        ...
 
     def plot(
         self,
@@ -458,22 +493,67 @@ class Fruitalyser:
             pca.explained_variance_ratio_ @ pca.components_**2  # type: ignore
         )
 
+    @overload
     def plot_feature_score(
         self,
         components: int,
         indices: Optional[Sequence[int]] = None,
+        classifier: Optional[FitScoreClassifier] = None,
+        detailed: bool = True,
+        restrict: Union[int, float] = 20,
+        last: bool = False,
+        axis: None = None,
+    ) -> tuple[Figure, Axes]:
+        ...
+
+    @overload
+    def plot_feature_score(
+        self,
+        components: int,
+        indices: Optional[Sequence[int]] = None,
+        classifier: Optional[FitScoreClassifier] = None,
+        detailed: bool = True,
+        restrict: Union[int, float] = 20,
+        last: bool = False,
+        axis: Optional[Axes] = None,
+    ) -> None:
+        ...
+
+    def plot_feature_score(
+        self,
+        components: int,
+        indices: Optional[Sequence[int]] = None,
+        classifier: Optional[FitScoreClassifier] = None,
+        detailed: bool = True,
+        restrict: Union[int, float] = 20,
+        last: bool = False,
         axis: Optional[Axes] = None,
     ) -> Optional[tuple[Figure, Axes]]:
         """Plots the :underline:`normalized` scores calculated with
         :meth:`Fruitalyser.feature_score` in a bar chart.
-        If ``len(indices) > 20``, then the method plots ``20`` features
-
+        If ``len(indices) > 20``, the method plots ``20`` features
         with the highest scores.
+        Additionally the classification accuracies of the cumulative
+        feature sets are plotted as a red line.
+
         Args:
             components (int): Number of principal components to
                 calculate.
             indices (Sequence of int, optional): Sequence of feature
                 indices to use in the PCA. Defaults to all features.
+            classifier (FitScoreClassifier, optional): The classifier
+                to use for the cumulative classification.
+            detailed (bool, optional): If set to True, writes the
+                feature names to the plot. Defaults to True.
+            restrict (int | float, optional): Maximal number of
+                features to be plotted. If a float is given, it is
+                interpreted as the smallest allowed normalized feature
+                score a feature can have to be included in the plot.
+                Includes therefore all features with a score larger than
+                or equal to ``restrict``. Defaults to 20.
+            last (bool, optional): If set to True, plots the last
+                `restrict` features instead of the first ones
+                according to the ordered scores. Defaults to the first.
             axis (Axes, optional): Matplotlib axis to plot the data
                 on. If None is given, a seperate figure and axis
                 will be created and returned.
@@ -488,25 +568,74 @@ class Fruitalyser:
         scores = self.feature_score(components=components, indices=indices)
         scores /= np.max(scores)
         scores_order = np.argsort(scores)[::-1]
-        if len(scores) > 20:
-            scores_order = scores_order[:20]
-        scores = scores[scores_order]
+        if isinstance(restrict, float):
+            if last:
+                raise ValueError(
+                    "If 'last' is set to True, 'restrict' has to be an integer"
+                )
+            restrict = np.sum(scores >= restrict)
+        scores_order = scores_order[-restrict:] if last else (
+            scores_order[:restrict]
+        )
+        scores_trunc = scores[scores_order]
         x = np.array(indices, dtype=int)[scores_order]
-        ax.bar(range(len(x)), scores, color=get_color(0) + (0.8, ))
+        ax.bar(
+            range(len(x)),
+            scores_trunc,
+            color=get_color(0)+(0.8, ),
+            label="Normalized\nFeature Score",
+        )
+        ax.set_ylim(0, 1)
+        ax.set_xlabel("Feature")
         ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
         ax.set_yticks([], minor=True)
         ax.set_xticks([])
         ax.set_xticks([], minor=True)
-        for i, index in enumerate(x):
-            ax.annotate(
-                f"{transformation_string(self.fruit, int(index))}: {index}",
-                xy=(i, 0),
-                xytext=(0, 5),
-                textcoords="offset pixels",
-                rotation=90,
-                ha="center",
-                va="bottom",
+        if detailed:
+            for i, index in enumerate(x):
+                ax.annotate(
+                    f"{transformation_string(self.fruit, int(index))}: "
+                        f"{index}",
+                    xy=(i, 0),
+                    xytext=(0, 5),
+                    textcoords="offset pixels",
+                    rotation=90,
+                    ha="center",
+                    va="bottom",
+                )
+        accs = [
+            self.classify(
+                np.r_[scores_order[:-restrict], x[:i+1]]
+                    if last else x[:i+1],
+                classifier=classifier,
+                verbose=False,
             )
+            for i in range(x.size)
+        ]
+        ax.plot(
+            accs,
+            marker="s",
+            color=get_color(1),
+            label="Accuracy of\nCumulative\nFeature Set",
+        )
+        acc = self.classify()
+        ax.hlines(
+            [acc],
+            xmin=ax.get_xlim()[0],
+            xmax=ax.get_xlim()[1],
+            color=get_color(1),
+        )
+        ax.annotate(
+            f"Total Accuracy: {acc:.2f}",
+            xy=(ax.get_xlim()[0], acc),
+            xytext=(10, 0),
+            textcoords="offset pixels",
+            va="center",
+            ha="left",
+            rotation=90,
+            color=get_color(1),
+        )
+        ax.legend(loc="best")
         if fig is not None:
             return fig, ax
         return None
