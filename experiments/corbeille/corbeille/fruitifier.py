@@ -22,12 +22,6 @@ class Fruitifier:
     multivariate time series data.
 
     Args:
-        additional_columns (str, optional): Path to a .csv file
-            containing a table with a first column called 'Dataset'.
-            All additional columns in that table will be appended to the
-            resulting table of this experiment.
-        verbose (bool, optional): Increase verbosity of the
-            classification by printing current progress to the console.
         classifier (FitScoreClassifier, optional): Classifier with a fit
             and score method. Defaults to the sklearn classifier
             ``RidgeClassifierCV(alphas=np.logspace(-3, 3, 10))`` with a
@@ -46,14 +40,9 @@ class Fruitifier:
     def __init__(
         self,
         classifier: Optional[FitScoreClassifier] = None,
-        additional_columns: Optional[str] = None,
         comet_experiment: Optional[Experiment] = None,
     ) -> None:
         self._results = []
-        self._add_columns = (
-            pd.read_csv(additional_columns) if additional_columns is not None
-            else None
-        )
         # dictionary path: ([datasets in path], univariate?)
         self._datasets: dict[str, tuple[list[str], bool]] = {}
         self._comet_exp = comet_experiment
@@ -104,8 +93,6 @@ class Fruitifier:
 
     def _build_dataframe(self) -> pd.DataFrame:
         columns = self.output_header_names
-        if self._add_columns is not None:
-            columns += self._add_columns.columns
         df = pd.DataFrame(
             self._results,
             columns=columns,
@@ -180,13 +167,6 @@ class Fruitifier:
 
                 self._classifier.fit(X_train_feat, y_train)
                 results.append(self._classifier.score(X_test_feat, y_test))
-
-                if self._add_columns is not None:
-                    df = self._add_columns[
-                        self._add_columns["dataset"] == dataset
-                    ]
-                    for c in self._add_columns.columns:
-                        results.append(df[c].iloc[0])
 
                 self._results.append(results)
                 if verbose:
