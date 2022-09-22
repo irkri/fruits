@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Generator, Optional, Sequence, Union
 
 import numpy as np
 from scipy.io import arff
@@ -209,6 +209,37 @@ def load(
                     y_test)
 
     return X_train, y_train, X_test, y_test
+
+
+def load_all(
+    path: str,
+    univariate: bool = True,
+    datasets: Optional[Sequence[str]] = None,
+) -> Generator[
+    tuple[str, np.ndarray, np.ndarray, np.ndarray, np.ndarray], None, None
+]:
+    """Finds time series datasets in the specified directory and returns
+    a generator over tuples
+    ``(dataset_name, X_train, y_train, X_test, y_test)``.
+
+    Args:
+        path (str): Path of a directory that contains folders
+            structured like the datasets you get from
+            timeseriesclassification.com.
+        names (sequence of str): List of dataset names. Only
+            the datasets in this list will be collected. Defaults to
+            all datasets in the given path.
+        univariate (bool, optional): Whether the data in ``path`` is
+            assumed to be univariate or multivariate. Defaults to
+            univariate data.
+    """
+    for folder in sorted(os.listdir(path)):
+        if os.path.isdir(os.path.join(path, folder)):
+            if datasets is None or folder in datasets:
+                yield (
+                    (folder, )
+                    + load(os.path.join(path, folder), univariate=univariate)
+                )
 
 
 def implant_stuttering(

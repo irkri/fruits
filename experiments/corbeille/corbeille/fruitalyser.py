@@ -123,7 +123,7 @@ class Fruitalyser:
         self,
         postprocess: Optional[FitTransform] = None,
         verbose: bool = False,
-    ) -> None:
+    ) -> tuple[float, float]:
         """Transforms training and testing dataset.
 
         Args:
@@ -134,6 +134,10 @@ class Fruitalyser:
             verbose (bool, optional): Increase verbosity of the
                 transformation. This will print out timings on
                 finished fit and transform steps. Defaults to False.
+
+        Returns:
+            float: Time for feature extraction in the training set.
+            float: Time for feature extraction in the testing set.
         """
         self.callback = _TransformationCallback()
         start = Timer()
@@ -144,8 +148,9 @@ class Fruitalyser:
         self.X_train_feat = self.fruit.transform(self.X_train)
         if postprocess:
             self.X_train_feat = postprocess.fit_transform(self.X_train_feat)
+        train_time = Timer() - start
         if verbose:
-            print(f"Transforming training set took {Timer() - start} s")
+            print(f"Transforming training set took {train_time} s")
         start = Timer()
         self.X_test_feat = self.fruit.transform(
             self.X_test,
@@ -153,9 +158,11 @@ class Fruitalyser:
         )
         if postprocess is not None:
             self.X_test_feat = postprocess.transform(self.X_test_feat)
+        test_time = Timer() - start
         if verbose:
-            print(f"Transforming testing set took {Timer() - start} s")
+            print(f"Transforming testing set took {test_time} s")
         self._extracted = True
+        return (train_time, test_time)
 
     def classify(
         self,
