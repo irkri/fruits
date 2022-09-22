@@ -28,19 +28,16 @@ class Fruit:
         # optional: add preparateurs for preprocessing
         fruit.add(fruits.preparation.INC)
         # add words for iterated sums calculation
-        fruit.add(fruits.words.creation.simplewords_by_weight(4))
+        fruit.add(*fruits.words.of_weight(4))
         # choose sieves
         fruit.add(fruits.sieving.PPV(0.5))
         fruit.add(fruits.sieving.END)
 
         # add a new branch without INC
         fruit.fork()
-        fruit.add(fruits.words.creation.simplewords_by_weight(4))
+        fruit.add(*fruits.words.of_weight(4))
         fruit.add(fruits.sieving.PPV(0.5))
         fruit.add(fruits.sieving.END)
-
-        # configure the fruit
-        fruit.configure(mode="extended")
 
         # fit the fruit on a time series dataset
         fruit.fit(X_train)
@@ -118,12 +115,28 @@ class Fruit:
         return sum([branch.nfeatures() for branch in self._branches])
 
     def configure(self, **kwargs: Any) -> None:
-        """Makes changes to the default configuration of a all branches
-        if arguments differ from ``None``.
+        """Calls ``brach.configure(**kwargs)`` for each FruitBranch
+        ``branch`` in the Fruit with the specified arguments.
 
         Args:
-            kwargs: For possible options, have a look at
-                :meth:`fruits.core.fruit.FruitBranch.configure`.
+            iss_mode (str, optional): Mode of the ISS calculator.
+                Following options are available.
+
+                - 'single':
+                    Calculates one iterated sum for each given word.
+                    Default behaviour.
+                - 'extended':
+                    For each given word, the iterated sum for
+                    each sequential combination of extended letters
+                    in that word will be calculated. So for a simple
+                    word like ``[21][121][1]`` the calculator
+                    returns the iterated sums for ``[21]``,
+                    ``[21][121]`` and ``[21][121][1]``.
+            fit_sample_size (float or int, optional): Size of the random
+                time series sample that is used for fitting. This is
+                represented as a float which will be multiplied by
+                ``X.shape[0]`` or ``1`` for one random time series.
+                Defaults to 1.
         """
         for branch in self._branches:
             branch.configure(**kwargs)
@@ -249,7 +262,6 @@ class FruitBranch:
 
         # options for the ISS calculation
         self.iss_mode: Literal['single', 'extended'] = "single"
-        self.iss_batch_size = 1
 
         # list with inner lists containing sieves
         # all sieves in one list are trained on one specific output
@@ -280,6 +292,7 @@ class FruitBranch:
 
                 - 'single':
                     Calculates one iterated sum for each given word.
+                    Default behaviour.
                 - 'extended':
                     For each given word, the iterated sum for
                     each sequential combination of extended letters
@@ -287,12 +300,6 @@ class FruitBranch:
                     word like ``[21][121][1]`` the calculator
                     returns the iterated sums for ``[21]``,
                     ``[21][121]`` and ``[21][121][1]``.
-            batch_size (int, optional): Batch size of the ISS calculaor.
-                Number of words for which the iterated sums are
-                calculated at once when starting the iterator of the
-                calculator. This doesn't have to be the same number as
-                the actual number of iterated sums calculated. Defaults
-                to 1 in a fruit branch.
             fit_sample_size (float or int, optional): Size of the random
                 time series sample that is used for fitting. This is
                 represented as a float which will be multiplied by
@@ -300,7 +307,6 @@ class FruitBranch:
                 Defaults to 1.
         """
         self.iss_mode = iss_mode
-        self.iss_batch_size = iss_batch_size
         self.fit_sample_size = fit_sample_size
 
     def add_preparateur(self, preparateur: Preparateur) -> None:
@@ -376,7 +382,7 @@ class FruitBranch:
             elif isinstance(obj, FeatureSieve):
                 self.add_sieve(obj)
             else:
-                raise TypeError(f"Cannot add variable of type {type(obj)!s}")
+                raise TypeError(f"Cannot add variable of type {type(obj)}")
 
     def clear(self) -> None:
         """Clears all settings, configurations and calculated results
@@ -389,7 +395,6 @@ class FruitBranch:
         self.clear_words()
         self.clear_sieves()
         self.iss_mode = "single"
-        self.iss_batch_size = 1
         self.fit_sample_size = 1
 
     def nfeatures(self) -> int:
@@ -469,13 +474,10 @@ class FruitBranch:
             prepared_data,
             words=self._words,
             mode=self.iss_mode,
-            batch_size=self.iss_batch_size,
+            batch_size=1,
         )
         for iterated_data in iss_calculations:
-            iterated_data = iterated_data.reshape(
-                iterated_data.shape[0] * iterated_data.shape[1],
-                iterated_data.shape[2],
-            )
+            iterated_data = iterated_data[:, 0, :]
             sieves_copy = [sieve.copy() for sieve in self._sieves]
             for sieve in sieves_copy:
                 sieve.fit(iterated_data[:, :])
@@ -523,22 +525,20 @@ class FruitBranch:
             prepared_data,
             words=self._words,
             mode=self.iss_mode,
-            batch_size=self.iss_batch_size,
+            batch_size=1,
         )
         for i, iterated_data in enumerate(iss_calculations):
             for callback in callbacks:
                 callback.on_iterated_sum(iterated_data)
             for sieve in self._sieves_extended[i]:
                 nf = sieve.nfeatures()
-                new_features = nf * iterated_data.shape[1]
-                for it in range(iterated_data.shape[1]):
-                    sieved_data[:, k+it*nf:k+(it+1)*nf] = sieve.transform(
-                        iterated_data[:, it, :],
-                        cache=self._cache,
-                    )
+                sieved_data[:, k:k+nf] = sieve.transform(
+                    iterated_data[:, 0, :],
+                    cache=self._cache,
+                )
                 for callback in callbacks:
-                    callback.on_sieve(sieved_data[k:k+new_features])
-                k += new_features
+                    callback.on_sieve(sieved_data[k:k+nf])
+                k += nf
         for callback in callbacks:
             callback.on_sieving_end(sieved_data)
         return sieved_data
@@ -608,6 +608,5 @@ class FruitBranch:
         for sieve in self._sieves:
             copy_.add(sieve.copy())
         copy_.iss_mode = self.iss_mode
-        copy_.iss_batch_size = self.iss_batch_size
         copy_.fit_sample_size = self.fit_sample_size
         return copy_
