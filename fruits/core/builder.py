@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Literal
 
 import numpy as np
 
@@ -6,7 +7,6 @@ from fruits.core.fruit import Fruit
 from fruits.scope import force_input_shape
 from fruits.words.word import Word, SimpleWord
 from fruits.words.creation import of_weight
-
 from fruits.preparation.abstract import Preparateur
 from fruits.sieving.abstract import FeatureSieve
 from fruits import preparation
@@ -14,32 +14,26 @@ from fruits import sieving
 
 
 class FruitBuilder(ABC):
-    """Abstract class that is inherited by classes which are building
-    :class:`~fruits.core.fruit.Fruit` objects.
-    """
 
     @abstractmethod
-    def build(self, X_train: np.ndarray) -> Fruit:
+    def build(self, X: np.ndarray) -> Fruit:
         """Builds and returns a :class:`~fruits.core.fruit.Fruit` based
         on the given dataset.
 
         Args:
-            X_train (np.ndarray): Three dimensional array containing
-                multidimensional time series data.
+            X (np.ndarray): Three dimensional array with the shape
+                ``(n_series, n_dimensions, series_length)``.
         """
 
 
 class UnivariateFruitBuilder(FruitBuilder):
-    """Class that builds a :class:`~fruits.core.fruit.Fruit` object for
-    a given univariate time series dataset.
-
-    The returned fruit is expected to be a good candidate for the
-    classification of the given dataset.
+    """Builds a :class:`~fruits.core.fruit.Fruit` suited for univariate
+    time series.
     """
 
-    def build(self, X_train: np.ndarray) -> Fruit:
-        X_train = force_input_shape(X_train)
-        length = X_train.shape[2]
+    def build(self, X: np.ndarray) -> Fruit:
+        X = force_input_shape(X)
+        length = X.shape[2]
         fruit = Fruit("Built by UnivariateFruitBuilder")
 
         leadingwords, mode = self._choose_words("leading")
@@ -48,13 +42,13 @@ class UnivariateFruitBuilder(FruitBuilder):
         fruit.add(preparation.INC)
         fruit.add(*self._choose_preparateurs("single", length))
         fruit.add(*leadingwords)
-        fruit.branch().configure(mode=mode)
+        fruit.branch().configure(iss_mode=mode)
         fruit.add(*self._choose_sieves("small"))
 
         fruit.fork()
         fruit.add(*self._choose_preparateurs("single", length))
         fruit.add(*leadingwords)
-        fruit.branch().configure(mode=mode)
+        fruit.branch().configure(iss_mode=mode)
         fruit.add(*self._choose_sieves("small"))
 
         smallwords, mode = self._choose_words("small")
@@ -64,13 +58,13 @@ class UnivariateFruitBuilder(FruitBuilder):
             fruit.add(preparation.INC)
             fruit.add(fltr)
             fruit.add(*smallwords)
-            fruit.branch().configure(mode=mode)
+            fruit.branch().configure(iss_mode=mode)
             fruit.add(*self._choose_sieves("small"))
 
             fruit.fork()
             fruit.add(fltr)
             fruit.add(*smallwords)
-            fruit.branch().configure(mode=mode)
+            fruit.branch().configure(iss_mode=mode)
             fruit.add(*self._choose_sieves("small"))
 
         return fruit
@@ -94,7 +88,10 @@ class UnivariateFruitBuilder(FruitBuilder):
             )
         raise ValueError(f"Unknown mode supplied: {mode!r}")
 
-    def _choose_words(self, mode: str) -> tuple[tuple[Word, ...], str]:
+    def _choose_words(
+        self,
+        mode: str,
+    ) -> tuple[tuple[Word, ...], Literal["single", "extended"]]:
         # returns a list of words and a calculator mode
         if mode == "leading":
             words = of_weight(4, 1)
@@ -134,34 +131,34 @@ class UnivariateFruitBuilder(FruitBuilder):
 
 
 class MultivariateFruitBuilder(FruitBuilder):
-    """Class that builds a :class:`~fruits.core.fruit.Fruit` object out
-    of a given multivariate time series dataset.
-
-    The returned fruit is expected to be a good candidate for the
-    classification of the given dataset.
+    """Builds a :class:`~fruits.core.fruit.Fruit` suited for
+    multivariate time series.
     """
 
-    def build(self, X_train: np.ndarray) -> Fruit:
-        X_train = force_input_shape(X_train)
+    def build(self, X: np.ndarray) -> Fruit:
+        X = force_input_shape(X)
         fruit = Fruit("Built by MultivariateFruitBuilder")
 
-        dim = X_train.shape[1]
+        dim = X.shape[1]
         words, mode = self._choose_words(dim)
         sieves = self._choose_sieves(dim)
 
         fruit.add(preparation.INC)
         fruit.add(*words)
-        fruit.branch().configure(mode=mode)
+        fruit.branch().configure(iss_mode=mode)
         fruit.add(*sieves)
 
         fruit.fork()
         fruit.add(*words)
-        fruit.branch().configure(mode=mode)
+        fruit.branch().configure(iss_mode=mode)
         fruit.add(*sieves)
 
         return fruit
 
-    def _choose_words(self, dim: int) -> tuple[tuple[Word, ...], str]:
+    def _choose_words(
+        self,
+        dim: int,
+    ) -> tuple[tuple[Word, ...], Literal["single", "extended"]]:
         # chooses fitting words, calculator mode based on dimensionality
         if 2 <= dim <= 3:
             return of_weight(6 - dim, dim), "extended"
@@ -228,20 +225,19 @@ class MultivariateFruitBuilder(FruitBuilder):
             )
 
 
-def build(X_train: np.ndarray) -> Fruit:
-    """Builds a :class:`~fruits.core.fruit.Fruit` object based on a
-    given time series dataset.
+def build(X: np.ndarray) -> Fruit:
+    """Builds a :class:`~fruits.core.fruit.Fruit` based on the given
+    time series dataset.
 
     The returned fruit is expected to be a good candidate for the
     classification of the given dataset.
 
     Args:
-        X (np.ndarray): Time series dataset (preferably the training
-            set). This should be a three dimensional numpy array. Check
-            :meth:`~fruits.scope.force_input_shape`.
+        X (np.ndarray): Three dimensional array with the shape
+            ``(n_series, n_dimensions, series_length)``.
     """
-    X_train = force_input_shape(X_train)
-    if X_train.shape[1] == 1:
-        return UnivariateFruitBuilder().build(X_train)
+    X = force_input_shape(X)
+    if X.shape[1] == 1:
+        return UnivariateFruitBuilder().build(X)
     else:
-        return MultivariateFruitBuilder().build(X_train)
+        return MultivariateFruitBuilder().build(X)
