@@ -1,20 +1,20 @@
-from functools import partial, wraps
+__all__ = ["ExtendedLetter", "get_available", "letter"]
+
+from functools import wraps
 from typing import Callable, Optional, Union, overload
 
 import numpy as np
 
-LETTER_NAME = "fruits_letter_name"
-
 BOUND_LETTER_TYPE = Callable[[np.ndarray], np.ndarray]
-FREE_LETTER_TYPE = Callable[[int], BOUND_LETTER_TYPE]
+UNBOUND_LETTER_TYPE = Callable[[int], BOUND_LETTER_TYPE]
 
 
 class ExtendedLetter:
     """Class for an extended letter used in words.
     A :class:`~fruits.words.word.Word` consists of a number of
     extended letters.
-    An extended letter is a container that only allows appending
-    functions that were decorated with
+    An extended letter is a container that only allows contains
+    functions that were decorated as a
     :meth:`~fruits.words.letters.letter`.
 
     Args:
@@ -25,14 +25,20 @@ class ExtendedLetter:
             :meth:`fruits.words.letters.get_available`.
     """
 
-    def __init__(self, letter_string: str = ""):
-        self._letters: list[FREE_LETTER_TYPE] = []
+    def __init__(self, letter_string: str = "") -> None:
+        self._letters: list[UNBOUND_LETTER_TYPE] = []
         self._dimensions: list[int] = []
         self._string_repr = ""
-        self.append_from_string(letter_string)
+        self._append_from_string(letter_string)
 
-    def append(self, letter: FREE_LETTER_TYPE, dim: int = 0) -> None:
-        """Appends a letter to the ExtendedLetter object.
+    def _append_from_string(self, letter_string: str) -> None:
+        letters = letter_string.split(")")[:-1]
+        for letter in letters:
+            l, d = letter.split("(")
+            self.append(l, int(d)-1)
+
+    def append(self, letter: str, dim: int = 0) -> None:
+        """Appends a letter to the ExtendedLetter.
 
         Args:
             letter (callable): Function that was decorated with
@@ -40,22 +46,10 @@ class ExtendedLetter:
             dim (int): Dimension of the letter that is going to be used
                 as its second argument, if it has one. Defaults to 0.
         """
-        if not callable(letter):
-            raise TypeError("Argument letter has to be a callable function")
-        elif not _is_letter(letter):
-            raise TypeError("Letter has the wrong signature. Perhaps it " +
-                            "wasn't decorated correctly?")
-        else:
-            self._letters.append(letter)
-            self._dimensions.append(dim)
-            self._string_repr += letter.__dict__[LETTER_NAME]
-            self._string_repr += "(" + str(dim+1) + ")"
-
-    def append_from_string(self, letter_string: str) -> None:
-        letters = letter_string.split(")")[:-1]
-        for letter in letters:
-            l, d = letter.split("(")
-            self.append(_get(l), int(d)-1)
+        self._letters.append(_get(letter))
+        self._dimensions.append(dim)
+        self._string_repr += letter
+        self._string_repr += "(" + str(dim+1) + ")"
 
     def copy(self) -> "ExtendedLetter":
         el = ExtendedLetter()
@@ -68,7 +62,7 @@ class ExtendedLetter:
         self._iter_index = -1
         return self
 
-    def __next__(self):
+    def __next__(self) -> BOUND_LETTER_TYPE:
         if self._iter_index < len(self._letters)-1:
             self._iter_index += 1
             return self._letters[self._iter_index](
@@ -85,22 +79,60 @@ class ExtendedLetter:
         return "[" + self._string_repr + "]"
 
 
+def simple(i: int) -> BOUND_LETTER_TYPE:
+    def index_manipulation(X: np.ndarray) -> np.ndarray:
+        return X[i, :]
+    return index_manipulation
+
+
+def absolute(i: int) -> BOUND_LETTER_TYPE:
+    def index_manipulation(X: np.ndarray) -> np.ndarray:
+        return np.abs(X[i, :])
+    return index_manipulation
+
+
+_AVAILABLE: dict[str, UNBOUND_LETTER_TYPE] = {
+    "DIM": simple,
+    "ABS": absolute,
+}
+
+
+def _log(name: str, func: UNBOUND_LETTER_TYPE) -> None:
+    if name in _AVAILABLE:
+        raise RuntimeError(f"Letter with name '{name}' already exists")
+    _AVAILABLE[name] = func
+
+
+def _get(name: str) -> UNBOUND_LETTER_TYPE:
+    # returns the corresponding letter for the given name
+    if name not in _AVAILABLE:
+        raise RuntimeError(f"Letter with name '{name}' does not exist")
+    return _AVAILABLE[name]
+
+
+def get_available() -> list[str]:
+    """Returns a list of all available letter names to use in a
+    :class:`~fruits.words.letters.ExtendedLetter`.
+    """
+    return list(_AVAILABLE.keys())
+
+
 @overload
-def letter(*args, name: None = None) -> FREE_LETTER_TYPE:
+def letter(*args, name: None = None) -> UNBOUND_LETTER_TYPE:
     ...
 
 
 @overload
-def letter(*args, name: str = "") -> Callable[..., FREE_LETTER_TYPE]:
+def letter(*args, name: str = "") -> Callable[..., UNBOUND_LETTER_TYPE]:
     ...
 
 
 def letter(
     *args,
     name: Optional[str] = None,
-) -> Union[FREE_LETTER_TYPE, Callable[..., FREE_LETTER_TYPE]]:
+) -> Union[UNBOUND_LETTER_TYPE, Callable[..., UNBOUND_LETTER_TYPE]]:
     """Decorator for the implementation of a letter appendable to an
-    :class:`~fruits.words.letters.ExtendedLetter` object.
+    :class:`~fruits.words.letters.ExtendedLetter`.
 
     It is possible to implement a new letter by using this decorator.
     This callable (e.g. called ``myletter``) has to have two arguments:
@@ -116,28 +148,32 @@ def letter(
         def myletter(X: np.ndarray, i: int) -> np.ndarray:
             return X[i, :] * (X[i, :]>0)
 
-    It is also possible to use this decorator without any arguments:
+    It is also possible to use this decorator without any arguments. The
+    following code does the same thing as the above example.
 
     .. code-block:: python
 
         @fruits.words.letter
+        def ReLU(X: np.ndarray, i: int) -> np.ndarray:
+            return X[i, :] * (X[i, :]>0)
 
     Available predefined letters are:
 
-        - ``simple``: Extracts a single dimension
-        - ``absolute``: Extracts the absolute value of a single dim.
+        - ``DIM``: Extracts a single dimension.
+        - ``ABS``: Extracts the absolute value of one dimension.
 
     Args:
         name (str, optional): You can supply a name to the function.
             This name will be used for documentation in an
             ``ExtendedLetter`` object. If no name is supplied, then the
             name of the function is used. Each letter has to have a
-            unique name.
+            unique name. They are later used to refer to the specific
+            functions in word creation.
     """
     if len(args) > 1:
         raise RuntimeError("Too many arguments")
+
     if name is None and len(args) == 1 and callable(args[0]):
-        _configure_letter(args[0], args[0].__name__)
 
         @wraps(args[0])
         def wrapper(i: int):
@@ -147,73 +183,22 @@ def letter(
         _log(args[0].__name__, wrapper)
 
         return wrapper
-    else:
-        if name is None:
-            raise ValueError(
-                "Please either specify the 'name' argument or use this "
-                "decorator without calling it."
-            )
 
+    elif name is None:
+        raise ValueError(
+            "Please either specify the 'name' argument or use this "
+            "decorator without calling it."
+        )
+    else:
         def letter_decorator(func):
-            _configure_letter(func, name=name)
 
             @wraps(func)
             def wrapper(i: int):
                 def index_manipulation(X: np.ndarray):
                     return func(X, i)
                 return index_manipulation
-
             _log(name, wrapper)
+
             return wrapper
+
         return letter_decorator
-
-
-_AVAILABLE = dict()
-
-
-def _log(name: str, func: FREE_LETTER_TYPE) -> None:
-    if name in _AVAILABLE:
-        raise RuntimeError(f"Letter with name '{name}' already exists")
-    _AVAILABLE[name] = func
-
-
-def _get(name: str) -> FREE_LETTER_TYPE:
-    # returns the corresponding letter for the given name
-    if name not in _AVAILABLE:
-        raise RuntimeError(f"Letter with name '{name}' does not exist")
-    return _AVAILABLE[name]
-
-
-def get_available() -> list[str]:
-    """Returns a list of all available letter names to use in a
-    :class:`~fruits.words.letters.ExtendedLetter`.
-    """
-    return list(_AVAILABLE.keys())
-
-
-def _configure_letter(func: BOUND_LETTER_TYPE, name: str) -> None:
-    # marks the input callable as a letter
-    if func.__code__.co_argcount != 2:
-        raise RuntimeError(
-            "Wrong function signature for letter configuration. "
-            "Should be 'letter(X: numpy.ndarray, i: int)'."
-        )
-    func.__dict__[LETTER_NAME] = name
-
-
-def _is_letter(func: FREE_LETTER_TYPE) -> bool:
-    # checks if the given callable is a letter
-    if (LETTER_NAME in func.__dict__
-            and func.__dict__[LETTER_NAME] in _AVAILABLE):
-        return True
-    return False
-
-
-@letter(name="SIMPLE")
-def simple(X: np.ndarray, i: int) -> np.ndarray:
-    return X[i, :]
-
-
-@letter(name="ABS")
-def absolute(X: np.ndarray, i: int) -> np.ndarray:
-    return np.abs(X[i, :])

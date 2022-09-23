@@ -2,12 +2,7 @@ import itertools
 from collections.abc import Iterator, Sequence
 from typing import Union
 
-from fruits.words.letters import (
-    FREE_LETTER_TYPE,
-    ExtendedLetter,
-    _is_letter,
-    simple
-)
+from fruits.words.letters import ExtendedLetter, simple
 from fruits.words.word import SimpleWord, Word
 
 
@@ -59,78 +54,42 @@ def of_weight(w: int, dim: int = 1) -> tuple[SimpleWord, ...]:
     return tuple(words)
 
 
-def _replace_letters_simpleword(word, letter_gen):
-    complexword = Word()
-    for el in word:
-        new_el = ExtendedLetter()
-        for dim, ndim in enumerate(el):
-            for _ in range(ndim):
-                try:
-                    letter = next(letter_gen)
-                except StopIteration:
-                    letter = simple
-                if not _is_letter(letter):
-                    raise TypeError("Letter has the wrong signature. "
-                                    "Perhaps it wasn't decorated "
-                                    "correctly?")
-                new_el.append(letter, dim)
-        complexword.multiply(new_el)
-    return complexword
-
-
-def _replace_letters_complexword(word, letter_gen):
-    complexword = Word()
-    for el in word:
-        new_el = ExtendedLetter()
-        for i, dim in zip(el._letters, el._dimensions):
-            try:
-                letter = next(letter_gen)
-            except StopIteration:
-                letter = i
-            if not _is_letter(letter):
-                raise TypeError("Letter has the wrong signature. "
-                                + "Perhaps it wasn't decorated "
-                                + "correctly?")
-            new_el.append(letter, dim)
-        complexword.multiply(new_el)
-    return complexword
-
-
 def replace_letters(
-    word: Union[Word, Sequence[Word]],
-    letter_gen: Iterator[FREE_LETTER_TYPE],
+    words: Union[SimpleWord, Sequence[SimpleWord]],
+    letter_gen: Iterator[str],
 ) -> Union[Word, tuple[Word, ...]]:
-    """Replaces the letters in the given word(s) by the iteration
-    results from the supplied generator.
+    """Replaces the letters in the given simple word(s) by the letters
+    specified as strings in ``letter_gen``.
 
     Args:
         word (Word or sequence of Words): Words with letters to replace.
-        letter_gen (Generator): Iterator that yields functions correctly
-            decorated with :meth:`~fruits.words.letters.letter``. If the
+        letter_gen (Generator): Iterator that yields letter names of
+            correctly decorated functions
+            (using `meth:`~fruits.words.letters.letter``). If the
             iteration through the generator is stopped, all left letters
             in the word will not be changed.
 
     Returns:
         Word or list of Words based on the input.
     """
-    if isinstance(word, Sequence):
-        complexwords = []
-        for i in range(len(word)):
-            if isinstance(word[i], SimpleWord):
-                complexwords.append(
-                    _replace_letters_simpleword(word[i], letter_gen)
-                )
-            elif isinstance(word[i], Word):
-                complexwords.append(
-                    _replace_letters_complexword(word[i], letter_gen)
-                )
-            else:
-                raise TypeError(f"Unknown word type: {type(word[i])}")
-        return tuple(complexwords)
-    else:
-        if isinstance(word, SimpleWord):
-            return _replace_letters_simpleword(word, letter_gen)
-        elif isinstance(word, Word):
-            return _replace_letters_complexword(word, letter_gen)
-        else:
-            raise TypeError(f"Unknown word type: {type(word)}")
+    if isinstance(words, SimpleWord):
+        words = (words, )
+    if not isinstance(words, Sequence):
+        raise ValueError("'Invalid argument for 'words' specified")
+    new_words = []
+    for i in range(len(words)):
+        if not isinstance(words[i], SimpleWord):
+            raise ValueError("Can only replace letters in a simple word")
+        new_word = Word()
+        for el in words[i]:
+            new_el = ExtendedLetter()
+            for dim in el._dimensions:
+                for _ in range(dim):
+                    try:
+                        letter = next(letter_gen)
+                    except StopIteration:
+                        letter = "DIM"
+                    new_el.append(letter, dim)
+            new_word.multiply(new_el)
+        new_words.append(new_word)
+    return tuple(new_words)

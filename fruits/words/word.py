@@ -32,12 +32,12 @@ class Word(Seed):
         word = Word()
 
         el01 = ExtendedLetter()
-        el01.append(fruits.words.letters.simple, 0)
-        el01.append(fruits.words.letters.simple, 0)
+        el01.append("DIM", 0)
+        el01.append("DIM", 0)
         el02 = ExtendedLetter()
-        el02.append(fruits.words.letters.simple, 0)
-        el02.append(fruits.words.letters.simple, 1)
-        el02.append(fruits.words.letters.simple, 1)
+        el02.append("DIM", 0)
+        el02.append("DIM", 1)
+        el02.append("DIM", 1)
 
         word.multiply(el01)
         word.multiply(el02)
@@ -58,7 +58,7 @@ class Word(Seed):
     Args:
         word_string (str, optional): String representation of the word.
             Names of available letters can be used like
-            ``[ABS(1)SIMPLE(2)][ABS(1)]`` to create the corresponding
+            ``[ABS(1)DIM(2)][ABS(1)]`` to create the corresponding
             word.
     """
 

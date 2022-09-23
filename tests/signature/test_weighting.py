@@ -46,7 +46,7 @@ def test_weighted_iss():
     np.testing.assert_allclose(the_result, result, rtol=1e-02)
 
     X = np.random.random_sample((10, 10, 50))
-    word = fruits.words.Word("[ABS(3)][ABS(1)SIMPLE(10)][ABS(5)SIMPLE(10)]")
+    word = fruits.words.Word("[ABS(3)][ABS(1)DIM(10)][ABS(5)DIM(10)]")
     word.alpha = [0.99, -2.71]
     result = fruits.ISS(X, word)[:, 0, -1]
     the_result = np.zeros((X.shape[0]))
