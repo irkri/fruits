@@ -3,7 +3,7 @@ from typing import Any
 
 import numpy as np
 
-from fruits.scope import Seed
+from ..seed import Seed
 
 
 class Preparateur(Seed, ABC):

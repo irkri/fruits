@@ -4,7 +4,7 @@ from typing import Any, Callable
 
 import numpy as np
 
-from fruits.preparation.abstract import Preparateur
+from .abstract import Preparateur
 
 
 class ONE(Preparateur):

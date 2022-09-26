@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from fruits.scope import Seed
+from ..seed import Seed
 
 
 class FeatureSieve(Seed, ABC):

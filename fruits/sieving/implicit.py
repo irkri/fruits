@@ -4,8 +4,8 @@ from typing import Union
 
 import numpy as np
 
-from fruits.sieving.abstract import FeatureSieve
-from fruits._backend import _increments
+from .._backend import _increments
+from .abstract import FeatureSieve
 
 
 class PPV(FeatureSieve):
@@ -106,7 +106,7 @@ class PPV(FeatureSieve):
                     size=sample_size,
                     replace=False,
                 )
-                self._q[i] = np.quantile(
+                self._q[i] = np.quantile(  # type: ignore
                     np.array([X[i] for i in selection]).flatten(),
                     q,
                 )

@@ -3,8 +3,8 @@ from typing import Optional, Union
 
 import numpy as np
 
-from fruits.scope import Seed
-from fruits.words.letters import ExtendedLetter
+from ...seed import Seed
+from .letters import ExtendedLetter
 
 
 class Word(Seed):

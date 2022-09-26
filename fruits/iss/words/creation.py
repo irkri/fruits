@@ -2,8 +2,8 @@ import itertools
 from collections.abc import Iterator, Sequence
 from typing import Union
 
-from fruits.words.letters import ExtendedLetter, simple
-from fruits.words.word import SimpleWord, Word
+from .letters import ExtendedLetter
+from .word import SimpleWord, Word
 
 
 def _partitions_of(n, start: int = 1):

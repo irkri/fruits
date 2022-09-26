@@ -6,9 +6,9 @@ from typing import Union
 import numba
 import numpy as np
 
-from fruits.sieving.abstract import FeatureSieve
-from fruits._backend import _increments
-from fruits.cache import CoquantileCache
+from .._backend import _increments
+from ..cache import CoquantileCache
+from .abstract import FeatureSieve
 
 
 class ExplicitSieve(FeatureSieve, ABC):
@@ -280,7 +280,7 @@ class LCS(ExplicitSieve):
         result = np.zeros((X.shape[0], self.nfeatures()))
         if self._segments:
             for j in range(1, cuts.shape[1]):
-                result[:, j-1] = cuts[:, j] - cuts[:, j-1] + 1
+                result[:, j-1] = cuts[:, j] - cuts[:, j-1] + 1  # type: ignore
         else:
             for j in range(cuts.shape[1]):
                 result[:, j] = cuts[:, j]

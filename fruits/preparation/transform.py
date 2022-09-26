@@ -4,8 +4,8 @@ from typing import Any, Union
 
 import numpy as np
 
-from fruits._backend import _increments
-from fruits.preparation.abstract import Preparateur
+from .._backend import _increments
+from .abstract import Preparateur
 
 
 class INC(Preparateur):

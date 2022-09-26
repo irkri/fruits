@@ -2,7 +2,7 @@ from typing import Protocol
 
 import numpy as np
 
-from fruits._backend import _coquantile
+from ._backend import _coquantile
 
 
 class Cache(Protocol):

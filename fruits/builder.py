@@ -3,14 +3,12 @@ from typing import Literal
 
 import numpy as np
 
-from fruits.core.fruit import Fruit
-from fruits.scope import force_input_shape
-from fruits.words.word import Word, SimpleWord
-from fruits.words.creation import of_weight
-from fruits.preparation.abstract import Preparateur
-from fruits.sieving.abstract import FeatureSieve
-from fruits import preparation
-from fruits import sieving
+from . import preparation, sieving
+from .fruit import Fruit
+from .iss.words.creation import of_weight
+from .iss.words.word import SimpleWord, Word
+from .preparation.abstract import Preparateur
+from .sieving.abstract import FeatureSieve
 
 
 class FruitBuilder(ABC):
@@ -22,7 +20,7 @@ class FruitBuilder(ABC):
 
         Args:
             X (np.ndarray): Three dimensional array with the shape
-                ``(n_series, n_dimensions, series_length)``.
+                ``(n_time_series, n_dimensions, series_length)``.
         """
 
 
@@ -32,7 +30,6 @@ class UnivariateFruitBuilder(FruitBuilder):
     """
 
     def build(self, X: np.ndarray) -> Fruit:
-        X = force_input_shape(X)
         length = X.shape[2]
         fruit = Fruit("Built by UnivariateFruitBuilder")
 
@@ -136,7 +133,6 @@ class MultivariateFruitBuilder(FruitBuilder):
     """
 
     def build(self, X: np.ndarray) -> Fruit:
-        X = force_input_shape(X)
         fruit = Fruit("Built by MultivariateFruitBuilder")
 
         dim = X.shape[1]
@@ -234,9 +230,8 @@ def build(X: np.ndarray) -> Fruit:
 
     Args:
         X (np.ndarray): Three dimensional array with the shape
-            ``(n_series, n_dimensions, series_length)``.
+            ``(n_time_series, n_dimensions, series_length)``.
     """
-    X = force_input_shape(X)
     if X.shape[1] == 1:
         return UnivariateFruitBuilder().build(X)
     else:

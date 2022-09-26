@@ -4,8 +4,8 @@ from typing import Any, Optional, Union
 
 import numpy as np
 
-from fruits.preparation.abstract import Preparateur
-from fruits._backend import _coquantile
+from .._backend import _coquantile
+from .abstract import Preparateur
 
 
 class DIL(Preparateur):

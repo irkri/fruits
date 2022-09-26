@@ -6,7 +6,7 @@ import numpy as np
 def _increments(X: np.ndarray) -> np.ndarray:
     # calculates the increments of each time series in X
     result = np.zeros(X.shape)
-    result[:, :, 1:] = X[:, :, 1:] - X[:, :, :-1]
+    result[:, :, 1:] = X[:, :, 1:] - X[:, :, :-1]  # type: ignore
     return result
 
 

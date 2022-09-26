@@ -1,15 +1,15 @@
 import inspect
-from typing import Callable, Literal, Optional, Union, Any
+from typing import Any, Callable, Literal, Optional, Union
 
 import numpy as np
 
-from fruits.cache import Cache, CoquantileCache
-from fruits.scope import force_input_shape, Seed
-from fruits.core.callback import AbstractCallback
-from fruits.iss import ISS, CachePlan
-from fruits.words.word import Word
-from fruits.sieving.abstract import FeatureSieve
-from fruits.preparation.abstract import Preparateur
+from .cache import Cache, CoquantileCache
+from .callback import AbstractCallback
+from .iss.iss import ISS, CachePlan
+from .iss.words.word import Word
+from .preparation.abstract import Preparateur
+from .seed import Seed
+from .sieving.abstract import FeatureSieve
 
 
 class Fruit:
@@ -146,8 +146,7 @@ class Fruit:
 
         Args:
             X (np.ndarray): Univariate or multivariate time series
-                dataset as an array of three dimensions. Have a look at
-                :meth:`~fruits.scope.force_input_shape`.
+                dataset as an array of three dimensions.
         """
         for branch in self._branches:
             branch.fit(X)
@@ -163,8 +162,7 @@ class Fruit:
 
         Args:
             X (np.ndarray): Univariate or multivariate time series
-                dataset as an array of three dimensions. Have a look at
-                :meth:`~fruits.scope.force_input_shape`.
+                dataset as an array of three dimensions.
             callbacks: A list of callbacks. To write your own callback,
                 override the class
                 :class:`~fruits.core.callback.AbstractCallback`.
@@ -458,8 +456,7 @@ class FruitBranch:
 
         Args:
             X (np.ndarray): Univariate or multivariate time series
-                dataset as an array of three dimensions. Have a look at
-                :meth:`~fruits.scope.force_input_shape`.
+                dataset as an array of three dimensions.
         """
         self._compile()
 
@@ -494,8 +491,7 @@ class FruitBranch:
 
         Args:
             X (np.ndarray): Univariate or multivariate time series
-                dataset as an array of three dimensions. Have a look at
-                :meth:`~fruits.scope.force_input_shape`.
+                dataset as an array of three dimensions.
             callbacks: A list of callbacks. To write your own callback,
                 override the class
                 :class:`~fruits.core.callback.AbstractCallback`.
@@ -510,7 +506,7 @@ class FruitBranch:
             raise RuntimeError("Missing call of self.fit")
 
         self._get_cache(X)
-        prepared_data = force_input_shape(X)
+        prepared_data = X
         for prep in self._preparateurs:
             prepared_data = prep.transform(prepared_data, cache=self._cache)
             for callback in callbacks:
