@@ -33,4 +33,11 @@ def test_n_features():
 
     assert fruit_copy.nfeatures() == 574
 
+    fruit.fit_transform(X_1)
+
+    sieves = fruit.branch()._sieves_extended
+    for word_sieves in sieves:
+        for i in range(len(word_sieves) - 1):
+            assert word_sieves[i]._cache is word_sieves[i+1]._cache
+
     del fruit

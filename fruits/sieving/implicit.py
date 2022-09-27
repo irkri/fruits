@@ -4,7 +4,7 @@ from typing import Union
 
 import numpy as np
 
-from .._backend import _increments
+from ..cache import _increments
 from .abstract import FeatureSieve
 
 
@@ -91,16 +91,13 @@ class PPV(FeatureSieve):
         """Returns the number of features this sieve produces."""
         if self._segments:
             return len(self._q_c_input) - 1
-        else:
-            return len(self._q_c_input)
+        return len(self._q_c_input)
 
-    def _fit(self, X: np.ndarray, **kwargs) -> None:
+    def _fit(self, X: np.ndarray) -> None:
         self._q = [x[0] for x in self._q_c_input]
         for i, q in enumerate(self._q):
             if not self._q_c_input[i][1]:
-                sample_size = int(self._sample_size * len(X))
-                if sample_size < 1:
-                    sample_size = 1
+                sample_size = max(int(self._sample_size * len(X)), 1)
                 selection = np.random.choice(
                     np.arange(len(X)),
                     size=sample_size,
@@ -111,7 +108,7 @@ class PPV(FeatureSieve):
                     q,
                 )
 
-    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_q"):
             raise RuntimeError("Missing call of PPV.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))
@@ -166,21 +163,7 @@ class CPV(PPV):
     Arguments match those in :class:`~fruits.sieving.implicit.PPV`.
     """
 
-    def __init__(
-        self,
-        quantile: Union[list[float], float] = 0.5,
-        constant: Union[list[bool], bool] = False,
-        sample_size: float = 1.0,
-        segments: bool = False,
-    ) -> None:
-        super().__init__(
-            quantile,
-            constant,
-            sample_size,
-            segments,
-        )
-
-    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_q"):
             raise RuntimeError("Missing call of CPV.fit()")
         result = np.zeros((X.shape[0], self.nfeatures()))

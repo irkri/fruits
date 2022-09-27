@@ -14,7 +14,7 @@ class ONE(Preparateur):
     of only ones.
     """
 
-    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         X_new = np.ones((X.shape[0], X.shape[1]+1, X.shape[2]))
         X_new[:, :X.shape[1], :] = X[:, :, :]
         return X_new
@@ -48,7 +48,7 @@ class DIM(Preparateur):
     def __init__(self, f: Callable[[np.ndarray], np.ndarray]) -> None:
         self._function = f
 
-    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         new_dims = self._function(X)
         X_new = np.zeros((X.shape[0],
                           X.shape[1] + new_dims.shape[1],

@@ -65,6 +65,7 @@ class Word(Seed):
     def __init__(self, word_string: Optional[str] = None) -> None:
         self._alpha: Union[float, list[float]] = 0.0
         self._extended_letters: list[ExtendedLetter] = []
+        self._el_iterator_index = -1
         if word_string is not None:
             self.multiply(word_string)
 
@@ -110,10 +111,10 @@ class Word(Seed):
         else:
             raise TypeError(f"Cannot multiply Word with {type(other)}")
 
-    def fit(self, X: np.ndarray, **kwargs) -> None:
+    def _fit(self, X: np.ndarray) -> None:
         pass
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         raise NotImplementedError(
             "Please use fruits.ISS for the proper calculation of iterated sums"
             " specifying this word as an argument"
@@ -200,14 +201,15 @@ class SimpleWord(Word):
             expression ``(\\[(\\d|\\(\\d+\\))+\\])+``.
     """
 
-    def __init__(self, string: str):
-        super().__init__()
+    def __init__(self, string: str) -> None:
+        self._alpha: Union[float, list[float]] = 0.0
         self._extended_letters: list[list[int]] = []
         self._max_dim = 0
         self._name = ""
+        self._el_iterator_index = -1
         self.multiply(string)
 
-    def multiply(self, other: Union[Word, ExtendedLetter, str]):
+    def multiply(self, other: Union[Word, ExtendedLetter, str]) -> None:
         """Multiplies another word with the SimpleWord object.
         The word is given as a string matching the examples given in
         the class definition.
@@ -221,30 +223,30 @@ class SimpleWord(Word):
         self._name = self._name + other
         els_raw = [x[1:] for x in other.split("]")][:-1]
         els_int: list[list[int]] = []
-        for i in range(len(els_raw)):
+        for el_raw in els_raw:
             els_int.append([])
             j = 0
-            while j < len(els_raw[i]):
-                if els_raw[i][j] == "(":
+            while j < len(el_raw):
+                if el_raw[j] == "(":
                     temp = ""
                     j += 1
-                    while els_raw[i][j] != ")":
-                        temp += els_raw[i][j]
+                    while el_raw[j] != ")":
+                        temp += el_raw[j]
                         j += 1
                     if temp == "":
                         temp = "1"
                     els_int[-1].append(int(temp))
                 else:
-                    els_int[-1].append(int(els_raw[i][j]))
+                    els_int[-1].append(int(el_raw[j]))
                 j += 1
-        max_dim = max([letter for el_int in els_int for letter in el_int])
+        max_dim = max(letter for el_int in els_int for letter in el_int)
         if max_dim > self._max_dim:
             for el in self._extended_letters:
-                for i in range(max_dim-self._max_dim):
+                for _ in range(max_dim-self._max_dim):
                     el.append(0)
             self._max_dim = max_dim
         for el_int in els_int:
-            el = [0 for i in range(max_dim)]
+            el = [0 for _ in range(max_dim)]
             for letter in set(el_int):
                 el[letter-1] = el_int.count(letter)
             self._extended_letters.append(el)

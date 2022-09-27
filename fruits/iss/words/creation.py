@@ -77,11 +77,11 @@ def replace_letters(
     if not isinstance(words, Sequence):
         raise ValueError("'Invalid argument for 'words' specified")
     new_words = []
-    for i in range(len(words)):
-        if not isinstance(words[i], SimpleWord):
+    for word in words:
+        if not isinstance(word, SimpleWord):
             raise ValueError("Can only replace letters in a simple word")
         new_word = Word()
-        for el in words[i]:
+        for el in word:
             new_el = ExtendedLetter()
             for dim in el._dimensions:
                 for _ in range(dim):

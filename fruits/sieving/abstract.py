@@ -21,22 +21,8 @@ class FeatureSieve(Seed, ABC):
     def nfeatures(self) -> int:
         return self._nfeatures()
 
-    def _fit(self, X: np.ndarray, **kwargs) -> None:
+    def _fit(self, X: np.ndarray) -> None:
         pass
-
-    def fit(self, X: np.ndarray, **kwargs) -> None:
-        self._fit(X, **kwargs)
-
-    @abstractmethod
-    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        ...
-
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        return self._transform(X, **kwargs)
-
-    def _get_cache_keys(self) -> dict[str, list[str]]:
-        # returns keys for cache needed in the sieve
-        return dict()
 
     @abstractmethod
     def _summary(self) -> str:

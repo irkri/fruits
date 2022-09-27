@@ -19,19 +19,19 @@ def test_fast_slow_iss():
 
     # word [11122][122222][11]
     el_1_1 = fruits.words.ExtendedLetter()
-    for i in range(3):
+    for _ in range(3):
         el_1_1.append("dim_letter", 0)
-    for i in range(2):
+    for _ in range(2):
         el_1_1.append("dim_letter", 1)
 
     el_1_2 = fruits.words.ExtendedLetter()
-    for i in range(1):
+    for _ in range(1):
         el_1_2.append("dim_letter", 0)
-    for i in range(5):
+    for _ in range(5):
         el_1_2.append("dim_letter", 1)
 
     el_1_3 = fruits.words.ExtendedLetter()
-    for i in range(2):
+    for _i in range(2):
         el_1_3.append("dim_letter", 0)
 
     word1 = fruits.words.Word("Word 1")
@@ -41,19 +41,19 @@ def test_fast_slow_iss():
 
     # word [22][112][2221]
     el_2_1 = fruits.words.ExtendedLetter()
-    for i in range(2):
+    for _ in range(2):
         el_2_1.append("single_dim_letter", 1)
 
     el_2_2 = fruits.words.ExtendedLetter()
-    for i in range(2):
+    for _ in range(2):
         el_2_2.append("single_dim_letter", 0)
-    for i in range(1):
+    for _ in range(1):
         el_2_2.append("single_dim_letter", 1)
 
     el_2_3 = fruits.words.ExtendedLetter()
-    for i in range(1):
+    for _ in range(1):
         el_2_3.append("single_dim_letter", 0)
-    for i in range(3):
+    for _ in range(3):
         el_2_3.append("single_dim_letter", 1)
 
     word2 = fruits.words.Word("Word 2")

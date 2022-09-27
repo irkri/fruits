@@ -6,8 +6,7 @@ from typing import Union
 import numba
 import numpy as np
 
-from .._backend import _increments
-from ..cache import CoquantileCache
+from ..cache import CacheType, _increments
 from .abstract import FeatureSieve
 
 
@@ -34,8 +33,6 @@ class ExplicitSieve(FeatureSieve, ABC):
             0. Defaults to ``False``.
     """
 
-    _CACHE_KEY = 'coquantile'
-
     def __init__(
         self,
         cut: Union[list[float], float] = -1,
@@ -46,29 +43,16 @@ class ExplicitSieve(FeatureSieve, ABC):
             self._cut = [1, self._cut[0]]
         self._segments = segments
 
-    def _get_cache_keys(self) -> dict[str, list[str]]:
-        # transforms the input cuts based on the given time series
-        keys = [str(cut) for cut in self._cut if isinstance(cut, float)]
-        return {self._CACHE_KEY: keys}
-
-    def _get_cache(self, X: np.ndarray, **kwargs) -> CoquantileCache:
-        # checks if the sieve got any cache to use, if not, compute it
-        if 'cache' in kwargs:
-            return kwargs['cache']
-        else:
-            cache = CoquantileCache()
-            cache.process(np.expand_dims(X, axis=1),
-                          [str(cut) for cut in self._cut
-                           if isinstance(cut, float)])
-            return cache
-
-    def _get_transformed_cuts(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _get_transformed_cuts(self, X: np.ndarray) -> np.ndarray:
         # mix cuts got from coquantile cache with given integer cuts
-        cached_cuts = self._get_cache(X, **kwargs)
         new_cuts = np.zeros((X.shape[0], len(self._cut)))
         for i, cut in enumerate(self._cut):
             if isinstance(cut, float):
-                new_cuts[:, i] = cached_cuts[str(cut)]
+                new_cuts[:, i] = self._cache.get(
+                    CacheType.COQUANTILE,
+                    str(cut),
+                    X[:, np.newaxis, :],
+                )
             else:
                 if self._cut[i] <= 0:
                     new_cuts[:, i] = X.shape[1] + self._cut[i] + 1
@@ -82,8 +66,7 @@ class ExplicitSieve(FeatureSieve, ABC):
         """Returns the number of features this sieve produces."""
         if self._segments:
             return len(self._cut) - 1
-        else:
-            return len(self._cut)
+        return len(self._cut)
 
 
 class MAX(ExplicitSieve):

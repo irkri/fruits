@@ -4,7 +4,7 @@ from typing import Any, Optional, Union
 
 import numpy as np
 
-from .._backend import _coquantile
+from ..cache import CacheType
 from .abstract import Preparateur
 
 
@@ -30,7 +30,7 @@ class DIL(Preparateur):
         self._indices: np.ndarray
         self._lengths: list[int]
 
-    def _fit(self, X: np.ndarray, **kwargs) -> None:
+    def _fit(self, X: np.ndarray) -> None:
         if self._clusters is not None:
             nclusters = int(self._clusters * X.shape[2])
         else:
@@ -53,7 +53,7 @@ class DIL(Preparateur):
                 max_length = self._indices[i+1] - self._indices[i]
             self._lengths.append(np.random.randint(1, max_length+1))
 
-    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_indices") or not hasattr(self, "_lengths"):
             raise RuntimeError("Missing call of self.fit()")
         X_new = X.copy()
@@ -86,10 +86,17 @@ class WIN(Preparateur):
         self._start = start
         self._end = end
 
-    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        coq_start = _coquantile(X.astype(np.float64), self._start)
-        coq_end = _coquantile(X.astype(np.float64), self._end)
-        print(coq_start, coq_end)
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        coq_start = self._cache.get(
+            CacheType.COQUANTILE,
+            str(self._start),
+            X.astype(np.float64),
+        )
+        coq_end = self._cache.get(
+            CacheType.COQUANTILE,
+            str(self._end),
+            X.astype(np.float64),
+        )
         result = np.zeros_like(X)
         for i in range(X.shape[0]):
             for j in range(X.shape[1]):
@@ -136,7 +143,7 @@ class DOT(Preparateur):
     ) -> None:
         if isinstance(n, float) and not 0 < n < 1:
             raise ValueError("If n is a float, it has to satisfy 0 < n < 1")
-        elif not isinstance(n, float) and not isinstance(n, int):
+        if not isinstance(n, float) and not isinstance(n, int):
             raise TypeError("n has to be either a float or integer")
 
         self._n_given = n
@@ -145,15 +152,15 @@ class DOT(Preparateur):
         if isinstance(first, float) and not 0 < first < 1:
             raise ValueError("If first is a float, "
                              + " it has to satisfy 0 < first < 1")
-        elif (not isinstance(first, float)
-              and not isinstance(first, int)
-              and first is not None):
+        if (not isinstance(first, float)
+                and not isinstance(first, int)
+                and first is not None):
             raise TypeError("first has to be either a float, integer or None")
 
         self._first_given = first
         self._first: int
 
-    def _fit(self, X: np.ndarray, **kwargs) -> None:
+    def _fit(self, X: np.ndarray) -> None:
         if isinstance(self._n_given, float):
             self._n = int(self._n_given * X.shape[2])
             if self._n <= 0:
@@ -177,7 +184,7 @@ class DOT(Preparateur):
         else:
             self._first = self._n - 1
 
-    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_n") or not hasattr(self, "_first"):
             raise RuntimeError("Missing call of self.fit()")
         out = np.zeros(X.shape)
@@ -227,16 +234,12 @@ class PDD(Preparateur):
         self._indices: np.ndarray
         self._width: int
 
-    def _fit(self, X: np.ndarray, **kwargs) -> None:
+    def _fit(self, X: np.ndarray) -> None:
         """Fits the preparateur to the given dataset by calculating the
         actual values of ``density`` and ``proportion``.
         """
-        p = int(self._p_given * X.shape[2])
-        if p < 1:
-            p = 1
-        points = int((1.0 - self._d_given) * X.shape[2])
-        if points < 1:
-            points = 1
+        p = max(int(self._p_given * X.shape[2]), 1)
+        points = max(int((1.0 - self._d_given) * X.shape[2]), 1)
         self._width = int(p / points)
         if points == X.shape[2]-self._width:
             points -= 1
@@ -244,7 +247,7 @@ class PDD(Preparateur):
             0, X.shape[2]-self._width, points, dtype="int",
         )
 
-    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_width") or not hasattr(self, "_indices"):
             raise RuntimeError("Missing call of self.fit()")
         out = X.copy()

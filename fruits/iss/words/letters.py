@@ -29,6 +29,7 @@ class ExtendedLetter:
         self._letters: list[UNBOUND_LETTER_TYPE] = []
         self._dimensions: list[int] = []
         self._string_repr = ""
+        self._iter_index = -1
         self._append_from_string(letter_string)
 
     def _append_from_string(self, letter_string: str) -> None:
@@ -52,6 +53,7 @@ class ExtendedLetter:
         self._string_repr += "(" + str(dim+1) + ")"
 
     def copy(self) -> "ExtendedLetter":
+        """Returns a copy of this extended letter."""
         el = ExtendedLetter()
         el._letters = self._letters.copy()
         el._dimensions = self._dimensions.copy()
@@ -184,21 +186,21 @@ def letter(
 
         return wrapper
 
-    elif name is None:
+    if name is None:
         raise ValueError(
             "Please either specify the 'name' argument or use this "
             "decorator without calling it."
         )
-    else:
-        def letter_decorator(func):
 
-            @wraps(func)
-            def wrapper(i: int):
-                def index_manipulation(X: np.ndarray):
-                    return func(X, i)
-                return index_manipulation
-            _log(name, wrapper)
+    def letter_decorator(func):
 
-            return wrapper
+        @wraps(func)
+        def wrapper(i: int):
+            def index_manipulation(X: np.ndarray):
+                return func(X, i)
+            return index_manipulation
+        _log(name, wrapper)
 
-        return letter_decorator
+        return wrapper
+
+    return letter_decorator

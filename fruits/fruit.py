@@ -3,12 +3,12 @@ from typing import Any, Callable, Literal, Optional, Union
 
 import numpy as np
 
-from .cache import Cache, CoquantileCache
 from .callback import AbstractCallback
 from .iss.iss import ISS, CachePlan
 from .iss.words.word import Word
 from .preparation.abstract import Preparateur
 from .seed import Seed
+from .cache import SharedSeedCache
 from .sieving.abstract import FeatureSieve
 
 
@@ -112,7 +112,7 @@ class Fruit:
 
     def nfeatures(self) -> int:
         """Returns the total sum of features of all branches."""
-        return sum([branch.nfeatures() for branch in self._branches])
+        return sum(branch.nfeatures() for branch in self._branches)
 
     def configure(self, **kwargs: Any) -> None:
         """Calls ``brach.configure(**kwargs)`` for each FruitBranch
@@ -197,7 +197,7 @@ class Fruit:
         """Returns a summary of this object. The summary contains a
         summary for each FruitBranch in this Fruit object.
         """
-        summary = "{:=^80}".format(f"Summary of fruits.Fruit: '{self.name}'")
+        summary = f"{f'Summary of fruits.Fruit: {self.name}':=^80}"
         summary += f"\nBranches: {len(self.branches())}"
         summary += f"\nFeatures: {self.nfeatures()}"
         for branch in self.branches():
@@ -270,15 +270,10 @@ class FruitBranch:
         self._fitted: bool = False
         self.fit_sample_size: Union[float, int] = 1
 
-        # cache that is calculated at fitting and also used in the
-        # transformation process
-        self._cache: Cache
-
     def configure(
         self,
         *,
         iss_mode: Literal['single', 'extended'] = "single",
-        iss_batch_size: int = 1,
         fit_sample_size: Union[float, int] = 1,
     ) -> None:
         """Makes changes to the default configuration of a fruit branch
@@ -401,15 +396,12 @@ class FruitBranch:
         """
         if self.iss_mode == "extended":
             return (
-                sum([s.nfeatures() for s in self._sieves])
+                sum(s.nfeatures() for s in self._sieves)
                 * CachePlan(self._words).n_iterated_sums(
                     list(range(len(self._words)))
                   )
             )
-        return (
-            sum([s.nfeatures() for s in self._sieves])
-            * len(self._words)
-        )
+        return sum(s.nfeatures() for s in self._sieves) * len(self._words)
 
     def _compile(self) -> None:
         # checks if the FruitBranch is configured correctly and ready
@@ -419,36 +411,15 @@ class FruitBranch:
         if not self._sieves:
             raise RuntimeError("No FeatureSieve objects specified")
 
-    def _collect_cache_keys(self) -> set[str]:
-        # collects cache keys of all FitTransformers in the branch
-        keys: set[str] = set()
-        for prep in self._preparateurs:
-            prep_keys = prep._get_cache_keys()
-            if 'coquantile' in prep_keys:
-                keys = keys.union(prep_keys['coquantile'])
-        for sieve in self._sieves:
-            sieve_keys = sieve._get_cache_keys()
-            if 'coquantile' in sieve_keys:
-                keys = keys.union(sieve_keys['coquantile'])
-        return keys
-
-    def _get_cache(self, X: np.ndarray) -> None:
-        # returns the already processed cache needed in this branch
-        self._cache = CoquantileCache()
-        self._cache.process(X, list(self._collect_cache_keys()))
-
     def _select_fit_sample(self, X: np.ndarray) -> np.ndarray:
         # returns a sample of the data used for fitting
         if (isinstance(self.fit_sample_size, int)
                 and self.fit_sample_size == 1):
             ind = np.random.randint(0, X.shape[0])
             return X[ind:ind+1, :, :]
-        else:
-            s = int(self.fit_sample_size * X.shape[0])
-            if s < 1:
-                s = 1
-            indices = np.random.choice(X.shape[0], size=s, replace=False)
-            return X[indices, :, :]
+        s = max(int(self.fit_sample_size * X.shape[0]), 1)
+        indices = np.random.choice(X.shape[0], size=s, replace=False)
+        return X[indices, :, :]
 
     def fit(self, X: np.ndarray) -> None:
         """Fits the branch to the given dataset. What this action
@@ -460,11 +431,12 @@ class FruitBranch:
         """
         self._compile()
 
-        self._get_cache(X)
+        cache = SharedSeedCache()
         prepared_data = self._select_fit_sample(X)
         for prep in self._preparateurs:
+            prep._cache = cache
             prep.fit(prepared_data)
-            prepared_data = prep.transform(prepared_data, cache=self._cache)
+            prepared_data = prep.transform(prepared_data)
 
         self._sieves_extended = []
         iss_calculations = ISS(
@@ -477,6 +449,7 @@ class FruitBranch:
             iterated_data = iterated_data[:, 0, :]
             sieves_copy = [sieve.copy() for sieve in self._sieves]
             for sieve in sieves_copy:
+                sieve._cache = cache
                 sieve.fit(iterated_data[:, :])
             self._sieves_extended.append(sieves_copy)
         self._fitted = True
@@ -505,10 +478,9 @@ class FruitBranch:
         if not self._fitted:
             raise RuntimeError("Missing call of self.fit")
 
-        self._get_cache(X)
         prepared_data = X
         for prep in self._preparateurs:
-            prepared_data = prep.transform(prepared_data, cache=self._cache)
+            prepared_data = prep.transform(prepared_data)
             for callback in callbacks:
                 callback.on_preparateur(prepared_data)
         for callback in callbacks:
@@ -529,8 +501,7 @@ class FruitBranch:
             for sieve in self._sieves_extended[i]:
                 nf = sieve.nfeatures()
                 sieved_data[:, k:k+nf] = sieve.transform(
-                    iterated_data[:, 0, :],
-                    cache=self._cache,
+                    iterated_data[:, 0, :]
                 )
                 for callback in callbacks:
                     callback.on_sieve(sieved_data[k:k+nf])
@@ -550,7 +521,7 @@ class FruitBranch:
         """Returns a summary of this object. The summary contains all
         added preparateurs, words and sieves.
         """
-        summary = "{:-^80}".format("fruits.FruitBranch")
+        summary = f"{'fruits.FruitBranch':-^80}"
         summary += f"\nNumber of features: {self.nfeatures()}"
         summary += f"\n\nPreparateurs ({len(self._preparateurs)}): "
         if len(self._preparateurs) == 0:

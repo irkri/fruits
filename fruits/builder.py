@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from typing import Literal
 
 import numpy as np
@@ -11,20 +10,7 @@ from .preparation.abstract import Preparateur
 from .sieving.abstract import FeatureSieve
 
 
-class FruitBuilder(ABC):
-
-    @abstractmethod
-    def build(self, X: np.ndarray) -> Fruit:
-        """Builds and returns a :class:`~fruits.core.fruit.Fruit` based
-        on the given dataset.
-
-        Args:
-            X (np.ndarray): Three dimensional array with the shape
-                ``(n_time_series, n_dimensions, series_length)``.
-        """
-
-
-class UnivariateFruitBuilder(FruitBuilder):
+class UnivariateFruitBuilder:
     """Builds a :class:`~fruits.core.fruit.Fruit` suited for univariate
     time series.
     """
@@ -78,7 +64,7 @@ class UnivariateFruitBuilder(FruitBuilder):
                         X[:, 0, :] * (X[:, 0, :] > 0), axis=1)
                 ),
             )
-        elif mode == "filter":
+        if mode == "filter":
             return tuple(
                 preparation.DIL()
                 for _ in range(int(10 * np.floor(np.log10(length))))
@@ -99,11 +85,11 @@ class UnivariateFruitBuilder(FruitBuilder):
                 w.multiply(str(word))
                 leading_words.append(w)
             return tuple(leading_words), "extended"
-        elif mode == "double":
+        if mode == "double":
             return of_weight(3, 2), "single"
-        elif mode == "small":
+        if mode == "small":
             return of_weight(3, 1), "extended"
-        elif mode == "large":
+        if mode == "large":
             return of_weight(4, 1), "extended"
         raise ValueError(f"Unknown mode supplied: {mode!r}")
 
@@ -118,7 +104,7 @@ class UnivariateFruitBuilder(FruitBuilder):
                 sieving.MIN([1, 0.5, -1]),
                 sieving.END([i/10 for i in range(1, 10)]+[-1]),
             ]
-        elif size == "small":
+        if size == "small":
             return [
                 sieving.PPV([i/4 for i in range(1, 4)]),
                 sieving.PIA([0.5, -1]),
@@ -127,7 +113,7 @@ class UnivariateFruitBuilder(FruitBuilder):
         raise ValueError(f"Unknown size supplied: {size!r}")
 
 
-class MultivariateFruitBuilder(FruitBuilder):
+class MultivariateFruitBuilder:
     """Builds a :class:`~fruits.core.fruit.Fruit` suited for
     multivariate time series.
     """
@@ -158,9 +144,9 @@ class MultivariateFruitBuilder(FruitBuilder):
         # chooses fitting words, calculator mode based on dimensionality
         if 2 <= dim <= 3:
             return of_weight(6 - dim, dim), "extended"
-        elif 4 <= dim <= 18:
+        if 4 <= dim <= 18:
             return of_weight(2, dim), "extended"
-        elif 19 <= dim <= 47:
+        if 19 <= dim <= 47:
             words = []
             for d in range(1, 4):
                 for i in range(1, dim + 1):
@@ -169,7 +155,7 @@ class MultivariateFruitBuilder(FruitBuilder):
                         words.append(SimpleWord(f"[({i})({i+d})]"))
             words.append(SimpleWord(f"[({dim})]"))
             return tuple(words), "extended"
-        elif 48 <= dim <= 100:
+        if 48 <= dim <= 100:
             words = []
             for d in range(1, 5):
                 for i in range(1, dim + 1):
@@ -177,13 +163,12 @@ class MultivariateFruitBuilder(FruitBuilder):
                         words.append(SimpleWord(f"[({i})][({i+d})]"))
             words.append(SimpleWord(f"[({dim})]"))
             return tuple(words), "extended"
-        else:
-            words = []
-            for i in range(dim):
-                if i + 1 <= dim:
-                    words.append(SimpleWord(f"[({i})][({i+1})]"))
-            words.append(SimpleWord(f"[({dim})]"))
-            return tuple(words), "extended"
+        words = []
+        for i in range(dim):
+            if i + 1 <= dim:
+                words.append(SimpleWord(f"[({i})][({i+1})]"))
+        words.append(SimpleWord(f"[({dim})]"))
+        return tuple(words), "extended"
 
     def _choose_sieves(self, dim: int) -> tuple[FeatureSieve, ...]:
         # chooses fitting sieves based on dimensionality
@@ -195,7 +180,7 @@ class MultivariateFruitBuilder(FruitBuilder):
                 sieving.MIN(),
                 sieving.END([0.5, -1]),
             )
-        elif 4 <= dim <= 8:
+        if 4 <= dim <= 8:
             return (
                 sieving.PPV(),
                 sieving.PIA([0.2, 0.4, 0.6, 0.8, -1]),
@@ -203,22 +188,21 @@ class MultivariateFruitBuilder(FruitBuilder):
                 sieving.MIN(),
                 sieving.END(),
             )
-        elif 9 <= dim <= 18:
+        if 9 <= dim <= 18:
             return (
                 sieving.PPV(),
                 sieving.END(),
             )
-        elif 19 <= dim <= 47:
+        if 19 <= dim <= 47:
             return (
                 sieving.PPV(),
                 sieving.PIA(),
                 sieving.END(),
             )
-        else:
-            return (
-                sieving.PPV(),
-                sieving.END(),
-            )
+        return (
+            sieving.PPV(),
+            sieving.END(),
+        )
 
 
 def build(X: np.ndarray) -> Fruit:
@@ -234,5 +218,4 @@ def build(X: np.ndarray) -> Fruit:
     """
     if X.shape[1] == 1:
         return UnivariateFruitBuilder().build(X)
-    else:
-        return MultivariateFruitBuilder().build(X)
+    return MultivariateFruitBuilder().build(X)

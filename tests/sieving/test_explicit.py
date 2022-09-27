@@ -113,9 +113,13 @@ def test_pia():
 
     pia_cut_group_2 = fruits.sieving.PIA(cut=[-1, 0.2, 0.7, 0.5])
 
-    cache = fruits.cache.CoquantileCache()
-    cache.process(np.array([[[5, 8, 2, 6, 0]], [[-5, -1, -4, -0.5, -8]]]),
-                  keys=["0.2", "0.7", "0.5"])
+    cache = fruits.cache.SharedSeedCache()
+    for key in ["0.2", "0.7", "0.5"]:
+        cache.get(
+            fruits.cache.CacheType.COQUANTILE,
+            key,
+            np.array([[[5, 8, 2, 6, 0]], [[-5, -1, -4, -0.5, -8]]]),
+        )
 
     np.testing.assert_allclose(np.array(
         [[2/5, 1/5, 2/5, 1/5], [2/5, 1/5, 2/5, 2/5]]

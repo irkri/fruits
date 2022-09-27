@@ -55,11 +55,11 @@ class CachePlan:
 def _transform_simple_word(word: SimpleWord) -> np.ndarray:
     # transforms the given simple word for faster calculation with a
     # backend function
-    simple_word_raw = [el for el in word]
+    simple_word_raw = list(word)
     word_transformed = np.zeros((len(word), word._max_dim), dtype=np.int32)
-    for i in range(len(simple_word_raw)):
-        for j in range(len(simple_word_raw[i])):
-            word_transformed[i, j] = simple_word_raw[i][j]
+    for i, dim in enumerate(simple_word_raw):
+        for j, nletters in enumerate(dim):
+            word_transformed[i, j] = nletters
     return word_transformed
 
 
@@ -109,8 +109,7 @@ def _ISS(
                 raise TypeError(f"Unknown word type: {type(word)}")
             index += ext
             i += 1
-        else:
-            yield results
+        yield results
 
 
 @overload
@@ -179,5 +178,4 @@ def ISS(
     )
     if batch_size is None:
         return next(iter(result_iterator))
-    else:
-        return result_iterator
+    return result_iterator

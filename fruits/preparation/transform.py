@@ -4,7 +4,7 @@ from typing import Any, Union
 
 import numpy as np
 
-from .._backend import _increments
+from ..cache import _increments
 from .abstract import Preparateur
 
 
@@ -29,7 +29,7 @@ class INC(Preparateur):
     def __init__(self, zero_padding: bool = True) -> None:
         self._zero_padding = zero_padding
 
-    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         out = _increments(X)
         if not self._zero_padding:
             out[:, :, 0] = X[:, :, 0]
@@ -60,11 +60,11 @@ class STD(Preparateur):
         self._mean = None
         self._std = None
 
-    def _fit(self, X: np.ndarray, **kwargs) -> None:
+    def _fit(self, X: np.ndarray) -> None:
         self._mean = np.mean(X)
         self._std = np.std(X)
 
-    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         if self._mean is None or self._std is None:
             raise RuntimeError("Missing call of self.fit()")
         out = (X - self._mean) / self._std
@@ -106,7 +106,7 @@ class MAV(Preparateur):
         self._w_given = width
         self._w: int
 
-    def _fit(self, X: np.ndarray, **kwargs) -> None:
+    def _fit(self, X: np.ndarray) -> None:
         if isinstance(self._w_given, float):
             self._w = int(self._w_given * X.shape[2])
             if self._w <= 0:
@@ -114,11 +114,13 @@ class MAV(Preparateur):
         else:
             self._w = self._w_given
 
-    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_w"):
             raise RuntimeError("Missing call of self.fit()")
         out = np.cumsum(X, axis=2)
-        out[:, :, self._w:] = out[:, :, self._w:] - out[:, :, :-self._w]
+        out[:, :, self._w:] = (
+            out[:, :, self._w:] - out[:, :, :-self._w]  # type: ignore
+        )
         out[:, :, (self._w-1):] = out[:, :, (self._w-1):] / self._w
         out[:, :, :(self._w-1)] = X[:, :, :(self._w-1)]
         return out
@@ -145,7 +147,7 @@ class LAG(Preparateur):
     ``[(x_1,x_1),(x_2,x_1),(x_2,x_2),(x_3,x_2),...,(x_n,x_n)]``.
     """
 
-    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         X_new = np.zeros((X.shape[0], 2 * X.shape[1], 2 * X.shape[2] - 1))
         for i in range(X.shape[1]):
             X_new[:, 2*i, 0::2] = X[:, i, :]
