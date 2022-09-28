@@ -26,7 +26,8 @@ def test_ppv():
 
     ppvc_1 = fruits.sieving.CPV(quantile=0, constant=True)
 
-    np.testing.assert_allclose([[1/3], [0.0]], ppvc_1.fit_transform(X_1[0]))
+    np.testing.assert_allclose(np.array([[1/3], [0.0]]),
+                               ppvc_1.fit_transform(X_1[0]))
 
     with pytest.raises(ValueError):
         fruits.sieving.PPV(quantile=[0.5, 0.1, -1],

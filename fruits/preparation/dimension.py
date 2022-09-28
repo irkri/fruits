@@ -1,70 +1,54 @@
-from typing import Callable
+__all__ = ["ONE", "DIM"]
+
+from typing import Any, Callable
 
 import numpy as np
 
-from fruits.preparation.abstract import DataPreparateur
+from .abstract import Preparateur
 
 
-class ONE(DataPreparateur):
-    """DataPreparateur: Ones
+class ONE(Preparateur):
+    """Preparateur: Ones
 
     Preparateur that appends a dimension to each time series consisting
     of only ones.
     """
 
-    def __init__(self):
-        super().__init__("One")
-
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the transformed dataset.
-
-        :type X: np.ndarray
-        :rtype: np.ndarray
-        """
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         X_new = np.ones((X.shape[0], X.shape[1]+1, X.shape[2]))
         X_new[:, :X.shape[1], :] = X[:, :, :]
         return X_new
 
-    def copy(self) -> "ONE":
-        """Returns a copy of this preparateur.
-
-        :rtype: ONE
-        """
+    def _copy(self) -> "ONE":
         return ONE()
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ONE):
+            return False
         return True
 
     def __str__(self) -> str:
         return "ONE()"
 
-    def __repr__(self) -> str:
-        return "fruits.preparation.dimension.ONE"
 
-
-class DIM(DataPreparateur):
-    """DataPreparateur: Dimension Creator
+class DIM(Preparateur):
+    """Preparateur: Dimension Creator
 
     Creates a new dimension in the given (multidimensional) time series
     dataset based on the supplied function.
 
-    :param f: Function that takes in a three dimensional numpy array of
-        shape ``(n, d, l)`` and returns an array of shape ``(n, p, l)``
-        where ``p`` is an arbitrary integer matching the number of new
-        dimensions that will be added to the input array.
-    :type f: Callable
+    Args:
+        f (Callable): Function that takes in a three dimensional numpy
+            array of shape ``(n, d, l)`` and returns an array of shape
+            ``(n, p, l)`` where ``p`` is an arbitrary integer matching
+            the number of new dimensions that will be added to the input
+            array.
     """
 
-    def __init__(self, f: Callable[[np.ndarray], np.ndarray]):
-        super().__init__("Dimension Creator")
+    def __init__(self, f: Callable[[np.ndarray], np.ndarray]) -> None:
         self._function = f
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the transformed dataset.
-
-        :type X: np.ndarray
-        :rtype: np.ndarray
-        """
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         new_dims = self._function(X)
         X_new = np.zeros((X.shape[0],
                           X.shape[1] + new_dims.shape[1],
@@ -73,18 +57,8 @@ class DIM(DataPreparateur):
         X_new[:, X.shape[1]:, :] = new_dims[:, :, :]
         return X_new
 
-    def copy(self) -> "DIM":
-        """Returns a copy of this preparateur.
-
-        :rtype: DIM
-        """
+    def _copy(self) -> "DIM":
         return DIM(self._function)
-
-    def __eq__(self, other) -> bool:
-        return False
 
     def __str__(self) -> str:
         return f"DIM(f={self._function.__name__})"
-
-    def __repr__(self) -> str:
-        return "fruits.preparation.dimension.DIM"

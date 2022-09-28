@@ -1,15 +1,7 @@
-General functions
-^^^^^^^^^^^^^^^^^
+But WHAT is a fruit?
+^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: fruits.scope
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Cache Management
-^^^^^^^^^^^^^^^^
-
-.. automodule:: fruits.cache
+.. automodule:: fruits.fruit
    :members:
    :undoc-members:
    :show-inheritance:

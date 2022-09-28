@@ -1,10 +1,10 @@
-Language of FRUITS
-^^^^^^^^^^^^^^^^^^
+The "Language" of FRUITS
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Words and SimpleWords
 """""""""""""""""""""
 
-.. automodule:: fruits.words.word
+.. automodule:: fruits.iss.words.word
    :members:
    :undoc-members:
    :show-inheritance:
@@ -12,7 +12,7 @@ Words and SimpleWords
 Letters
 """""""
 
-.. automodule:: fruits.words.letters
+.. automodule:: fruits.iss.words.letters
    :members:
    :undoc-members:
    :show-inheritance:
@@ -20,7 +20,7 @@ Letters
 Generation and Manipulation of Words
 """"""""""""""""""""""""""""""""""""
 
-.. automodule:: fruits.words.creation
+.. automodule:: fruits.iss.words.creation
    :members:
    :undoc-members:
    :show-inheritance:

@@ -1,7 +1,7 @@
 The iterated-sums signature
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: fruits.signature.iss
+.. automodule:: fruits.iss.iss
    :members:
    :undoc-members:
    :show-inheritance:

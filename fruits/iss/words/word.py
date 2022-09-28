@@ -1,10 +1,13 @@
 import re
-from typing import Union
+from typing import Optional, Union
 
-from fruits.words.letters import ExtendedLetter
+import numpy as np
+
+from ...seed import Seed
+from .letters import ExtendedLetter
 
 
-class Word:
+class Word(Seed):
     """A word is a collection of
     :class:`~fruits.words.letter.ExtendedLetter` objects.
     An extended letter is a collection of letters.
@@ -29,12 +32,12 @@ class Word:
         word = Word()
 
         el01 = ExtendedLetter()
-        el01.append(fruits.words.letters.simple, 0)
-        el01.append(fruits.words.letters.simple, 0)
+        el01.append("DIM", 0)
+        el01.append("DIM", 0)
         el02 = ExtendedLetter()
-        el02.append(fruits.words.letters.simple, 0)
-        el02.append(fruits.words.letters.simple, 1)
-        el02.append(fruits.words.letters.simple, 1)
+        el02.append("DIM", 0)
+        el02.append("DIM", 1)
+        el02.append("DIM", 1)
 
         word.multiply(el01)
         word.multiply(el02)
@@ -52,16 +55,18 @@ class Word:
 
         fruits.signature.ISS(X, SimpleWord("[11][122]"))
 
-    :param word_string: String representation of the word. Names of available
-        letters can be used like ``[ABS(1)SIMPLE(2)][ABS(1)]`` to create
-        the corresponding word., defaults to ""
-    :type word_string: str, optional
+    Args:
+        word_string (str, optional): String representation of the word.
+            Names of available letters can be used like
+            ``[ABS(1)DIM(2)][ABS(1)]`` to create the corresponding
+            word.
     """
 
-    def __init__(self, word_string: str = ""):
+    def __init__(self, word_string: Optional[str] = None) -> None:
         self._alpha: Union[float, list[float]] = 0.0
         self._extended_letters: list[ExtendedLetter] = []
-        if word_string != "":
+        self._el_iterator_index = -1
+        if word_string is not None:
             self.multiply(word_string)
 
     @property
@@ -91,9 +96,8 @@ class Word:
 
     def multiply(self, other: Union["Word", ExtendedLetter, str]) -> None:
         """Appends one or more extended letters to the word. A group of
-        extended letters have to be given as another Word object.
-
-        :type other: Union[Word, ExtendedLetter]
+        extended letters have to be given as another Word object or as
+        a string.
         """
         if isinstance(other, ExtendedLetter):
             self._extended_letters.append(other)
@@ -107,11 +111,16 @@ class Word:
         else:
             raise TypeError(f"Cannot multiply Word with {type(other)}")
 
-    def copy(self) -> "Word":
-        """Returns a copy of this word.
+    def _fit(self, X: np.ndarray) -> None:
+        pass
 
-        :rtype: Word
-        """
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        raise NotImplementedError(
+            "Please use fruits.ISS for the proper calculation of iterated sums"
+            " specifying this word as an argument"
+        )
+
+    def _copy(self) -> "Word":
         sw = Word()
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
@@ -129,9 +138,6 @@ class Word:
             return self._extended_letters[self._el_iterator_index]
         raise StopIteration()
 
-    def __copy__(self) -> "Word":
-        return self.copy()
-
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Word):
             raise NotImplementedError
@@ -139,9 +145,6 @@ class Word:
 
     def __str__(self) -> str:
         return "".join([str(el) for el in self._extended_letters])
-
-    def __repr__(self) -> str:
-        return f"fruits.words.word.Word('{self!s}')"
 
 
 class SimpleWord(Word):
@@ -192,25 +195,24 @@ class SimpleWord(Word):
     Enclose dimensions with normal brackets that have two or more
     digits, like ``SimpleWord("[122(10)(62)][(24)5]")``.
 
-    :param string: Will be used to create the SimpleWord as
-        shown in the example above. It has to match the regular
-        expression ``([d+])+`` where ``d+`` denotes one or more digits.
-    :type string: str
+    Args:
+        string (str): Will be used to create the SimpleWord as
+            shown in the example above. It has to match the regular
+            expression ``(\\[(\\d|\\(\\d+\\))+\\])+``.
     """
 
-    def __init__(self, string: str):
-        super().__init__()
+    def __init__(self, string: str) -> None:
+        self._alpha: Union[float, list[float]] = 0.0
         self._extended_letters: list[list[int]] = []
         self._max_dim = 0
         self._name = ""
+        self._el_iterator_index = -1
         self.multiply(string)
 
-    def multiply(self, other: Union[Word, ExtendedLetter, str]):
+    def multiply(self, other: Union[Word, ExtendedLetter, str]) -> None:
         """Multiplies another word with the SimpleWord object.
         The word is given as a string matching the examples given in
         the class definition.
-
-        :type other: str
         """
         if not isinstance(other, str):
             raise NotImplementedError
@@ -221,39 +223,35 @@ class SimpleWord(Word):
         self._name = self._name + other
         els_raw = [x[1:] for x in other.split("]")][:-1]
         els_int: list[list[int]] = []
-        for i in range(len(els_raw)):
+        for el_raw in els_raw:
             els_int.append([])
             j = 0
-            while j < len(els_raw[i]):
-                if els_raw[i][j] == "(":
+            while j < len(el_raw):
+                if el_raw[j] == "(":
                     temp = ""
                     j += 1
-                    while els_raw[i][j] != ")":
-                        temp += els_raw[i][j]
+                    while el_raw[j] != ")":
+                        temp += el_raw[j]
                         j += 1
                     if temp == "":
                         temp = "1"
                     els_int[-1].append(int(temp))
                 else:
-                    els_int[-1].append(int(els_raw[i][j]))
+                    els_int[-1].append(int(el_raw[j]))
                 j += 1
-        max_dim = max([letter for el_int in els_int for letter in el_int])
+        max_dim = max(letter for el_int in els_int for letter in el_int)
         if max_dim > self._max_dim:
             for el in self._extended_letters:
-                for i in range(max_dim-self._max_dim):
+                for _ in range(max_dim-self._max_dim):
                     el.append(0)
             self._max_dim = max_dim
         for el_int in els_int:
-            el = [0 for i in range(max_dim)]
+            el = [0 for _ in range(max_dim)]
             for letter in set(el_int):
                 el[letter-1] = el_int.count(letter)
             self._extended_letters.append(el)
 
-    def copy(self) -> "SimpleWord":
-        """Returns a copy of this SimpleWord.
-
-        :rtype: SimpleWord
-        """
+    def _copy(self) -> "SimpleWord":
         sw = SimpleWord(self._name)
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
@@ -265,6 +263,3 @@ class SimpleWord(Word):
 
     def __str__(self) -> str:
         return self._name
-
-    def __repr__(self) -> str:
-        return f"fruits.words.word.SimpleWord('{self!s}')"

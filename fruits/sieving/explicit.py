@@ -1,12 +1,13 @@
+__all__ = ["MAX", "MIN", "END", "PIA", "LCS"]
+
 from abc import ABC
 from typing import Union
 
 import numba
 import numpy as np
 
-from fruits.sieving.abstract import FeatureSieve
-from fruits._backend import _increments
-from fruits.cache import CoquantileCache
+from ..cache import CacheType, _increments
+from .abstract import FeatureSieve
 
 
 class ExplicitSieve(FeatureSieve, ABC):
@@ -15,60 +16,43 @@ class ExplicitSieve(FeatureSieve, ABC):
     A (non-scaled) value returned by an explicit sieve always also is a
     value in the original time series.
 
-    :param cut: If ``cut`` is an index in the time series array, the
-        features are sieved from ``X[:cut]``. If it is a float in
-        ``[0,1]``, the corresponding 'coquantile' will be calculated
-        first. This option can also be a list of floats or integers
-        which will be treated the same way., defaults to 1.0
-    :type cut: int/float or list of integers/floats, optional
-    :param segments: If set to ``True``, then the cutting indices will
-        be sorted and treated as interval borders and the maximum in
-        each interval will be sieved. The left interval border is
-        reduced by 1 before slicing. This means that an input of
-        ``cut=[1,5,10]`` results in two features ``max(X[0:5])`` and
-        ``max(X[4:10])``.
-        If set to ``False``, then the left interval border is always 0.,
-        defaults to ``False``
-    :type segments: bool, optional
+    Args:
+        cut (int/float): If ``cut`` is an index in the time series
+            array, the features are sieved from ``X[:cut]``. If it is a
+            float in ``[0,1]``, the corresponding 'coquantile' will be
+            calculated first. This option can also be a list of floats
+            or integers which will be treated the same way. The default
+            is sieving from the whole time series.
+        segments (bool, optional): If set to ``True``, then the cutting
+            indices will be sorted and treated as interval borders and
+            the maximum in each interval will be sieved. The left
+            interval border is reduced by 1 before slicing. This means
+            that an input of ``cut=[1,5,10]`` results in two features
+            ``max(X[0:5])`` and ``max(X[4:10])``.
+            If set to ``False``, then the left interval border is always
+            0. Defaults to ``False``.
     """
-
-    _CACHE_KEY = 'coquantile'
 
     def __init__(
         self,
         cut: Union[list[float], float] = -1,
         segments: bool = False,
-        name: str = "Abstract Explicit Sieve",
-    ):
-        super().__init__(name)
+    ) -> None:
         self._cut = cut if isinstance(cut, list) else [cut]
         if len(self._cut) == 1 and segments:
             self._cut = [1, self._cut[0]]
         self._segments = segments
 
-    def _get_cache_keys(self) -> dict[str, list[str]]:
-        # transforms the input cuts based on the given time series
-        keys = [str(cut) for cut in self._cut if isinstance(cut, float)]
-        return {self._CACHE_KEY: keys}
-
-    def _get_cache(self, X: np.ndarray, **kwargs) -> CoquantileCache:
-        # checks if the sieve got any cache to use, if not, compute it
-        if 'cache' in kwargs:
-            return kwargs['cache']
-        else:
-            cache = CoquantileCache()
-            cache.process(np.expand_dims(X, axis=1),
-                          [str(cut) for cut in self._cut
-                           if isinstance(cut, float)])
-            return cache
-
-    def _get_transformed_cuts(self, X: np.ndarray, **kwargs) -> np.ndarray:
+    def _get_transformed_cuts(self, X: np.ndarray) -> np.ndarray:
         # mix cuts got from coquantile cache with given integer cuts
-        cached_cuts = self._get_cache(X, **kwargs)
         new_cuts = np.zeros((X.shape[0], len(self._cut)))
         for i, cut in enumerate(self._cut):
             if isinstance(cut, float):
-                new_cuts[:, i] = cached_cuts[str(cut)]
+                new_cuts[:, i] = self._cache.get(
+                    CacheType.COQUANTILE,
+                    str(cut),
+                    X[:, np.newaxis, :],
+                )
             else:
                 if self._cut[i] <= 0:
                     new_cuts[:, i] = X.shape[1] + self._cut[i] + 1
@@ -78,15 +62,11 @@ class ExplicitSieve(FeatureSieve, ABC):
             new_cuts = np.sort(new_cuts)
         return new_cuts.astype(np.int64)
 
-    def nfeatures(self) -> int:
-        """Returns the number of features this sieve produces.
-
-        :rtype: int
-        """
+    def _nfeatures(self) -> int:
+        """Returns the number of features this sieve produces."""
         if self._segments:
             return len(self._cut) - 1
-        else:
-            return len(self._cut)
+        return len(self._cut)
 
 
 class MAX(ExplicitSieve):
@@ -97,12 +77,10 @@ class MAX(ExplicitSieve):
     ``cut``.
     For more information on the available arguments, have a look at the
     definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
-
-    :type cut: int/float or list of integers/floats, optional
     """
 
-    def __init__(self, cut: Union[list[float], float] = -1):
-        super().__init__(cut, True, "Maximal value")
+    def __init__(self, cut: Union[list[float], float] = -1) -> None:
+        super().__init__(cut, True)
 
     @staticmethod
     @numba.njit(
@@ -117,19 +95,11 @@ class MAX(ExplicitSieve):
                 result[i, j-1] = np.max(X[i, cuts[i, j-1]-1:cuts[i, j]])
         return result
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the transformed data. See the class definition for
-        detailed information.
-
-        :type X: np.ndarray
-        :returns: Array of features.
-        :rtype: np.ndarray
-        """
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         cuts = self._get_transformed_cuts(X, **kwargs)
         return MAX._backend(X, cuts)
 
-    def summary(self) -> str:
-        """Returns a better formatted summary string for the sieve."""
+    def _summary(self) -> str:
         string = "MAX"
         if self._segments:
             string += " [segments]"
@@ -138,18 +108,11 @@ class MAX(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self) -> "MAX":
-        """Returns a copy of this object.
-
-        :rtype: MAX
-        """
-        fs = MAX(self._cut)
-        return fs
+    def _copy(self) -> "MAX":
+        return MAX(self._cut)
 
     def __str__(self) -> str:
-        string = "MAX(" + \
-                f"cut={self._cut})"
-        return string
+        return f"MAX(cut={self._cut})"
 
 
 class MIN(ExplicitSieve):
@@ -160,13 +123,10 @@ class MIN(ExplicitSieve):
     ``cut``.
     For more information on the available arguments, have a look at the
     definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
-
-    :type cut: int/float or list of integers/floats, optional
-    :type segments: bool, optional
     """
 
-    def __init__(self, cut: Union[list[float], float] = -1):
-        super().__init__(cut, True, "Minimum value")
+    def __init__(self, cut: Union[list[float], float] = -1) -> None:
+        super().__init__(cut, True)
 
     @staticmethod
     @numba.njit("float64[:,:](float64[:,:], int64[:,:])",
@@ -178,19 +138,11 @@ class MIN(ExplicitSieve):
                 result[i, j-1] = np.min(X[i, cuts[i, j-1]-1:cuts[i, j]])
         return result
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the transformed data. See the class definition for
-        detailed information.
-
-        :type X: np.ndarray
-        :returns: Array of features.
-        :rtype: np.ndarray
-        """
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         cuts = self._get_transformed_cuts(X, **kwargs)
         return MIN._backend(X, cuts)
 
-    def summary(self) -> str:
-        """Returns a better formatted summary string for the sieve."""
+    def _summary(self) -> str:
         string = "MIN"
         if self._segments:
             string += " [segments]"
@@ -199,18 +151,11 @@ class MIN(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self) -> "MIN":
-        """Returns a copy of this object.
-
-        :rtype: MIN
-        """
-        fs = MIN(self._cut)
-        return fs
+    def _copy(self) -> "MIN":
+        return MIN(self._cut)
 
     def __str__(self) -> str:
-        string = "MIN(" + \
-                f"cut={self._cut})"
-        return string
+        return f"MIN(cut={self._cut})"
 
 
 class END(ExplicitSieve):
@@ -221,21 +166,12 @@ class END(ExplicitSieve):
     For more information on the available arguments, have a look at the
     definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
     The option 'segments' will be ignored in this sieve.
-
-    :type cut: int/float or list of integers/floats, optional
     """
 
-    def __init__(self, cut: Union[list[float], float] = -1):
-        super().__init__(cut, False, "Last value")
+    def __init__(self, cut: Union[list[float], float] = -1) -> None:
+        super().__init__(cut, False)
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the transformed data. See the class definition for
-        detailed information.
-
-        :type X: np.ndarray
-        :returns: Array of features.
-        :rtype: np.ndarray
-        """
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         cuts = self._get_transformed_cuts(X, **kwargs)
         result = np.zeros((X.shape[0], self.nfeatures()))
         for j in range(cuts.shape[1]):
@@ -246,25 +182,17 @@ class END(ExplicitSieve):
             )[:, 0]
         return result
 
-    def summary(self) -> str:
-        """Returns a better formatted summary string for the sieve."""
+    def _summary(self) -> str:
         string = f"END -> {self.nfeatures()}:"
         for x in self._cut:
             string += f"\n   > {x}"
         return string
 
-    def copy(self) -> "END":
-        """Returns a copy of this object.
-
-        :rtype: END
-        """
-        fs = END(self._cut)
-        return fs
+    def _copy(self) -> "END":
+        return END(self._cut)
 
     def __str__(self) -> str:
-        string = "END(" + \
-                f"cut={self._cut})"
-        return string
+        return f"END(cut={self._cut})"
 
 
 class PIA(ExplicitSieve):
@@ -278,18 +206,10 @@ class PIA(ExplicitSieve):
     invariant.
     For more information on the available arguments, have a look at the
     definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
-
-    :type cut: int/float or list of integers/floats, optional
-    :type segments: bool, optional
-    :param div_on_slice: If set to ``True``, divides the number of
-        positive changes by the length of the slice (see options
-        ``cut, segments``) instead by the length of the whole series.,
-        defaults to False
-    :type div_on_slice: bool, optional
     """
 
-    def __init__(self, cut: Union[list[float], float] = -1):
-        super().__init__(cut, False, "Proportion of incremental alteration")
+    def __init__(self, cut: Union[list[float], float] = -1) -> None:
+        super().__init__(cut, False)
 
     @staticmethod
     @numba.njit("float64[:,:](float64[:,:], int64[:,:])",
@@ -303,19 +223,11 @@ class PIA(ExplicitSieve):
         result[:, :] /= X.shape[1]
         return result
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the transformed data. See the class definition for
-        detailed information.
-
-        :type X: np.ndarray
-        :returns: Array of features.
-        :rtype: np.ndarray
-        """
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         cuts = self._get_transformed_cuts(X, **kwargs)
         return PIA._backend(X, cuts)
 
-    def summary(self) -> str:
-        """Returns a better formatted summary string for the sieve."""
+    def _summary(self) -> str:
         string = "PIA"
         if self._segments:
             string += " [segments]"
@@ -324,18 +236,11 @@ class PIA(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self) -> "PIA":
-        """Returns a copy of this object.
-
-        :rtype: PIA
-        """
-        fs = PIA(self._cut)
-        return fs
+    def _copy(self) -> "PIA":
+        return PIA(self._cut)
 
     def __str__(self) -> str:
-        string = "PIA(" + \
-                f"cut={self._cut})"
-        return string
+        return f"PIA(cut={self._cut})"
 
 
 class LCS(ExplicitSieve):
@@ -344,38 +249,27 @@ class LCS(ExplicitSieve):
     Returns the length of coquantile slices of each given time series.
     For more information on the available arguments, have a look at the
     definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
-
-    :type cut: int/float or list of integers/floats, optional
-    :type segments: bool, optional
     """
 
     def __init__(
         self,
         cut: Union[list[float], float] = -1,
         segments: bool = False,
-    ):
-        super().__init__(cut, segments, "Length of coquantile slices")
+    ) -> None:
+        super().__init__(cut, segments)
 
-    def transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
-        """Returns the transformed data. See the class definition for
-        detailed information.
-
-        :type X: np.ndarray
-        :returns: Array of features.
-        :rtype: np.ndarray
-        """
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
         cuts = self._get_transformed_cuts(X, **kwargs)
         result = np.zeros((X.shape[0], self.nfeatures()))
         if self._segments:
             for j in range(1, cuts.shape[1]):
-                result[:, j-1] = cuts[:, j] - cuts[:, j-1] + 1
+                result[:, j-1] = cuts[:, j] - cuts[:, j-1] + 1  # type: ignore
         else:
             for j in range(cuts.shape[1]):
                 result[:, j] = cuts[:, j]
         return result
 
-    def summary(self) -> str:
-        """Returns a better formatted summary string for the sieve."""
+    def _summary(self) -> str:
         string = "LCS"
         if self._segments:
             string += " [segments]"
@@ -384,16 +278,8 @@ class LCS(ExplicitSieve):
             string += f"\n   > {x}"
         return string
 
-    def copy(self) -> "LCS":
-        """Returns a copy of this object.
-
-        :rtype: LCS
-        """
-        fs = LCS(self._cut, self._segments)
-        return fs
+    def _copy(self) -> "LCS":
+        return LCS(self._cut, self._segments)
 
     def __str__(self) -> str:
-        string = "LCS(" + \
-                f"cut={self._cut}, " + \
-                f"segments={self._segments})"
-        return string
+        return f"LCS(cut={self._cut}, segments={self._segments})"

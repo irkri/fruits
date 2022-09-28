@@ -1,4 +1,3 @@
-from fruits.sieving.abstract import FeatureSieve
-
-from fruits.sieving.implicit import *
-from fruits.sieving.explicit import *
+from .abstract import FeatureSieve
+from .explicit import *
+from .implicit import *

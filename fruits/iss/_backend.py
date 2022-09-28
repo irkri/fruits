@@ -1,7 +1,7 @@
 import numba
 import numpy as np
 
-from fruits.words.word import Word
+from .words.word import Word
 
 
 def _slow_single_ISS(
@@ -102,11 +102,11 @@ def _fast_ISS(
     Z: np.ndarray,
     word: np.ndarray,
     alphas: np.ndarray,
-    extended: int
+    extended: int,
 ) -> np.ndarray:
     # accelerated function for calculation of
     # fruits.core.ISS(X, [SimpleWord(...)])
     result = np.zeros((Z.shape[0], extended, Z.shape[2]))
-    for i in numba.prange(Z.shape[0]):  # pylint: disable=not-an-iterable
+    for i in numba.prange(Z.shape[0]):
         result[i] = _fast_single_ISS(Z[i, :, :], word, alphas, extended)
     return result

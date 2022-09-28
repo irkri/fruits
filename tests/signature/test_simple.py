@@ -16,7 +16,7 @@ def test_simpleword_iss():
     w5 = fruits.words.SimpleWord("[1][1]")
     w6 = fruits.words.SimpleWord("[1][2]")
 
-    r1 = fruits.signature.ISS(X_1, [w1, w2, w3, w4, w5, w6])
+    r1 = fruits.ISS(X_1, [w1, w2, w3, w4, w5, w6])
 
     np.testing.assert_allclose(np.array([
         [-4, -3.2, -3.2, 1.8, -1.2],
@@ -52,7 +52,7 @@ def test_simpleword_iss():
     w1_copy = w1.copy()
 
     np.testing.assert_allclose(r1[:, 0, :],
-                               fruits.signature.ISS(X_1, [w1_copy])[:, 0, :])
+                               fruits.ISS(X_1, [w1_copy])[:, 0, :])
 
 
 def test_theoretical_cases():
@@ -60,7 +60,7 @@ def test_theoretical_cases():
     for i in range(X.shape[0]):
         X[i, 0, :] = (X[i, 0, :] - X[i].mean(axis=-1)) / X[i].std(axis=-1)
 
-    result = fruits.signature.ISS(X, fruits.words.SimpleWord("[1][1]"))
+    result = fruits.ISS(X, fruits.words.SimpleWord("[1][1]"))
 
     np.testing.assert_allclose(np.ones((25,)) * -50,
                                result[:, 0, -1])
@@ -68,6 +68,5 @@ def test_theoretical_cases():
 
 def test_word_generation():
     for n in range(1, 7):
-        assert len(fruits.words.simplewords_by_weight(n, dim=1)) \
-            == 2**(n - 1)
-    assert len(fruits.words.simplewords_by_weight(4, dim=2)) == 82
+        assert len(fruits.words.of_weight(n, dim=1)) == 2**(n - 1)
+    assert len(fruits.words.of_weight(4, dim=2)) == 82

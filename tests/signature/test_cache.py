@@ -21,7 +21,7 @@ def test_cache_plan():
         fruits.words.SimpleWord("[3][11][1112][21]"),
     ]
 
-    cache_plan = fruits.signature.iss.CachePlan(words)
+    cache_plan = fruits.iss.CachePlan(words)
 
     assert cache_plan._plan == [4, 5, 2, 3, 3, 1, 1, 1, 2]
 
@@ -31,7 +31,7 @@ def test_extented_mode_simple_1():
 
     word = fruits.words.SimpleWord("[11][21][331][22]")
 
-    result_extended = fruits.signature.ISS(X, word, mode="extended")
+    result_extended = fruits.ISS(X, word, mode="extended")
 
     word1 = fruits.words.SimpleWord("[11]")
     word2 = fruits.words.SimpleWord("[11][12]")
@@ -40,10 +40,10 @@ def test_extented_mode_simple_1():
 
     result_single = np.zeros((10, 4, 100))
 
-    result_single[:, 0:1, :] = fruits.signature.ISS(X, word1, mode="single")
-    result_single[:, 1:2, :] = fruits.signature.ISS(X, word2, mode="single")
-    result_single[:, 2:3, :] = fruits.signature.ISS(X, word3, mode="single")
-    result_single[:, 3:4, :] = fruits.signature.ISS(X, word4, mode="single")
+    result_single[:, 0:1, :] = fruits.ISS(X, word1, mode="single")
+    result_single[:, 1:2, :] = fruits.ISS(X, word2, mode="single")
+    result_single[:, 2:3, :] = fruits.ISS(X, word3, mode="single")
+    result_single[:, 3:4, :] = fruits.ISS(X, word4, mode="single")
 
     np.testing.assert_allclose(result_single, result_extended)
 
@@ -53,7 +53,7 @@ def test_extended_mode_simple_2():
 
     word = fruits.words.SimpleWord("[1][11][111][1111]")
 
-    result_extended = fruits.signature.ISS(X, word, mode="extended")
+    result_extended = fruits.ISS(X, word, mode="extended")
 
     word1 = fruits.words.SimpleWord("[1]")
     word2 = fruits.words.SimpleWord("[1][11]")
@@ -62,10 +62,10 @@ def test_extended_mode_simple_2():
 
     result_single = np.zeros((10, 4, 100))
 
-    result_single[:, 0:1, :] = fruits.signature.ISS(X, word1, mode="single")
-    result_single[:, 1:2, :] = fruits.signature.ISS(X, word2, mode="single")
-    result_single[:, 2:3, :] = fruits.signature.ISS(X, word3, mode="single")
-    result_single[:, 3:4, :] = fruits.signature.ISS(X, word4, mode="single")
+    result_single[:, 0:1, :] = fruits.ISS(X, word1, mode="single")
+    result_single[:, 1:2, :] = fruits.ISS(X, word2, mode="single")
+    result_single[:, 2:3, :] = fruits.ISS(X, word3, mode="single")
+    result_single[:, 3:4, :] = fruits.ISS(X, word4, mode="single")
 
     np.testing.assert_allclose(result_single, result_extended)
 
@@ -110,9 +110,9 @@ def test_extended_mode_simple_3():
         fruits.words.SimpleWord("[3][11][1112][21]"),
     ]
 
-    result_extended = fruits.signature.ISS(X, words, mode="extended")
+    result_extended = fruits.ISS(X, words, mode="extended")
 
-    result_single = fruits.signature.ISS(X, all_words, mode="single")
+    result_single = fruits.ISS(X, all_words, mode="single")
 
     np.testing.assert_allclose(result_single, result_extended)
 
@@ -151,15 +151,12 @@ def test_extended_mode_general_1():
     relu_word3.multiply(el2)
     relu_word3.multiply(el3)
 
-    result_extended = fruits.signature.ISS(X, relu_word, mode="extended")
+    result_extended = fruits.ISS(X, relu_word, mode="extended")
 
     result_single = np.zeros((10, 3, 100))
 
-    result_single[:, 0:1, :] = fruits.signature.ISS(X, relu_word1,
-                                                    mode="single")
-    result_single[:, 1:2, :] = fruits.signature.ISS(X, relu_word2,
-                                                    mode="single")
-    result_single[:, 2:3, :] = fruits.signature.ISS(X, relu_word3,
-                                                    mode="single")
+    result_single[:, 0:1, :] = fruits.ISS(X, relu_word1, mode="single")
+    result_single[:, 1:2, :] = fruits.ISS(X, relu_word2, mode="single")
+    result_single[:, 2:3, :] = fruits.ISS(X, relu_word3, mode="single")
 
     np.testing.assert_allclose(result_single, result_extended)
