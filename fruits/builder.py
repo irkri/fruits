@@ -21,33 +21,33 @@ class UnivariateFruitBuilder:
 
         leadingwords, mode = self._choose_words("leading")
 
-        fruit.fork()
+        fruit.cut()
         fruit.add(preparation.INC)
         fruit.add(*self._choose_preparateurs("single", length))
         fruit.add(*leadingwords)
-        fruit.branch().configure(iss_mode=mode)
+        fruit.get_slice().configure(iss_mode=mode)
         fruit.add(*self._choose_sieves("small"))
 
-        fruit.fork()
+        fruit.cut()
         fruit.add(*self._choose_preparateurs("single", length))
         fruit.add(*leadingwords)
-        fruit.branch().configure(iss_mode=mode)
+        fruit.get_slice().configure(iss_mode=mode)
         fruit.add(*self._choose_sieves("small"))
 
         smallwords, mode = self._choose_words("small")
         filters = self._choose_preparateurs("filter", length)
         for fltr in filters:
-            fruit.fork()
+            fruit.cut()
             fruit.add(preparation.INC)
             fruit.add(fltr)
             fruit.add(*smallwords)
-            fruit.branch().configure(iss_mode=mode)
+            fruit.get_slice().configure(iss_mode=mode)
             fruit.add(*self._choose_sieves("small"))
 
-            fruit.fork()
+            fruit.cut()
             fruit.add(fltr)
             fruit.add(*smallwords)
-            fruit.branch().configure(iss_mode=mode)
+            fruit.get_slice().configure(iss_mode=mode)
             fruit.add(*self._choose_sieves("small"))
 
         return fruit
@@ -127,12 +127,12 @@ class MultivariateFruitBuilder:
 
         fruit.add(preparation.INC)
         fruit.add(*words)
-        fruit.branch().configure(iss_mode=mode)
+        fruit.get_slice().configure(iss_mode=mode)
         fruit.add(*sieves)
 
-        fruit.fork()
+        fruit.cut()
         fruit.add(*words)
-        fruit.branch().configure(iss_mode=mode)
+        fruit.get_slice().configure(iss_mode=mode)
         fruit.add(*sieves)
 
         return fruit

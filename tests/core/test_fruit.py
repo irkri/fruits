@@ -17,7 +17,7 @@ def test_n_features():
 
     fruit.add(*fruits.words.of_weight(4, dim=2))
 
-    assert len(fruit.branch().get_words()) == 82
+    assert len(fruit.get_slice().get_words()) == 82
 
     fruit.add(fruits.sieving.PPV(quantile=0, constant=True))
     fruit.add(fruits.sieving.PPV(quantile=0.2, constant=False,
@@ -35,7 +35,7 @@ def test_n_features():
 
     fruit.fit_transform(X_1)
 
-    sieves = fruit.branch()._sieves_extended
+    sieves = fruit.get_slice()._sieves_extended
     for word_sieves in sieves:
         for i in range(len(word_sieves) - 1):
             assert word_sieves[i]._cache is word_sieves[i+1]._cache

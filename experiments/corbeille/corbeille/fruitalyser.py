@@ -75,21 +75,21 @@ class _TransformationCallback(fruits.callback.AbstractCallback):
     """
 
     def __init__(self) -> None:
-        self._current_branch = -1
+        self._current_slice = -1
         self.prepared_data: list[np.ndarray] = []
         self.iterated_sums: list[list[np.ndarray]] = []
         self.sieved_data: list[np.ndarray] = []
 
-    def on_next_branch(self) -> None:
-        self._current_branch += 1
+    def on_next_slice(self) -> None:
+        self._current_slice += 1
 
     def on_preparation_end(self, X: np.ndarray) -> None:
         self.prepared_data.append(X)
 
     def on_iterated_sum(self, X: np.ndarray) -> None:
-        if len(self.iterated_sums) >= self._current_branch:
+        if len(self.iterated_sums) >= self._current_slice:
             self.iterated_sums.append([])
-        self.iterated_sums[self._current_branch].append(X)
+        self.iterated_sums[self._current_slice].append(X)
 
     def on_sieving_end(self, X: np.ndarray) -> None:
         self.sieved_data.append(X)
@@ -345,7 +345,7 @@ class Fruitalyser:
                 ``['input', 'prepared', 'iterated sums']``.
                 Defaults to plotting the input data.
             index (int, optional): The index of the preparateur or word
-                in the fruit counting over all branches.
+                in the fruit counting over all slicees.
             dim (int, optional): Dimension of each time series to plot.
                 Defaults to 0.
             mean (bool, optional): If ``True``, plots the mean of all
@@ -442,7 +442,7 @@ class Fruitalyser:
             sindex = split_index(self.fruit, index)
             findex = index
             for bindex in range(sindex[0]+1):
-                findex -= self.fruit.branch(bindex).nfeatures()
+                findex -= self.fruit.get_slice(bindex).nfeatures()
             feat_table[i] = self.callback.sieved_data[sindex[0]][:, findex]
             column_names.append(transformation_string(self.fruit, sindex))
         feats = pd.DataFrame(feat_table.T, columns=column_names)
@@ -452,7 +452,7 @@ class Fruitalyser:
         self,
         indices: Optional[Sequence[int]] = None,
     ) -> sns.PairGrid:
-        """Plots the features of the watched ``fruits.FruitBranch``
+        """Plots the features of the watched ``fruits.FruitSlice``
         object. The ``seaborn.pairplot`` function is used to create
         a plot based on a ``pandas.DataFrame`` consisting of selected
         features.

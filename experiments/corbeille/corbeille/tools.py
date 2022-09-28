@@ -23,47 +23,47 @@ def split_index(
         A tuple of integer indices. The length of the tuple is
         dependent on the level chosen. The indices in order
         correspond to
-        ``(branch, word, [extended letter,] sieve, feature)`` as one
+        ``(slice, word, [extended letter,] sieve, feature)`` as one
         sieve can output many features. The ``extended letter`` will
-        only be produced if the corresponding fruit branch has the
+        only be produced if the corresponding fruit slc has the
         ``iss_mode ``set to 'extended'.
     """
     if level == "prepared":
-        for branch_index in range(len(fruit.branches())):
+        for slc_index in range(len(fruit)):
             if index == 0:
-                return (branch_index, )
+                return (slc_index, )
             index -= 1
     elif level == "iterated sums":
-        for branch_index, branch in enumerate(fruit.branches()):
-            cp = None if branch.iss_mode != "extended" else (
-                CachePlan(branch.get_words())
+        for slc_index, slc in enumerate(fruit):
+            cp = None if slc.iss_mode != "extended" else (
+                CachePlan(slc.get_words())
             )
-            for word_index, word in enumerate(branch.get_words()):
+            for word_index, word in enumerate(slc.get_words()):
                 n = cp.unique_el_depth(word_index) if cp is not None else 1
                 for ext_letter in range(len(word)-n, len(word)):
                     if index == 0:
                         return (
-                            (branch_index, word_index, ext_letter)
-                            if branch.iss_mode == "extended"
-                            else (branch_index, word_index)
+                            (slc_index, word_index, ext_letter)
+                            if slc.iss_mode == "extended"
+                            else (slc_index, word_index)
                         )
                     index -= 1
     elif level == "features":
-        for branch_index, branch in enumerate(fruit.branches()):
-            cp = None if branch.iss_mode != "extended" else (
-                CachePlan(branch.get_words())
+        for slc_index, slc in enumerate(fruit):
+            cp = None if slc.iss_mode != "extended" else (
+                CachePlan(slc.get_words())
             )
-            for word_index, word in enumerate(branch.get_words()):
+            for word_index, word in enumerate(slc.get_words()):
                 n = cp.unique_el_depth(word_index) if cp is not None else 1
                 for ext_letter in range(len(word)-n, len(word)):
-                    for s_index, sieve in enumerate(branch.get_sieves()):
+                    for s_index, sieve in enumerate(slc.get_sieves()):
                         for feature_index in range(sieve.nfeatures()):
                             if index == 0:
                                 return (
-                                    (branch_index, word_index, ext_letter,
+                                    (slc_index, word_index, ext_letter,
                                      s_index, feature_index)
-                                    if branch.iss_mode == "extended"
-                                    else (branch_index, word_index, s_index,
+                                    if slc.iss_mode == "extended"
+                                    else (slc_index, word_index, s_index,
                                           feature_index)
                                 )
                             index -= 1
@@ -96,29 +96,29 @@ def transformation_string(
     """
     if isinstance(index, int):
         index = split_index(fruit, index, level=level)
-    branch = fruit.branch(index[0])
+    slc = fruit.get_slice(index[0])
     if with_kwargs:
-        string = "->".join(map(str, branch.get_preparateurs()))
+        string = "->".join(map(str, slc.get_preparateurs()))
     else:
         string = "->".join(map(
             lambda x: str(x).split("(")[0],
-            branch.get_preparateurs()
+            slc.get_preparateurs()
         ))
     if level == "iterated sums" or level == "features":
         if string != "":
             string += "->"
-        if branch.iss_mode == "extended":
+        if slc.iss_mode == "extended":
             string += "]".join(
-                str(branch.get_words()[index[1]]).split("]")[:-1][:index[2]+1]
+                str(slc.get_words()[index[1]]).split("]")[:-1][:index[2]+1]
             ) + "]"
         else:
-            string += str(branch.get_words()[index[1]])
+            string += str(slc.get_words()[index[1]])
     if level == "features":
         string += "->"
         if with_kwargs:
-            string += str(branch.get_sieves()[index[-2]])
+            string += str(slc.get_sieves()[index[-2]])
         else:
-            string += str(branch.get_sieves()[index[-2]]).split("(")[0]
+            string += str(slc.get_sieves()[index[-2]]).split("(")[0]
         string += f"_{index[-1]}"
     elif level != "prepared" and level != "iterated sums":
         raise ValueError(f"Unknown level supplied: {level!r}")

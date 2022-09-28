@@ -15,5 +15,5 @@ seaborn = "^0.11.2"
 comet-ml = "^3.26.1"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["setuptools", "poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"

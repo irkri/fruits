@@ -10,7 +10,7 @@ X_1 = np.array([
 ])
 
 
-def test_mode_in_branches():
+def test_mode_in_slices():
     fruit = fruits.Fruit()
 
     fruit.add(fruits.preparation.INC)
@@ -24,7 +24,7 @@ def test_mode_in_branches():
     fruit.add(fruits.sieving.MAX)
     fruit.add(fruits.sieving.MIN)
 
-    fruit.fork()
+    fruit.cut()
 
     fruit.add(fruits.words.SimpleWord("[111][2]"))
     fruit.add(fruits.words.SimpleWord("[1][22]"))
@@ -38,7 +38,7 @@ def test_mode_in_branches():
 
     assert fruit.nfeatures() == 27
 
-    fruit.branch(0).configure(iss_mode="extended")
+    fruit[0].configure(iss_mode="extended")
 
     assert fruit.nfeatures() == 36
 
@@ -50,7 +50,7 @@ def test_mode_in_branches():
     assert X_transform.shape == (100, 36)
 
 
-def test_branches():
+def test_slices():
     fruit = fruits.Fruit()
 
     w1 = fruits.words.SimpleWord("[1]")
@@ -62,7 +62,7 @@ def test_branches():
 
     fruit.add(w1, w2, w3)
     fruit.add(fruits.sieving.MAX)
-    fruit.fork()
+    fruit.cut()
     fruit.add(w4, w5, w6)
     fruit.add(fruits.sieving.MIN)
 

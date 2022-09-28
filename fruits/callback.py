@@ -8,13 +8,13 @@ class AbstractCallback(ABC):
     or more of the class methods.
 
     The callback can then be used in a call of
-    :meth:`fruits.core.fruit.Fruit.transform`.
+    :meth:`fruits.fruit.Fruit.transform`.
     """
 
-    def on_next_branch(self) -> None:
+    def on_next_slice(self) -> None:
         """Called every time the current
-        :class:`~fruits.core.fruit.FruitBranch` in a
-        :class:`~fruits.core.fruit.Fruit` object is switched.
+        :class:`~fruits.fruit.FruitSlice` in a
+        :class:`~fruits.fruit.Fruit` object is switched.
         """
 
     def on_preparateur(self, X: np.ndarray) -> None:

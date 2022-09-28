@@ -15,12 +15,10 @@ from .sieving.abstract import FeatureSieve
 class Fruit:
     """Feature Extractor using iterated sums.
 
-    A Fruit consists of a number of
-    :class:`~fruits.core.fruit.FruitBranch` objects.
-    At the end of the pipeline, each branch returns their own features
-    and they will be concatenated by this class.
+    A Fruit consists of at least one slice <:class:`FruitSlice`>.
+    A slice can be customized by adding preparateurs, words or sieves.
 
-    A simple example (using two branches):
+    A simple example (using two slices):
 
     .. code-block:: python
 
@@ -33,8 +31,8 @@ class Fruit:
         fruit.add(fruits.sieving.PPV(0.5))
         fruit.add(fruits.sieving.END)
 
-        # add a new branch without INC
-        fruit.fork()
+        # add a new slice without INC
+        fruit.cut()
         fruit.add(*fruits.words.of_weight(4))
         fruit.add(fruits.sieving.PPV(0.5))
         fruit.add(fruits.sieving.END)
@@ -54,48 +52,47 @@ class Fruit:
 
     def __init__(self, name: str = "") -> None:
         self.name: str = name
-        # list of FruitBranches
-        self._branches: list[FruitBranch] = []
-        # pointer for the current branch index
-        self._cbi: int = 0
+        # list of FruitSlicees
+        self._slices: list[FruitSlice] = []
+        # pointer for the current slice index
+        self._slc_index: int = 0
         self._fitted: bool = False
+        self._iterator_index: int = -1
 
-    def fork(self, branch: Optional["FruitBranch"] = None) -> None:
-        """Adds a new branch to the pipeline. If none is given, an
-        empty FruitBranch will be created and switched to.
-        """
-        if branch is None:
-            branch = FruitBranch()
-        self._branches.append(branch)
-        self._cbi = len(self._branches) - 1
-        self._fitted = False
-
-    def branch(self, index: Optional[int] = None) -> "FruitBranch":
-        """Returns the currently selected branch or the branch with the
-        given index.
-        """
-        if index is None:
-            return self._branches[self._cbi]
-        return self._branches[index]
-
-    def branches(self) -> list["FruitBranch"]:
-        """Returns a list of all branches of this Fruit object."""
-        return self._branches
-
-    def switch_branch(self, index: int) -> None:
-        """Switches to the branch with the given index.
+    def cut(self, slice: Optional["FruitSlice"] = None) -> None:
+        """Cuts the fruit and adds a new slice to the pipeline.
 
         Args:
-            index (int): Integer in
-                ``[0, 1, ..., len(self.branches())-1]``.
+            slice (FruitSlice, optional): A slice to add to the fruit.
+                If none is given, a new empty slice is added.
         """
-        if not (0 <= index < len(self._branches)):
-            raise IndexError("Index has to be in [0, len(self.branches()))")
-        self._cbi = index
+        if slice is None:
+            slice = FruitSlice()
+        self._slices.append(slice)
+        self._slc_index = len(self._slices) - 1
+        self._fitted = False
+
+    def get_slice(self, index: Optional[int] = None) -> "FruitSlice":
+        """Returns the currently selected slice or the slice
+        corresponding to the supplied index.
+        """
+        if index is None:
+            return self._slices[self._slc_index]
+        return self._slices[index]
+
+    def switch_slice(self, index: int) -> None:
+        """Switches to the slice with the given index.
+
+        Args:
+            index (int): Integer in ``[0, 1, ..., len(self)-1]``.
+        """
+        if not (0 <= index < len(self._slices)):
+            raise IndexError("Index has to be in [0, len(self)-1]")
+        self._slc_index = index
 
     def add(self, *objects: Union[Seed, Callable[[], Seed]]) -> None:
         """Adds one or multiple object(s) to the currently selected
-        branch.
+        slice.
 
         Args:
             objects: One or more objects of the
@@ -105,18 +102,18 @@ class Fruit:
                 - :class:`~fruits.words.word.Word`
                 - :class:`~fruits.sieving.abstract.FeatureSieve`
         """
-        if len(self._branches) == 0:
-            self.fork()
-        self._branches[self._cbi].add(*objects)
+        if len(self._slices) == 0:
+            self.cut()
+        self._slices[self._slc_index].add(*objects)
         self._fitted = False
 
     def nfeatures(self) -> int:
-        """Returns the total sum of features of all branches."""
-        return sum(branch.nfeatures() for branch in self._branches)
+        """Returns the total sum of features in all slices."""
+        return sum(slc.nfeatures() for slc in self._slices)
 
     def configure(self, **kwargs: Any) -> None:
-        """Calls ``brach.configure(**kwargs)`` for each FruitBranch
-        ``branch`` in the Fruit with the specified arguments.
+        """Calls ``slc.configure(**kwargs)`` for each FruitSlice
+        ``slc`` in the Fruit with the specified arguments.
 
         Args:
             iss_mode (str, optional): Mode of the ISS calculator.
@@ -138,18 +135,19 @@ class Fruit:
                 ``X.shape[0]`` or ``1`` for one random time series.
                 Defaults to 1.
         """
-        for branch in self._branches:
-            branch.configure(**kwargs)
+        for slc in self._slices:
+            slc.configure(**kwargs)
 
     def fit(self, X: np.ndarray) -> None:
-        """Fits all branches to the given data.
+        """Fits all slices to the given data.
 
         Args:
-            X (np.ndarray): Univariate or multivariate time series
-                dataset as an array of three dimensions.
+            X (np.ndarray): Univariate or multivariate time series as a
+                numpy array of shape
+                ``(n_series, n_dimensions, series_length)``.
         """
-        for branch in self._branches:
-            branch.fit(X)
+        for slc in self._slices:
+            slc.fit(X)
         self._fitted = True
 
     def transform(
@@ -158,18 +156,19 @@ class Fruit:
         callbacks: Optional[list[AbstractCallback]] = None,
     ) -> np.ndarray:
         """Returns a two dimensional array of all features from all
-        branches this Fruit object contains.
+        slices this Fruit object contains.
 
         Args:
-            X (np.ndarray): Univariate or multivariate time series
-                dataset as an array of three dimensions.
+            X (np.ndarray): Univariate or multivariate time series as a
+                numpy array of shape
+                ``(n_series, n_dimensions, series_length)``.
             callbacks: A list of callbacks. To write your own callback,
                 override the class
-                :class:`~fruits.core.callback.AbstractCallback`.
+                :class:`~fruits.callback.AbstractCallback`.
                 Defaults to None.
 
         Raises:
-            RuntimeError: If Fruit.fit wasn't called.
+            RuntimeError: If :meth:`fit` wasn't called.
         """
         if callbacks is None:
             callbacks = []
@@ -177,57 +176,71 @@ class Fruit:
             raise RuntimeError("Missing call of self.fit")
         result = np.zeros((X.shape[0], self.nfeatures()))
         index = 0
-        for branch in self._branches:
+        for slc in self._slices:
             for callback in callbacks:
-                callback.on_next_branch()
-            k = branch.nfeatures()
-            result[:, index:index+k] = branch.transform(X, callbacks)
+                callback.on_next_slice()
+            k = slc.nfeatures()
+            result[:, index:index+k] = slc.transform(X, callbacks)
             index += k
         result = np.nan_to_num(result, copy=False, nan=0.0)
         return result
 
     def fit_transform(self, X: np.ndarray) -> np.ndarray:
-        """Fits all branches to the given dataset and returns the
-        transformed results of X from all branches.
+        """Fits all slices to the given dataset and returns the
+        transformed results of X from all slices.
         """
         self.fit(X)
         return self.transform(X)
 
     def summary(self) -> str:
         """Returns a summary of this object. The summary contains a
-        summary for each FruitBranch in this Fruit object.
+        summary for each FruitSlice in this Fruit object.
         """
         summary = f"{f'Summary of fruits.Fruit: {self.name}':=^80}"
-        summary += f"\nBranches: {len(self.branches())}"
+        summary += f"\nSlices: {len(self)}"
         summary += f"\nFeatures: {self.nfeatures()}"
-        for branch in self.branches():
-            summary += "\n\n" + branch.summary()
+        for slc in self:
+            summary += "\n\n" + slc.summary()
         summary += f"\n{'End of Summary':=^80}"
         return summary
 
     def copy(self) -> "Fruit":
-        """Creates a shallow copy of this Fruit object.
-        This also creates shallow copies of all branches in this object.
+        """Creates a shallow copy of this Fruit by copying all slices.
         """
-        copy_ = Fruit(self.name+" (Copy)")
-        for branch in self._branches:
-            copy_.fork(branch.copy())
+        copy_ = Fruit(self.name + " (Copy)")
+        for slc in self._slices:
+            copy_.cut(slc.copy())
         return copy_
 
     def deepcopy(self) -> "Fruit":
-        """Creates a deep copy of this Fruit object.
-        This also creates deep copies of all branches in this object.
+        """Creates a deep copy of this Fruit by deep copying all slices.
         """
-        copy_ = Fruit(self.name+" (Copy)")
-        for branch in self._branches:
-            copy_.fork(branch.deepcopy())
+        copy_ = Fruit(self.name + " (Deepcopy)")
+        for slc in self._slices:
+            copy_.cut(slc.deepcopy())
         return copy_
 
+    def __len__(self) -> int:
+        return len(self._slices)
 
-class FruitBranch:
-    """One branch of a Fruit object.
+    def __iter__(self) -> "Fruit":
+        self._iterator_index = -1
+        return self
 
-    A FruitBranch object extracts values from time series data that are
+    def __next__(self) -> "FruitSlice":
+        if self._iterator_index < len(self._slices)-1:
+            self._iterator_index += 1
+            return self._slices[self._iterator_index]
+        raise StopIteration()
+
+    def __getitem__(self, index: int) -> "FruitSlice":
+        return self.get_slice(index)
+
+
+class FruitSlice:
+    """One slice of a Fruit.
+
+    A FruitSlice object extracts values from time series data that are
     somehow representative of the input data.
     The user can customize any of the following three steps.
 
@@ -246,8 +259,8 @@ class FruitBranch:
 
         - Extracting Features:
             Each :class:`~fruits.sieving.abstract.FeatureSieve` added to
-            the branch will be fitted on the iterated sums from the
-            previous step. The branch then returns an array of numbers
+            the slice will be fitted on the iterated sums from the
+            previous step. The slice then returns an array of numbers
             (the transformed results from those sieves), i.e. the
             features for each time series.
     """
@@ -276,7 +289,7 @@ class FruitBranch:
         iss_mode: Literal['single', 'extended'] = "single",
         fit_sample_size: Union[float, int] = 1,
     ) -> None:
-        """Makes changes to the default configuration of a fruit branch
+        """Makes changes to the default configuration of a fruit slice
         if arguments differ from ``None``.
 
         Args:
@@ -303,59 +316,57 @@ class FruitBranch:
         self.fit_sample_size = fit_sample_size
 
     def add_preparateur(self, preparateur: Preparateur) -> None:
-        """Adds a preparateur to the branch."""
+        """Adds a preparateur to the fruit slice."""
         if not isinstance(preparateur, Preparateur):
             raise TypeError
         self._preparateurs.append(preparateur)
         self._fitted = False
 
     def get_preparateurs(self) -> list[Preparateur]:
-        """Returns a list of all preparateurs added to the
-        branch.
-        """
+        """Returns a list of all preparateurs in this fruit slice."""
         return self._preparateurs
 
     def clear_preparateurs(self) -> None:
-        """Removes all preparateurs that were added to this branch."""
+        """Removes all preparateurs in this fruit slice."""
         self._preparateurs = []
         self._fitted = False
 
     def add_word(self, word: Word) -> None:
-        """Adds a word to the branch."""
+        """Adds a word to this fruit slice."""
         if not isinstance(word, Word):
             raise TypeError
         self._words.append(word)
         self._fitted = False
 
     def get_words(self) -> list[Word]:
-        """Returns a list of all words in the branch."""
+        """Returns a list of all words in this fruit slice."""
         return self._words
 
     def clear_words(self) -> None:
-        """Removes all words that were added to this branch."""
+        """Removes all words in this fruit slice."""
         self._words = []
         self._sieves_extended = []
         self._fitted = False
 
     def add_sieve(self, sieve: FeatureSieve) -> None:
-        """Appends a new feature sieve to the FruitBranch."""
+        """Appends a new feature sieve to this fruit slice."""
         if not isinstance(sieve, FeatureSieve):
             raise TypeError
         self._sieves.append(sieve)
         self._fitted = False
 
     def get_sieves(self) -> list[FeatureSieve]:
-        """Returns a list of all feature sieves added to the branch."""
+        """Returns a list of all feature sieves in this fruit slice."""
         return self._sieves
 
     def clear_sieves(self) -> None:
-        """Removes all feature sieves that were added to this branch."""
+        """Removes all feature sieves in this fruit slice."""
         self._sieves = []
         self._sieves_extended = []
         self._fitted = False
 
     def add(self, *objects: Union[Seed, Callable[[], Seed]]) -> None:
-        """Adds one or multiple object(s) to the branch.
+        """Adds one or multiple object(s) to this fruit slice.
 
         Args:
             objects: One or more objects of the following types:
@@ -379,10 +390,10 @@ class FruitBranch:
 
     def clear(self) -> None:
         """Clears all settings, configurations and calculated results
-        the branch has.
+        in this fruit slice.
 
-        After the branch is cleared, it has the same settings as a newly
-        created FruitBranch object.
+        After the slice is cleared, it has the same settings as a newly
+        created :class:`FruitSlice` object.
         """
         self.clear_preparateurs()
         self.clear_words()
@@ -404,7 +415,7 @@ class FruitBranch:
         return sum(s.nfeatures() for s in self._sieves) * len(self._words)
 
     def _compile(self) -> None:
-        # checks if the FruitBranch is configured correctly and ready
+        # checks if the FruitSlice is configured correctly and ready
         # for fitting
         if not self._words:
             raise RuntimeError("No words specified for ISS calculation")
@@ -422,12 +433,13 @@ class FruitBranch:
         return X[indices, :, :]
 
     def fit(self, X: np.ndarray) -> None:
-        """Fits the branch to the given dataset. What this action
-        explicitly does depends on the FruitBranch configuration.
+        """Fits the slice to the given dataset. What this action
+        explicitly does depends on its configuration.
 
         Args:
-            X (np.ndarray): Univariate or multivariate time series
-                dataset as an array of three dimensions.
+            X (np.ndarray): Univariate or multivariate time series as a
+                numpy array of shape
+                ``(n_series, n_dimensions, series_length)``.
         """
         self._compile()
 
@@ -463,15 +475,16 @@ class FruitBranch:
         the calculated features for the different time series.
 
         Args:
-            X (np.ndarray): Univariate or multivariate time series
-                dataset as an array of three dimensions.
+            X (np.ndarray): Univariate or multivariate time series as a
+                numpy array of shape
+                ``(n_series, n_dimensions, series_length)``.
             callbacks: A list of callbacks. To write your own callback,
                 override the class
-                :class:`~fruits.core.callback.AbstractCallback`.
+                :class:`~fruits.callback.AbstractCallback`.
                 Defaults to None.
 
         Raises:
-            RuntimeError: If Fruit.fit wasn't called.
+            RuntimeError: If :meth:`fit` wasn't called.
         """
         if callbacks is None:
             callbacks = []
@@ -521,7 +534,7 @@ class FruitBranch:
         """Returns a summary of this object. The summary contains all
         added preparateurs, words and sieves.
         """
-        summary = f"{'fruits.FruitBranch':-^80}"
+        summary = f"{'fruits.FruitSlice':-^80}"
         summary += f"\nNumber of features: {self.nfeatures()}"
         summary += f"\n\nPreparateurs ({len(self._preparateurs)}): "
         if len(self._preparateurs) == 0:
@@ -550,11 +563,11 @@ class FruitBranch:
                 summary += "\n\t  ".join(lines[1:])
         return summary
 
-    def copy(self) -> "FruitBranch":
-        """Returns a shallow copy of this FruitBranch with same settings
+    def copy(self) -> "FruitSlice":
+        """Returns a shallow copy of this FruitSlice with same settings
         but all calculation progress erased.
         """
-        copy_ = FruitBranch()
+        copy_ = FruitSlice()
         for preparateur in self._preparateurs:
             copy_.add(preparateur)
         for iterator in self._words:
@@ -563,11 +576,11 @@ class FruitBranch:
             copy_.add(sieve)
         return copy_
 
-    def deepcopy(self) -> "FruitBranch":
-        """Returns a deep copy of this FruitBranch with same settings
+    def deepcopy(self) -> "FruitSlice":
+        """Returns a deep copy of this FruitSlice with same settings
         but all calculation progress erased.
         """
-        copy_ = FruitBranch()
+        copy_ = FruitSlice()
         for preparateur in self._preparateurs:
             copy_.add(preparateur.copy())
         for iterator in self._words:
