@@ -491,8 +491,10 @@ class FruitSlice:
         if not self._fitted:
             raise RuntimeError("Missing call of self.fit")
 
+        cache = SharedSeedCache()
         prepared_data = X
         for prep in self._preparateurs:
+            prep._cache = cache
             prepared_data = prep.transform(prepared_data)
             for callback in callbacks:
                 callback.on_preparateur(prepared_data)
@@ -512,6 +514,7 @@ class FruitSlice:
             for callback in callbacks:
                 callback.on_iterated_sum(iterated_data)
             for sieve in self._sieves_extended[i]:
+                sieve._cache = cache
                 nf = sieve.nfeatures()
                 sieved_data[:, k:k+nf] = sieve.transform(
                     iterated_data[:, 0, :]

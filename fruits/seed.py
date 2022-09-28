@@ -14,10 +14,6 @@ class Seed(ABC):
     """
 
     _cache: SharedSeedCache
-    # variable that checks if the seed is used outside a fruit,
-    # the _cache will be reset each time a fit is called if no _cache
-    # is present at the Seed.fit call
-    _cache_at_fit: bool
 
     @abstractmethod
     def _fit(self, X: np.ndarray) -> None:
@@ -25,10 +21,12 @@ class Seed(ABC):
 
     def fit(self, X: np.ndarray) -> None:
         """Fits the seed to the given data."""
-        self._cache_at_fit = not hasattr(self, "_cache")
-        if self._cache_at_fit:
+        has_cache = hasattr(self, "_cache")
+        if not has_cache:
             self._cache = SharedSeedCache()
         self._fit(X)
+        if not has_cache:
+            del self._cache
 
     @abstractmethod
     def _transform(self, X: np.ndarray) -> np.ndarray:
@@ -36,10 +34,12 @@ class Seed(ABC):
 
     def transform(self, X: np.ndarray) -> np.ndarray:
         """Transforms the given data and returns the results."""
+        has_cache = hasattr(self, "_cache")
+        if not has_cache:
+            self._cache = SharedSeedCache()
         result = self._transform(X)
-        if self._cache_at_fit:
+        if not has_cache:
             del self._cache
-            self._cache_at_fit = False
         return result
 
     def fit_transform(self, X: np.ndarray) -> np.ndarray:
