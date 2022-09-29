@@ -4,6 +4,7 @@ import numpy as np
 
 from . import preparation, sieving
 from .fruit import Fruit
+from .iss.iss import ISS, ISSMode
 from .iss.words.creation import of_weight
 from .iss.words.word import SimpleWord, Word
 from .preparation.abstract import Preparateur
@@ -19,35 +20,31 @@ class UnivariateFruitBuilder:
         length = X.shape[2]
         fruit = Fruit("Built by UnivariateFruitBuilder")
 
-        leadingwords, mode = self._choose_words("leading")
+        iss = self._choose_iss("leading")
 
         fruit.cut()
         fruit.add(preparation.INC)
         fruit.add(*self._choose_preparateurs("single", length))
-        fruit.add(*leadingwords)
-        fruit.get_slice().configure(iss_mode=mode)
+        fruit.add(iss)
         fruit.add(*self._choose_sieves("small"))
 
         fruit.cut()
         fruit.add(*self._choose_preparateurs("single", length))
-        fruit.add(*leadingwords)
-        fruit.get_slice().configure(iss_mode=mode)
+        fruit.add(iss)
         fruit.add(*self._choose_sieves("small"))
 
-        smallwords, mode = self._choose_words("small")
+        smalliss = self._choose_iss("small")
         filters = self._choose_preparateurs("filter", length)
         for fltr in filters:
             fruit.cut()
             fruit.add(preparation.INC)
             fruit.add(fltr)
-            fruit.add(*smallwords)
-            fruit.get_slice().configure(iss_mode=mode)
+            fruit.add(smalliss)
             fruit.add(*self._choose_sieves("small"))
 
             fruit.cut()
             fruit.add(fltr)
-            fruit.add(*smallwords)
-            fruit.get_slice().configure(iss_mode=mode)
+            fruit.add(smalliss)
             fruit.add(*self._choose_sieves("small"))
 
         return fruit
@@ -71,10 +68,10 @@ class UnivariateFruitBuilder:
             )
         raise ValueError(f"Unknown mode supplied: {mode!r}")
 
-    def _choose_words(
+    def _choose_iss(
         self,
         mode: str,
-    ) -> tuple[tuple[Word, ...], Literal["single", "extended"]]:
+    ) -> ISS:
         # returns a list of words and a calculator mode
         if mode == "leading":
             words = of_weight(4, 1)
@@ -84,13 +81,13 @@ class UnivariateFruitBuilder:
                 w = preword.copy()
                 w.multiply(str(word))
                 leading_words.append(w)
-            return tuple(leading_words), "extended"
+            return ISS(leading_words, mode=ISSMode.EXTENDED)
         if mode == "double":
-            return of_weight(3, 2), "single"
+            return ISS(of_weight(3, 2), mode=ISSMode.SINGLE)
         if mode == "small":
-            return of_weight(3, 1), "extended"
+            return ISS(of_weight(3, 1), mode=ISSMode.EXTENDED)
         if mode == "large":
-            return of_weight(4, 1), "extended"
+            return ISS(of_weight(4, 1), mode=ISSMode.EXTENDED)
         raise ValueError(f"Unknown mode supplied: {mode!r}")
 
     def _choose_sieves(self, size: str) -> list[FeatureSieve]:
@@ -122,30 +119,28 @@ class MultivariateFruitBuilder:
         fruit = Fruit("Built by MultivariateFruitBuilder")
 
         dim = X.shape[1]
-        words, mode = self._choose_words(dim)
+        iss = self._choose_iss(dim)
         sieves = self._choose_sieves(dim)
 
         fruit.add(preparation.INC)
-        fruit.add(*words)
-        fruit.get_slice().configure(iss_mode=mode)
+        fruit.add(iss)
         fruit.add(*sieves)
 
         fruit.cut()
-        fruit.add(*words)
-        fruit.get_slice().configure(iss_mode=mode)
+        fruit.add(iss)
         fruit.add(*sieves)
 
         return fruit
 
-    def _choose_words(
+    def _choose_iss(
         self,
         dim: int,
-    ) -> tuple[tuple[Word, ...], Literal["single", "extended"]]:
+    ) -> ISS:
         # chooses fitting words, calculator mode based on dimensionality
         if 2 <= dim <= 3:
-            return of_weight(6 - dim, dim), "extended"
+            return ISS(of_weight(6 - dim, dim), mode=ISSMode.EXTENDED)
         if 4 <= dim <= 18:
-            return of_weight(2, dim), "extended"
+            return ISS(of_weight(2, dim), mode=ISSMode.EXTENDED)
         if 19 <= dim <= 47:
             words = []
             for d in range(1, 4):
@@ -154,7 +149,7 @@ class MultivariateFruitBuilder:
                         words.append(SimpleWord(f"[({i})][({i+d})]"))
                         words.append(SimpleWord(f"[({i})({i+d})]"))
             words.append(SimpleWord(f"[({dim})]"))
-            return tuple(words), "extended"
+            return ISS(words, mode=ISSMode.EXTENDED)
         if 48 <= dim <= 100:
             words = []
             for d in range(1, 5):
@@ -162,13 +157,13 @@ class MultivariateFruitBuilder:
                     if i + d <= dim:
                         words.append(SimpleWord(f"[({i})][({i+d})]"))
             words.append(SimpleWord(f"[({dim})]"))
-            return tuple(words), "extended"
+            return ISS(words, mode=ISSMode.EXTENDED)
         words = []
         for i in range(dim):
             if i + 1 <= dim:
                 words.append(SimpleWord(f"[({i})][({i+1})]"))
         words.append(SimpleWord(f"[({dim})]"))
-        return tuple(words), "extended"
+        return ISS(words, mode=ISSMode.EXTENDED)
 
     def _choose_sieves(self, dim: int) -> tuple[FeatureSieve, ...]:
         # chooses fitting sieves based on dimensionality

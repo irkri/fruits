@@ -1,7 +1,10 @@
+from typing import Iterator, Optional, Sequence
+
 import numba
 import numpy as np
 
-from .words.word import Word
+from .cache import CachePlan
+from .words.word import SimpleWord, Word
 
 
 def _slow_single_ISS(
@@ -110,3 +113,58 @@ def _fast_ISS(
     for i in numba.prange(Z.shape[0]):
         result[i] = _fast_single_ISS(Z[i, :, :], word, alphas, extended)
     return result
+
+
+def _transform_simple_word(word: SimpleWord) -> np.ndarray:
+    # transforms the given simple word for faster calculation with a
+    # backend function
+    simple_word_raw = list(word)
+    word_transformed = np.zeros((len(word), word._max_dim), dtype=np.int32)
+    for i, dim in enumerate(simple_word_raw):
+        for j, nletters in enumerate(dim):
+            word_transformed[i, j] = nletters
+    return word_transformed
+
+
+def calculate_ISS(
+    X: np.ndarray,
+    words: Sequence[Word],
+    batch_size: int,
+    cache_plan: Optional[CachePlan] = None,
+) -> Iterator[np.ndarray]:
+    if batch_size > len(words):
+        raise ValueError("batch_size too large, has to be < len(words)")
+    i = 0
+    while i < len(words):
+        if i + batch_size > len(words):
+            batch_size = len(words) - i
+        results = np.zeros((
+            X.shape[0],
+            batch_size if cache_plan is None else (
+                cache_plan.n_iterated_sums(range(i, i+batch_size))
+            ),
+            X.shape[2],
+        ))
+        index = 0
+        for word in words[i:i+batch_size]:
+            ext = 1 if cache_plan is None else cache_plan.unique_el_depth(i)
+            alphas = np.array([0.0] + word.alpha + [0.0], dtype=np.float32)
+            if isinstance(word, SimpleWord):
+                results[:, index:index+ext, :] = _fast_ISS(
+                    X,
+                    _transform_simple_word(word),
+                    alphas,
+                    ext,
+                )
+            elif isinstance(word, Word):
+                results[:, index:index+ext, :] = _slow_ISS(
+                    X,
+                    word,
+                    alphas,
+                    ext,
+                )
+            else:
+                raise TypeError(f"Unknown word type: {type(word)}")
+            index += ext
+            i += 1
+        yield results

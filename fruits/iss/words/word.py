@@ -3,11 +3,10 @@ from typing import Optional, Union
 
 import numpy as np
 
-from ...seed import Seed
 from .letters import ExtendedLetter
 
 
-class Word(Seed):
+class Word:
     """A word is a collection of
     :class:`~fruits.words.letter.ExtendedLetter` objects.
     An extended letter is a collection of letters.
@@ -111,16 +110,7 @@ class Word(Seed):
         else:
             raise TypeError(f"Cannot multiply Word with {type(other)}")
 
-    def _fit(self, X: np.ndarray) -> None:
-        pass
-
-    def _transform(self, X: np.ndarray) -> np.ndarray:
-        raise NotImplementedError(
-            "Please use fruits.ISS for the proper calculation of iterated sums"
-            " specifying this word as an argument"
-        )
-
-    def _copy(self) -> "Word":
+    def copy(self) -> "Word":
         sw = Word()
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
@@ -251,7 +241,7 @@ class SimpleWord(Word):
                 el[letter-1] = el_int.count(letter)
             self._extended_letters.append(el)
 
-    def _copy(self) -> "SimpleWord":
+    def copy(self) -> "SimpleWord":
         sw = SimpleWord(self._name)
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
