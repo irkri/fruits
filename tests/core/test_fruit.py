@@ -15,9 +15,9 @@ def test_n_features():
 
     fruit.add(fruits.preparation.INC(zero_padding=False))
 
-    fruit.add(*fruits.words.of_weight(4, dim=2))
+    fruit.add(fruits.ISS(fruits.words.of_weight(4, dim=2)))
 
-    assert len(fruit.get_slice().get_words()) == 82
+    assert len(fruit.get_slice().get_iss()[0].words) == 82
 
     fruit.add(fruits.sieving.PPV(quantile=0, constant=True))
     fruit.add(fruits.sieving.PPV(quantile=0.2, constant=False,

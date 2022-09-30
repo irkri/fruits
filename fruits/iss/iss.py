@@ -1,12 +1,12 @@
 from enum import Enum, auto
-from typing import Iterator, Literal, Optional, Sequence, Union, overload
+from typing import Generator, Sequence
 
 import numpy as np
 
 from ..seed import Seed
 from ._backend import calculate_ISS
 from .cache import CachePlan
-from .words.word import SimpleWord, Word
+from .words.word import Word
 
 
 class ISSMode(Enum):
@@ -61,7 +61,9 @@ class ISS(Seed):
         result = calculate_ISS(
             X,
             self.words,
-            cache_plan=self._cache_plan,
+            cache_plan=(
+                self._cache_plan if self.mode == ISSMode.EXTENDED else None
+            ),
             batch_size=len(self.words),
         )
         return next(iter(result))
@@ -75,10 +77,13 @@ class ISS(Seed):
         self,
         X: np.ndarray,
         batch_size: int = 1,
-    ) -> Iterator[np.ndarray]:
-        return calculate_ISS(
+    ) -> Generator[np.ndarray, None, None]:
+        yield from calculate_ISS(
             X,
             self.words,
+            cache_plan=(
+                self._cache_plan if self.mode == ISSMode.EXTENDED else None
+            ),
             batch_size=batch_size,
         )
 

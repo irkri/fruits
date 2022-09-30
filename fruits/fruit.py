@@ -531,6 +531,5 @@ class FruitSlice:
             copy_.add(iss.copy())
         for sieve in self._sieves:
             copy_.add(sieve.copy())
-        copy_.iss_mode = self.iss_mode
         copy_.fit_sample_size = self.fit_sample_size
         return copy_

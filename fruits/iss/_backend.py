@@ -1,4 +1,4 @@
-from typing import Iterator, Optional, Sequence
+from typing import Generator, Optional, Sequence
 
 import numba
 import numpy as np
@@ -131,7 +131,7 @@ def calculate_ISS(
     words: Sequence[Word],
     batch_size: int,
     cache_plan: Optional[CachePlan] = None,
-) -> Iterator[np.ndarray]:
+) -> Generator[np.ndarray, None, None]:
     if batch_size > len(words):
         raise ValueError("batch_size too large, has to be < len(words)")
     i = 0

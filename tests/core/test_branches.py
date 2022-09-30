@@ -15,10 +15,12 @@ def test_mode_in_slices():
 
     fruit.add(fruits.preparation.INC)
 
-    fruit.add(fruits.words.SimpleWord("[11][1][221]"))
-    fruit.add(fruits.words.SimpleWord("[11][1][2][1]"))
-    fruit.add(fruits.words.SimpleWord("[12]"))
-    fruit.add(fruits.words.SimpleWord("[22]"))
+    fruit.add(fruits.ISS([
+        fruits.words.SimpleWord("[11][1][221]"),
+        fruits.words.SimpleWord("[11][1][2][1]"),
+        fruits.words.SimpleWord("[12]"),
+        fruits.words.SimpleWord("[22]"),
+    ]))
 
     fruit.add(fruits.sieving.PPV)
     fruit.add(fruits.sieving.MAX)
@@ -26,11 +28,13 @@ def test_mode_in_slices():
 
     fruit.cut()
 
-    fruit.add(fruits.words.SimpleWord("[111][2]"))
-    fruit.add(fruits.words.SimpleWord("[1][22]"))
-    fruit.add(fruits.words.SimpleWord("[112][2]"))
-    fruit.add(fruits.words.SimpleWord("[1]"))
-    fruit.add(fruits.words.SimpleWord("[2]"))
+    fruit.add(fruits.ISS([
+        fruits.words.SimpleWord("[111][2]"),
+        fruits.words.SimpleWord("[1][22]"),
+        fruits.words.SimpleWord("[112][2]"),
+        fruits.words.SimpleWord("[1]"),
+        fruits.words.SimpleWord("[2]"),
+    ]))
 
     fruit.add(fruits.sieving.PPV)
     fruit.add(fruits.sieving.MAX)
@@ -38,7 +42,13 @@ def test_mode_in_slices():
 
     assert fruit.nfeatures() == 27
 
-    fruit[0].configure(iss_mode="extended")
+    fruit[0].clear_iss()
+    fruit[0].add_iss(fruits.ISS([
+        fruits.words.SimpleWord("[11][1][221]"),
+        fruits.words.SimpleWord("[11][1][2][1]"),
+        fruits.words.SimpleWord("[12]"),
+        fruits.words.SimpleWord("[22]"),
+    ], mode=fruits.iss.ISSMode.EXTENDED))
 
     assert fruit.nfeatures() == 36
 
@@ -60,10 +70,10 @@ def test_slices():
     w5 = fruits.words.SimpleWord("[1][1]")
     w6 = fruits.words.SimpleWord("[1][2]")
 
-    fruit.add(w1, w2, w3)
+    fruit.add(fruits.ISS([w1, w2, w3]))
     fruit.add(fruits.sieving.MAX)
     fruit.cut()
-    fruit.add(w4, w5, w6)
+    fruit.add(fruits.ISS([w4, w5, w6]))
     fruit.add(fruits.sieving.MIN)
 
     assert fruit.nfeatures() == 6
