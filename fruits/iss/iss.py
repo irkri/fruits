@@ -4,7 +4,6 @@ from typing import Generator, Optional, Sequence
 import numpy as np
 
 from ..seed import Seed
-from ._backend import calculate_ISS
 from .cache import CachePlan
 from .semiring import ISSSemiRing, SumTimes
 from .words.word import Word
@@ -15,6 +14,40 @@ class ISSMode(Enum):
 
     SINGLE = auto()
     EXTENDED = auto()
+
+
+def _calculate_ISS(
+    X: np.ndarray,
+    words: Sequence[Word],
+    batch_size: int,
+    semiring: ISSSemiRing,
+    cache_plan: Optional[CachePlan] = None,
+) -> Generator[np.ndarray, None, None]:
+    i = 0
+    while i < len(words):
+        if i + batch_size > len(words):
+            batch_size = len(words) - i
+
+        n_itsum = batch_size
+        if cache_plan is not None:
+            n_itsum = cache_plan.n_iterated_sums(range(i, i+batch_size))
+        results = np.zeros((X.shape[0], n_itsum, X.shape[2]))
+
+        index = 0
+        for word in words[i:i+batch_size]:
+            n_itsum_word = 1
+            if cache_plan is not None:
+                n_itsum_word = cache_plan.unique_el_depth(i)
+            results[:, index:index+n_itsum_word, :] = semiring.iterated_sums(
+                X,
+                word,
+                np.array([0.0] + word.alpha + [0.0], dtype=np.float32),
+                n_itsum_word,
+            )
+            index += n_itsum_word
+            i += 1
+
+        yield results
 
 
 class ISS(Seed):
@@ -57,7 +90,7 @@ class ISS(Seed):
         pass
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        result = calculate_ISS(
+        result = _calculate_ISS(
             X,
             self.words,
             cache_plan=(
@@ -95,7 +128,9 @@ class ISS(Seed):
                 words given. Default is that the iterated sums for each
                 single word are returned one after another.
         """
-        yield from calculate_ISS(
+        if batch_size > len(self.words):
+            raise ValueError("batch_size too large, has to be < len(words)")
+        yield from _calculate_ISS(
             X,
             self.words,
             cache_plan=(
