@@ -1,8 +1,6 @@
 import re
 from typing import Optional, Union
 
-import numpy as np
-
 from .letters import ExtendedLetter
 
 

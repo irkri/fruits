@@ -1,6 +1,5 @@
 import itertools
-from collections.abc import Iterator, Sequence
-from typing import Union
+from collections.abc import Iterator
 
 from .letters import ExtendedLetter
 from .word import SimpleWord, Word
@@ -55,14 +54,14 @@ def of_weight(w: int, dim: int = 1) -> tuple[SimpleWord, ...]:
 
 
 def replace_letters(
-    words: Union[SimpleWord, Sequence[SimpleWord]],
+    word: SimpleWord,
     letter_gen: Iterator[str],
-) -> Union[Word, tuple[Word, ...]]:
-    """Replaces the letters in the given simple word(s) by the letters
+) -> Word:
+    """Replaces the letters in the given simple word by the letters
     specified as strings in ``letter_gen``.
 
     Args:
-        word (Word or sequence of Words): Words with letters to replace.
+        word (Word): Word with letters to replace.
         letter_gen (Generator): Iterator that yields letter names of
             correctly decorated functions
             (using `meth:`~fruits.words.letters.letter``). If the
@@ -70,26 +69,18 @@ def replace_letters(
             in the word will not be changed.
 
     Returns:
-        Word or list of Words based on the input.
+        Word: A new word with all letters of the given simple word
+            replaced.
     """
-    if isinstance(words, SimpleWord):
-        words = (words, )
-    if not isinstance(words, Sequence):
-        raise ValueError("'Invalid argument for 'words' specified")
-    new_words = []
-    for word in words:
-        if not isinstance(word, SimpleWord):
-            raise ValueError("Can only replace letters in a simple word")
-        new_word = Word()
-        for el in word:
-            new_el = ExtendedLetter()
-            for dim in el._dimensions:
-                for _ in range(dim):
-                    try:
-                        letter = next(letter_gen)
-                    except StopIteration:
-                        letter = "DIM"
-                    new_el.append(letter, dim)
-            new_word.multiply(new_el)
-        new_words.append(new_word)
-    return tuple(new_words)
+    new_word = Word()
+    for el in word:
+        new_el = ExtendedLetter()
+        for dim in el._dimensions:
+            for _ in range(dim):
+                try:
+                    letter = next(letter_gen)
+                except StopIteration:
+                    letter = "DIM"
+                new_el.append(letter, dim)
+        new_word.multiply(new_el)
+    return new_word
