@@ -122,7 +122,8 @@ class SumTimes(ISSSemiRing):
             C = np.ones(Z.shape[1], dtype=np.float64)
             for dim, el in enumerate(ext_letter):
                 if el != 0:
-                    C = C * Z[dim, :]**el
+                    for _ in range(el):
+                        C = C * Z[dim, :]
             if k > 0:
                 tmp = np.roll(tmp, 1)
                 tmp[0] = 0

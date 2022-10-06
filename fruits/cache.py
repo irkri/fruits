@@ -19,7 +19,7 @@ def _coquantile(X: np.ndarray, q: float) -> np.ndarray:
     Y = _increments(X)[:, 0, :]
     results = np.zeros(Y.shape[0], dtype=np.int64)
     for i in numba.prange(Y.shape[0]):
-        Y[i, :] = np.cumsum(Y[i, :]**2)
+        Y[i, :] = np.cumsum(Y[i, :] * Y[i, :])
         results[i] = np.sum(Y[i, :] <= q * Y[i, -1])
     return results
 
