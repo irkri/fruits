@@ -174,28 +174,23 @@ class Fruit:
         if self.name != "":
             ident_string += f" {self.name!r}"
         ident_string += f" -> Features: {self.nfeatures()}"
-        summary += "||" + f"{ident_string: ^76}" + "||\n"
+        summary += "<" + f"{ident_string: ^78}" + ">\n"
         summary += 80*"=" + "\n"
-        summary += "|" + 38*"-" + "|"
-        if len(self._slices) > 1:
-            summary += "|" + 38*"-" + "|"
-        summary += "\n"
         n = len(self._slices)
         if n%2 != 0:
             n -= 1
         for islc in range(0, n, 2):
+            summary += "|" + 38*"-" + "||" + 38*"-" + "|\n"
             left = self._slices[islc].summary().split("\n")
             right = self._slices[islc+1].summary().split("\n")
-            left += ["" for _ in range(len(right)-len(left))]
-            right += ["" for _ in range(len(left)-len(right))]
+            left += [38*" " for _ in range(len(right)-len(left))]
+            right += [38*" " for _ in range(len(left)-len(right))]
             summary += "\n".join(f"|{l}||{r}|" for l, r in zip(left, right))
+            summary += "\n|" + 38*"-" + "||" + 38*"-" + "|\n"
         if len(self._slices)%2 != 0:
-            summary += "|"+self._slices[-1].summary().replace("\n", "|\n|")
-            summary += "|"
-        summary += "\n|" + 38*"-" + "|"
-        if len(self._slices) > 1:
-            summary += "|" + 38*"-" + "|"
-        summary += "\n"
+            summary += "|" + 38*"-" + "|\n|"
+            summary += self._slices[-1].summary().replace("\n", "|\n|")
+            summary += "|\n|" + 38*"-" + "|\n"
         summary += f"{'':=^80}"
         return summary
 
@@ -494,17 +489,19 @@ class FruitSlice:
         summary += f"{f'ISS Calculators ({len(self._iss)}):': <38}"
         if len(self._iss) == 0:
             summary += 38*" "
-        summary += "\n"
-        summary += f"\n".join(f"{f'    + {x}': <38}" for x in self._iss)
-        summary += "\n"
-        summary += f"{f'Sieves ({len(self._sieves)}):': <38}"
+        for iss in self._iss:
+            summary += f"\n{f'    + {iss} -> {iss.n_iterated_sums()}': <38}"
+            summary += f"\n{f'       | words: {len(iss.words)}': <38}"
+            semiring = iss.semiring.__class__.__name__
+            summary += f"\n{f'       | semiring: {semiring}': <38}"
+        if len(self._iss) == 0:
+            summary += "\n"
+        summary += f"\n{f'Sieves ({len(self._sieves)}):': <38}"
         if len(self._sieves) == 0:
             summary += "\n" + 38*" "
-        for x in self._sieves:
-            summary += "\n"
-            lines = x.summary().split("\n")
-            summary += f"{f'    + {lines[0]}': <38}" + "\n"
-            summary += "\n".join(f"{f'    {l}': <38}" for l in lines[1:])
+        for sv in self._sieves:
+            name = sv.__class__.__name__
+            summary += f"\n{f'    + {name} -> {sv.nfeatures()}': <38}"
         return summary
 
     def copy(self) -> "FruitSlice":

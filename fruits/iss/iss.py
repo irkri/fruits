@@ -142,9 +142,3 @@ class ISS(Seed):
 
     def _copy(self) -> "ISS":
         return ISS(self.words, mode=self.mode)
-
-    def __str__(self) -> str:
-        return (
-            f"ISS(words={len(self.words)}, "
-            f"mode={str(self.mode).split('.')[-1]})"
-        )
