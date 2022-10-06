@@ -960,7 +960,7 @@ strawberry.add(
     fruits.sieving.END,
 )
 
-basket = {
+basket: dict[str, tuple[fruits.Fruit, ...]] = {
     "grape": (grape01, grape02, grape03),
 
     "apple": (apple01, apple02, apple03, apple04),
@@ -974,8 +974,8 @@ basket = {
 
     "tangerine": (tangerine01, tangerine02, tangerine03, tangerine04),
 
-    "apricot": (apricot01, apricot02, apricot03, apricot04, apricot05, apricot06,
-                apricot07, apricot08),
+    "apricot": (apricot01, apricot02, apricot03, apricot04, apricot05,
+                apricot06, apricot07, apricot08),
 
     "olive": (olive01, olive02, olive03),
 

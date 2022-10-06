@@ -23,10 +23,10 @@ def split_index(
         A tuple of integer indices. The length of the tuple is
         dependent on the level chosen. The indices in order
         correspond to
-        ``(slice, word, [extended letter,] sieve, feature)`` as one
+        ``(slice, iss, word, [extended letter,] sieve, feature)`` as one
         sieve can output many features. The ``extended letter`` will
-        only be produced if the corresponding fruit slc has the
-        ``iss_mode ``set to 'extended'.
+        only be produced if the corresponding fruit slice and ISS
+        calculator has its ``mode`` set to ``fruits.ISSMode.EXTENDED``.
     """
     if level == "prepared":
         for slc_index in range(len(fruit)):
@@ -35,38 +35,38 @@ def split_index(
             index -= 1
     elif level == "iterated sums":
         for slc_index, slc in enumerate(fruit):
-            cp = None if slc.iss_mode != "extended" else (
-                CachePlan(slc.get_words())
-            )
-            for word_index, word in enumerate(slc.get_words()):
-                n = cp.unique_el_depth(word_index) if cp is not None else 1
-                for ext_letter in range(len(word)-n, len(word)):
-                    if index == 0:
-                        return (
-                            (slc_index, word_index, ext_letter)
-                            if slc.iss_mode == "extended"
-                            else (slc_index, word_index)
-                        )
-                    index -= 1
+            for iss_index, iss in enumerate(slc.get_iss()):
+                for word_index, word in enumerate(iss.words):
+                    n = 1
+                    if iss.mode == fruits.ISSMode.EXTENDED:
+                        n = iss._cache_plan.unique_el_depth(word_index)
+                    for ext_letter in range(len(word)-n, len(word)):
+                        if index == 0:
+                            return (
+                                (slc_index, iss_index, word_index, ext_letter)
+                                if iss.mode == fruits.ISSMode.EXTENDED
+                                else (slc_index, iss_index, word_index)
+                            )
+                        index -= 1
     elif level == "features":
         for slc_index, slc in enumerate(fruit):
-            cp = None if slc.iss_mode != "extended" else (
-                CachePlan(slc.get_words())
-            )
-            for word_index, word in enumerate(slc.get_words()):
-                n = cp.unique_el_depth(word_index) if cp is not None else 1
-                for ext_letter in range(len(word)-n, len(word)):
-                    for s_index, sieve in enumerate(slc.get_sieves()):
-                        for feature_index in range(sieve.nfeatures()):
-                            if index == 0:
-                                return (
-                                    (slc_index, word_index, ext_letter,
-                                     s_index, feature_index)
-                                    if slc.iss_mode == "extended"
-                                    else (slc_index, word_index, s_index,
-                                          feature_index)
-                                )
-                            index -= 1
+            for iss_index, iss in enumerate(slc.get_iss()):
+                for word_index, word in enumerate(iss.words):
+                    n = 1
+                    if iss.mode == fruits.ISSMode.EXTENDED:
+                        n = iss._cache_plan.unique_el_depth(word_index)
+                    for ext_letter in range(len(word)-n, len(word)):
+                        for s_index, sieve in enumerate(slc.get_sieves()):
+                            for feature_index in range(sieve.nfeatures()):
+                                if index == 0:
+                                    return (
+                                        (slc_index, iss_index, word_index,
+                                         ext_letter, s_index, feature_index)
+                                        if iss.mode == fruits.ISSMode.EXTENDED
+                                        else (slc_index, iss_index, word_index,
+                                              s_index, feature_index)
+                                    )
+                                index -= 1
     raise ValueError("Index out of range or unknown level")
 
 
@@ -105,14 +105,15 @@ def transformation_string(
             slc.get_preparateurs()
         ))
     if level == "iterated sums" or level == "features":
+        iss = slc.get_iss()[index[1]]
         if string != "":
             string += "->"
-        if slc.iss_mode == "extended":
+        if iss.mode == fruits.ISSMode.EXTENDED:
             string += "]".join(
-                str(slc.get_words()[index[1]]).split("]")[:-1][:index[2]+1]
+                str(iss.words[index[2]]).split("]")[:-1][:index[3]+1]
             ) + "]"
         else:
-            string += str(slc.get_words()[index[1]])
+            string += str(iss.words[index[2]])
     if level == "features":
         string += "->"
         if with_kwargs:

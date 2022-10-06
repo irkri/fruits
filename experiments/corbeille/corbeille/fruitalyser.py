@@ -465,6 +465,7 @@ class Fruitalyser:
             seaborn.PairGrid: A PairGrid plot from the package seaborn.
         """
         feats = self.features(indices)
+        feats["Class"] = self.y_test
         pp = sns.pairplot(
             feats,
             hue="Class",
