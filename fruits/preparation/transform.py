@@ -1,4 +1,4 @@
-__all__ = ["INC", "STD", "MAV", "LAG"]
+__all__ = ["INC", "STD", "MAV", "LAG", "JLD"]
 
 from typing import Any, Union
 
@@ -166,3 +166,56 @@ class LAG(Preparateur):
 
     def __str__(self) -> str:
         return "LAG()"
+
+
+class JLD(Preparateur):
+    """Preparatuer: Johnson-Lindenstrauss Dimensionality Reduction
+
+    This preparateur transforms the input dimensions of one time series
+    by multiplying each time step with a vector having random gaussian
+    distributed entries.
+    According to the Johnson-Lindenstrauss lemma, the distance between
+    vectors in the lower dimensional space are nearly preserved.
+
+    Args:
+        dimension (int or float, optional): The number of output
+            dimensions. If a float ``f`` in (0, 1) is given, this number
+            will be the smallest integer
+            ``>= 24*log(d) / (3*f**2 - 2*f**3)``, where ``d`` is the
+            number of input dimensions. Defaults to ``0.99``. The
+            default argument should only be used when dealing with high
+            dimensional time series (``d>500``). It is designed so that
+            the Johnson-Lindenstrauss lemma is applicable.
+    """
+
+    def __init__(self, dimension: Union[int, float] = 0.99) -> None:
+        if isinstance(dimension, float) and not (0 < dimension < 1):
+            raise ValueError(
+                "'dimension' has to be an integer or a float in (0, 1)"
+            )
+        self._d = dimension
+        self._operator: np.ndarray
+
+    def _fit(self, X: np.ndarray) -> None:
+        if isinstance(self._d, float):
+            div_ = 3*self._d**2 - 2*self._d**3
+            d = int(24 * np.log(X.shape[1]) / div_) + 1
+        else:
+            d = self._d
+        self._operator = np.random.randn(d, X.shape[1])
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        return np.matmul(self._operator, X)
+
+    def _copy(self) -> "JLD":
+        return JLD()
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, JLD):
+            return False
+        if self._d == other._d:
+            return True
+        return False
+
+    def __str__(self) -> str:
+        return "JLD()"
