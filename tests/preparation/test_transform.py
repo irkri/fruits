@@ -48,3 +48,25 @@ def test_mav():
         [[-12, 2.4, -3.2, 5.8, 2], [6, 3, 3, 1, -7]],
         [[15, 24, 15, 16, 8], [-15, -3, -10, -5.5, -12.5]]
     ]) / 3, result)
+
+
+def test_lag():
+    result = fruits.preparation.LAG().fit_transform(X_1)
+
+    np.testing.assert_allclose(np.array([
+        [[-4, 0.8, 0.8, 0, 0, 5, 5, -3, -3],
+         [-4, -4, 0.8, 0.8, 0, 0, 5, 5, -3],
+         [2, 1, 1, 0, 0, 0, 0, -7, -7],
+         [2, 2, 1, 1, 0, 0, 0, 0, -7]],
+        [[5, 8, 8, 2, 2, 6, 6, 0, 0],
+         [5, 5, 8, 8, 2, 2, 6, 6, 0],
+         [-5, -1, -1, -4, -4, -0.5, -0.5, -8, -8],
+         [-5, -5, -1, -1, -4, -4, -0.5, -0.5, -8]]
+    ]), result)
+
+
+def test_jld():
+    X = np.random.random_sample((46, 100, 189))
+    result = fruits.preparation.JLD(25).fit_transform(X)
+
+    assert result.shape[1] == 25

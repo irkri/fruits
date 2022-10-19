@@ -142,9 +142,9 @@ class LAG(Preparateur):
 
     This preparateur applies the so called lead-lag transform to every
     dimension of the given time series.
-    For one dimension ``[x_1,x_2,...,x_n]`` this results in a new
-    two-dimensional vector
-    ``[(x_1,x_1),(x_2,x_1),(x_2,x_2),(x_3,x_2),...,(x_n,x_n)]``.
+    For one dimension ``[x_1,x_2,...,x_n]`` this results in a new series
+    of two-dimensional vectors
+    ``[(x_1,x_1), (x_2,x_1), (x_2,x_2), (x_3,x_2), ..., (x_n,x_n)]``.
     """
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
@@ -178,22 +178,22 @@ class JLD(Preparateur):
     vectors in the lower dimensional space are nearly preserved.
 
     Args:
-        dimension (int or float, optional): The number of output
-            dimensions. If a float ``f`` in (0, 1) is given, this number
-            will be the smallest integer
-            ``>= 24*log(d) / (3*f**2 - 2*f**3)``, where ``d`` is the
-            number of input dimensions. Defaults to ``0.99``. The
-            default argument should only be used when dealing with high
-            dimensional time series (``d>500``). It is designed so that
-            the Johnson-Lindenstrauss lemma is applicable.
+        dim (int or float, optional): The number of output dimensions.
+            If a float ``f`` in (0, 1) is given, this number will be the
+            smallest integer ``>= 24*log(d) / (3*f**2 - 2*f**3)``, where
+            ``d`` is the number of input dimensions. Defaults to
+            ``0.99``. The default argument should only be used when
+            dealing with high dimensional time series (``d>500``). It is
+            designed so that the Johnson-Lindenstrauss lemma is
+            applicable.
     """
 
-    def __init__(self, dimension: Union[int, float] = 0.99) -> None:
-        if isinstance(dimension, float) and not (0 < dimension < 1):
+    def __init__(self, dim: Union[int, float] = 0.99) -> None:
+        if isinstance(dim, float) and not (0 < dim < 1):
             raise ValueError(
-                "'dimension' has to be an integer or a float in (0, 1)"
+                "'dim' has to be an integer or a float in (0, 1)"
             )
-        self._d = dimension
+        self._d = dim
         self._operator: np.ndarray
 
     def _fit(self, X: np.ndarray) -> None:
@@ -218,4 +218,4 @@ class JLD(Preparateur):
         return False
 
     def __str__(self) -> str:
-        return "JLD()"
+        return f"JLD(dim={self._d})"
