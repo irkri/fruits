@@ -1,7 +1,7 @@
 import os
 import time
 from timeit import default_timer as Timer
-from typing import Optional, Sequence
+from typing import Callable, Optional, Sequence, Union
 
 import fruits
 import numpy as np
@@ -10,13 +10,13 @@ from sklearn.linear_model import RidgeClassifierCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
-from .data import load, load_all
+from .data import load_all
 from .fruitalyser import FitScoreClassifier
 
 
 def fruitify(
     dataset: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
-    fruit: Optional[fruits.Fruit] = None,
+    fruit: Union[fruits.Fruit, Callable[[np.ndarray], fruits.Fruit]],
     classifier: Optional[FitScoreClassifier] = None,
     mean_over_n_runs: int = 1,
 ) -> tuple[float, float]:
@@ -51,7 +51,8 @@ def fruitify(
     X_train = np.nan_to_num(X_train)
     X_test = np.nan_to_num(X_test)
 
-    fruit = fruit if fruit is not None else fruits.build(X_train)
+    if callable(fruit):
+        fruit = fruit(X_train)
     times, accs = [], []
 
     for _ in range(mean_over_n_runs):
@@ -69,9 +70,9 @@ def fruitify(
 
 def fruitify_all(
     path: str,
-    univariate: bool = True,
+    fruit: Union[fruits.Fruit, Callable[[np.ndarray], fruits.Fruit]],
     datasets: Optional[Sequence[str]] = None,
-    fruit: Optional[fruits.Fruit] = None,
+    univariate: bool = True,
     classifier: Optional[FitScoreClassifier] = None,
     output_csv: Optional[str] = None,
     mean_over_n_runs: int = 1,
