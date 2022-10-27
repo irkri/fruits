@@ -120,7 +120,7 @@ class Word:
         self._el_iterator_index = -1
         return self
 
-    def __next__(self):
+    def __next__(self) -> ExtendedLetter:
         if self._el_iterator_index < len(self._extended_letters)-1:
             self._el_iterator_index += 1
             return self._extended_letters[self._el_iterator_index]
@@ -243,6 +243,16 @@ class SimpleWord(Word):
         sw = SimpleWord(self._name)
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
+
+    def __iter__(self) -> "SimpleWord":
+        self._el_iterator_index = -1
+        return self
+
+    def __next__(self) -> list[int]:
+        if self._el_iterator_index < len(self._extended_letters)-1:
+            self._el_iterator_index += 1
+            return self._extended_letters[self._el_iterator_index]
+        raise StopIteration()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, SimpleWord):

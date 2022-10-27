@@ -67,7 +67,6 @@ class ISSSemiRing(ABC):
             C = self._identity(Z)
             for letter in ext_letter:
                 C = self._operation(C, letter(Z))
-                print(f"{C = }")
             if k > 0:
                 tmp = np.roll(tmp, 1)
                 tmp[0] = 0
@@ -76,9 +75,7 @@ class ISSSemiRing(ABC):
                 tmp = tmp * np.exp(np.arange(Z.shape[1])
                                 * (alphas[k+1]-alphas[k])
                                 + alphas[k])
-            print(f"add {tmp = }")
             tmp[k:] = self._cumulative_operation(tmp[k:])
-            print(f"cumulative {tmp = }")
             if len(word)-k <= extended:
                 # save result
                 result[extended-(len(word)-k), :] = tmp.copy()

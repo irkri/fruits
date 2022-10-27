@@ -12,10 +12,7 @@ def _partitions_of(n, start: int = 1):
             yield (i,) + p
 
 
-def _extended_letters_by_weight(
-    w: int,
-    d: int = 1
-) -> list[str]:
+def _extended_letters_by_weight(w: int, d: int = 1) -> list[str]:
     return [
         "["
         + "".join(["(" + str(x) + ")" if len(str(x)) > 1 else str(x)
@@ -75,8 +72,8 @@ def replace_letters(
     new_word = Word()
     for el in word:
         new_el = ExtendedLetter()
-        for dim in el._dimensions:
-            for _ in range(dim):
+        for dim, ndim in enumerate(el):
+            for _ in range(ndim):
                 try:
                     letter = next(letter_gen)
                 except StopIteration:
