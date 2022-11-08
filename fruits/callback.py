@@ -17,6 +17,11 @@ class AbstractCallback(ABC):
         :class:`~fruits.fruit.Fruit` object is switched.
         """
 
+    def on_next_iss(self) -> None:
+        """Called every time the :class:`~fruits.iss.iss.ISS` is
+        switched in a :class:`~fruits.fruit.Fruit`.
+        """
+
     def on_preparateur(self, X: np.ndarray) -> None:
         """Called after the calculation of prepared data for each
         :class:`~fruits.preparation.abstract.DataPreparateur`.

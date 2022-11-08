@@ -449,6 +449,8 @@ class FruitSlice:
                                 self.nfeatures()))
         k = 0
         for iss in self._iss:
+            for callback in callbacks:
+                callback.on_next_iss()
             for i, itsum in enumerate(iss.batch_transform(prepared_data)):
                 for callback in callbacks:
                     callback.on_iterated_sum(itsum)

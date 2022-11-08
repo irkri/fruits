@@ -76,12 +76,17 @@ class _TransformationCallback(fruits.callback.AbstractCallback):
 
     def __init__(self) -> None:
         self._current_slice = -1
+        self._current_iss = -1
         self.prepared_data: list[np.ndarray] = []
-        self.iterated_sums: list[list[np.ndarray]] = []
+        self.iterated_sums: list[list[list[np.ndarray]]] = []
         self.sieved_data: list[np.ndarray] = []
 
     def on_next_slice(self) -> None:
         self._current_slice += 1
+        self._current_iss = -1
+
+    def on_next_iss(self) -> None:
+        self._current_iss += 1
 
     def on_preparation_end(self, X: np.ndarray) -> None:
         self.prepared_data.append(X)
@@ -89,7 +94,9 @@ class _TransformationCallback(fruits.callback.AbstractCallback):
     def on_iterated_sum(self, X: np.ndarray) -> None:
         if len(self.iterated_sums) >= self._current_slice:
             self.iterated_sums.append([])
-        self.iterated_sums[self._current_slice].append(X)
+        if len(self.iterated_sums[self._current_slice]) >= self._current_iss:
+            self.iterated_sums[self._current_slice].append([])
+        self.iterated_sums[self._current_slice][self._current_iss].append(X)
 
     def on_sieving_end(self, X: np.ndarray) -> None:
         self.sieved_data.append(X)
@@ -398,7 +405,9 @@ class Fruitalyser:
                 index = 0
             indices = split_index(self.fruit, index=index)
             self._plot(
-                self.callback.iterated_sums[indices[0]][indices[1]][:, dim, :],
+                self.callback.iterated_sums[
+                    indices[0]
+                ][indices[1]][indices[2]][:, dim, :],
                 self.y,
                 axis=ax,
                 mean=mean,
