@@ -260,9 +260,10 @@ class FruitSlice:
         self._sieves: list[FeatureSieve] = []
 
         # list with inner lists containing sieves
-        # all sieves in one list are trained on one specific output
-        # of an ISS-result
-        self._sieves_extended: list[list[FeatureSieve]] = []
+        # all sieves in one list are trained on an iterated sums of one
+        # word (the second inner list iterates over extended letters if
+        # the iss mode is set to extended)
+        self._sieves_extended: list[list[list[FeatureSieve]]] = []
 
         # configurations for fitting
         self._fitted: bool = False
@@ -401,13 +402,14 @@ class FruitSlice:
 
         self._sieves_extended = []
         for iss in self._iss:
-            for iterated_data in iss.batch_transform(prepared_data):
-                iterated_data = iterated_data[:, 0, :]
-                sieves_copy = [sieve.copy() for sieve in self._sieves]
-                for sieve in sieves_copy:
-                    sieve._cache = cache
-                    sieve.fit(iterated_data[:, :])
-                self._sieves_extended.append(sieves_copy)
+            for itsums in iss.batch_transform(prepared_data):
+                self._sieves_extended.append([])
+                for j in range (itsums.shape[1]):
+                    sieves_copy = [sieve.copy() for sieve in self._sieves]
+                    for sieve in sieves_copy:
+                        sieve._cache = cache
+                        sieve.fit(itsums[:, j, :])
+                    self._sieves_extended[-1].append(sieves_copy)
         self._fitted = True
 
     def transform(
@@ -451,18 +453,19 @@ class FruitSlice:
         for iss in self._iss:
             for callback in callbacks:
                 callback.on_next_iss()
-            for i, itsum in enumerate(iss.batch_transform(prepared_data)):
+            for i, itsums in enumerate(iss.batch_transform(prepared_data)):
                 for callback in callbacks:
-                    callback.on_iterated_sum(itsum)
-                for sieve in self._sieves_extended[i]:
-                    sieve._cache = cache
-                    nf = sieve.nfeatures()
-                    sieved_data[:, k:k+nf] = sieve.transform(
-                        itsum[:, 0, :]
-                    )
-                    for callback in callbacks:
-                        callback.on_sieve(sieved_data[k:k+nf])
-                    k += nf
+                    callback.on_iterated_sum(itsums)
+                for j in range(itsums.shape[1]):
+                    for sieve in self._sieves_extended[i][j]:
+                        sieve._cache = cache
+                        nf = sieve.nfeatures()
+                        sieved_data[:, k:k+nf] = sieve.transform(
+                            itsums[:, j, :]
+                        )
+                        for callback in callbacks:
+                            callback.on_sieve(sieved_data[k:k+nf])
+                        k += nf
         for callback in callbacks:
             callback.on_sieving_end(sieved_data)
         return sieved_data

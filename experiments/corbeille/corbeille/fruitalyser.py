@@ -404,10 +404,17 @@ class Fruitalyser:
             if index is None:
                 index = 0
             indices = split_index(self.fruit, index=index)
+            el = 0
+            iss = self.fruit[indices[0]].get_iss()[indices[1]]
+            if (iss.mode == fruits.ISSMode.EXTENDED):
+                el = indices[3] - (
+                    len(iss.words[indices[2]])
+                    - iss._cache_plan.unique_el_depth(indices[2])
+                )
             self._plot(
-                self.callback.iterated_sums[
-                    indices[0]
-                ][indices[1]][indices[2]][:, dim, :],
+                self.callback.iterated_sums[indices[0]][indices[1]][
+                    indices[2]
+                ][:, el, :],
                 self.y,
                 axis=ax,
                 mean=mean,
