@@ -1,6 +1,6 @@
 from timeit import default_timer as Timer
 from typing import (Any, Callable, Literal, Optional, Protocol, Sequence,
-                    TypeVar, Union, overload)
+                    TypeVar, overload)
 
 import fruits
 import matplotlib.pyplot as plt
@@ -10,7 +10,6 @@ import seaborn as sns
 from matplotlib import cm
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from sklearn.decomposition import PCA
 from sklearn.linear_model import RidgeClassifierCV
 
 from .tools import split_index, transformation_string
@@ -287,9 +286,8 @@ class Fruitalyser:
             if per_class:
                 for i in range(len(classes)):
                     X_class = X[y == classes[i]]
-                    indices = list(range(nseries))
                     color = get_color(i)
-                    for j, ind in enumerate(indices):
+                    for j, ind in enumerate(range(nseries)):
                         if j == 0:
                             axis.plot(X_class[ind, :], label=f"Class {i+1}",
                                          color=color)
@@ -297,35 +295,34 @@ class Fruitalyser:
                             axis.plot(X_class[ind, :], color=color)
                 axis.legend(loc="best")
             else:
-                indices = list(range(nseries))
-                for i in indices:
+                for i in range(nseries):
                     axis.plot(X[i, :])
 
     @overload
     def plot(
         self,
-        level: Literal["input", "prepared", "iterated sums"] = "input",
-        index: Optional[int] = None,
-        dim: int = 0,
-        mean: bool = False,
-        bounds: bool = False,
-        nseries: int = 1,
-        per_class: bool = True,
-        axis: None = None,
+        level: Literal["input", "prepared", "iterated sums"] = ...,
+        index: Optional[int] = ...,
+        dim: int = ...,
+        mean: bool = ...,
+        bounds: bool = ...,
+        nseries: int = ...,
+        per_class: bool = ...,
+        axis: None = ...,
     ) -> tuple[Figure, Axes]:
         ...
 
     @overload
     def plot(
         self,
-        level: Literal["input", "prepared", "iterated sums"] = "input",
-        index: Optional[int] = None,
-        dim: int = 0,
-        mean: bool = False,
-        bounds: bool = False,
-        nseries: int = 1,
-        per_class: bool = True,
-        axis: Optional[Axes] = None,
+        level: Literal["input", "prepared", "iterated sums"] = ...,
+        index: Optional[int] = ...,
+        dim: int = ...,
+        mean: bool = ...,
+        bounds: bool = ...,
+        nseries: int = ...,
+        per_class: bool = ...,
+        axis: Optional[Axes] = ...,
     ) -> None:
         ...
 
@@ -399,7 +396,11 @@ class Fruitalyser:
         elif level == "iterated sums":
             if index is None:
                 index = 0
-            indices = split_index(self.fruit, index=index)
+            indices = split_index(
+                self.fruit,
+                index=index,
+                level="iterated sums",
+            )
             el = 0
             iss = self.fruit[indices[0]].get_iss()[indices[1]]
             if (iss.mode == fruits.ISSMode.EXTENDED):
