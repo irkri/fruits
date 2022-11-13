@@ -119,11 +119,7 @@ class Fruitalyser:
     ) -> None:
         self.fruit = fruit
         self._extracted = False
-        self.X_train, self.y_train, self.X_test, self.y_test = data
-        self.X_train = np.nan_to_num(self.X_train)
-        self.X_test = np.nan_to_num(self.X_test)
-        self.X = self.X_test
-        self.y = self.y_test
+        self._X_train, self._y_train, self._X_test, self._y_test = data
         self.callback: _TransformationCallback
 
     def transform_all(
@@ -148,23 +144,23 @@ class Fruitalyser:
         """
         self.callback = _TransformationCallback()
         start = Timer()
-        self.fruit.fit(self.X_train)
+        self.fruit.fit(self._X_train)
         if verbose:
             print(f"Fitting took {Timer() - start} s")
         start = Timer()
-        self.X_train_feat = self.fruit.transform(self.X_train)
+        self._X_train_feat = self.fruit.transform(self._X_train)
         if postprocess:
-            self.X_train_feat = postprocess.fit_transform(self.X_train_feat)
+            self._X_train_feat = postprocess.fit_transform(self._X_train_feat)
         train_time = Timer() - start
         if verbose:
             print(f"Transforming training set took {train_time} s")
         start = Timer()
-        self.X_test_feat = self.fruit.transform(
-            self.X_test,
+        self._X_test_feat = self.fruit.transform(
+            self._X_test,
             callbacks=[self.callback],
         )
         if postprocess is not None:
-            self.X_test_feat = postprocess.transform(self.X_test_feat)
+            self._X_test_feat = postprocess.transform(self._X_test_feat)
         test_time = Timer() - start
         if verbose:
             print(f"Transforming testing set took {test_time} s")
@@ -199,14 +195,14 @@ class Fruitalyser:
             classifier = RidgeClassifierCV(alphas=np.logspace(-3, 3, 10))
 
         if indices is not None:
-            classifier.fit(self.X_train_feat[:, indices], self.y_train)
+            classifier.fit(self._X_train_feat[:, indices], self._y_train)
             self.test_score = float(
-                classifier.score(self.X_test_feat[:, indices], self.y_test)
+                classifier.score(self._X_test_feat[:, indices], self._y_test)
             )
         else:
-            classifier.fit(self.X_train_feat, self.y_train)
+            classifier.fit(self._X_train_feat, self._y_train)
             self.test_score = float(
-                classifier.score(self.X_test_feat, self.y_test)
+                classifier.score(self._X_test_feat, self._y_test)
             )
 
         if verbose:
@@ -246,8 +242,8 @@ class Fruitalyser:
             t = {variable: test_case}
             t = dict(kwargs, **t)
             clssfr = classifier(**t)
-            clssfr.fit(self.X_train_feat, self.y_train)
-            accuracies[i] = clssfr.score(self.X_test_feat, self.y_test)
+            clssfr.fit(self._X_train_feat, self._y_train)
+            accuracies[i] = clssfr.score(self._X_test_feat, self._y_test)
         fig, ax = plt.subplots(figsize=(10, 5))
         ax.plot(test_cases, accuracies, marker="x", label="test accuracy")
         ax.vlines(
@@ -264,8 +260,8 @@ class Fruitalyser:
         ax.legend(loc="upper right")
         return fig, ax
 
+    @staticmethod
     def _plot(
-        self,
         X: np.ndarray,
         y: np.ndarray,
         axis: Axes,
@@ -350,7 +346,7 @@ class Fruitalyser:
             level (str, optional): Stage of the transformation to plot
                 the data from. Possible levels are
                 ``['input', 'prepared', 'iterated sums']``.
-                Defaults to plotting the input data.
+                Defaults to plotting the input data (from the test set).
             index (int, optional): The index of the preparateur or word
                 in the fruit counting over all slicees.
             dim (int, optional): Dimension of each time series to plot.
@@ -379,9 +375,9 @@ class Fruitalyser:
             plt.subplots(1, 1, figsize=(10, 5))
         )
         if level == "input":
-            self._plot(
-                self.X[:, dim, :],
-                self.y,
+            Fruitalyser._plot(
+                self._X_test[:, dim, :],
+                self._y_test,
                 axis=ax,
                 mean=mean,
                 bounds=bounds,
@@ -391,9 +387,9 @@ class Fruitalyser:
         elif level == "prepared":
             if index is None:
                 index = 0
-            self._plot(
+            Fruitalyser._plot(
                 self.callback.prepared_data[index][:, dim, :],
-                self.y,
+                self._y_test,
                 axis=ax,
                 mean=mean,
                 bounds=bounds,
@@ -411,11 +407,11 @@ class Fruitalyser:
                     len(iss.words[indices[2]])
                     - iss._cache_plan.unique_el_depth(indices[2])
                 )
-            self._plot(
+            Fruitalyser._plot(
                 self.callback.iterated_sums[indices[0]][indices[1]][
                     indices[2]
                 ][:, el, :],
-                self.y,
+                self._y_test,
                 axis=ax,
                 mean=mean,
                 bounds=bounds,
@@ -441,6 +437,7 @@ class Fruitalyser:
     def features(
         self,
         indices: Optional[Sequence[int]] = None,
+        source: Optional[Literal["train", "test", "all"]] = "all",
     ) -> pd.DataFrame:
         """Returns a ``pandas.DataFrame`` object with all features
         matching the following specifications.
@@ -448,25 +445,30 @@ class Fruitalyser:
         before.
         """
         if indices is None:
-            indices = list(range(self.fruit.nfeatures()))
+            indices = range(self.fruit.nfeatures())
+        if source == "train":
+            features = self._X_train_feat
+        elif source == "test":
+            features = self._X_test_feat
+        elif source == "all":
+            features = np.r_[self._X_train_feat, self._X_test_feat]
+        else:
+            raise ValueError(f"Unknown Value for option 'source': {source}")
         feat_table = np.empty(
-            (len(indices), self.X.shape[0]),
+            (len(indices), features.shape[0]),
             dtype=np.float64,
         )
         column_names = []
         for i, index in enumerate(indices):
-            sindex = split_index(self.fruit, index)
-            findex = index
-            for bindex in range(sindex[0]+1):
-                findex -= self.fruit.get_slice(bindex).nfeatures()
-            feat_table[i] = self.callback.sieved_data[sindex[0]][:, findex]
-            column_names.append(transformation_string(self.fruit, sindex))
+            feat_table[i] = features[:, index]
+            column_names.append(transformation_string(self.fruit, index))
         feats = pd.DataFrame(feat_table.T, columns=column_names)
         return feats
 
     def plot_features(
         self,
         indices: Optional[Sequence[int]] = None,
+        source: Optional[Literal["train", "test", "all"]] = "all",
     ) -> sns.PairGrid:
         """Plots the features of the watched ``fruits.FruitSlice``
         object. The ``seaborn.pairplot`` function is used to create
@@ -480,186 +482,23 @@ class Fruitalyser:
         Returns:
             seaborn.PairGrid: A PairGrid plot from the package seaborn.
         """
-        feats = self.features(indices)
-        feats["Class"] = self.y_test
+        feats = self.features(indices, source=source)
+        if source == "train":
+            feats["Class"] = self._y_train
+        elif source == "test":
+            feats["Class"] = self._y_test
+        elif source == "all":
+            feats["Class"] = np.r_[self._y_train, self._y_test]
+        else:
+            raise ValueError(f"Unknown Value for option 'source': {source}")
         pp = sns.pairplot(
             feats,
             hue="Class",
             diag_kind="hist",
             markers="+",
-            palette=[get_color(i) for i in range(len(set(self.y)))],
+            palette=[
+                get_color(i) for i in range(feats["Class"].value_counts().size)
+            ],
         )
         pp.fig.suptitle(f"Features", y=1.01)
         return pp
-
-    def feature_score(
-        self,
-        components: int,
-        indices: Optional[Sequence[int]] = None,
-    ) -> list[float]:
-        """Returns a list of scores for each feature extracted based on
-        a principal component analysis. The score is a linear
-        combination of feature-to-principal-component correlation
-        weighted by the explained variance ratio of the principal
-        component.
-
-        Args:
-            components (int): Number of principal components to
-                calculate.
-            indices (Sequence of int, optional): Sequence of feature
-                indices to use in the PCA. Defaults to all features.
-        """
-        pca = PCA(n_components=components)
-        if indices is None:
-            indices = range(self.fruit.nfeatures())
-        pca.fit(self.features(indices).to_numpy())
-        return (
-            pca.explained_variance_ratio_ @ pca.components_**2  # type: ignore
-        )
-
-    @overload
-    def plot_feature_score(
-        self,
-        components: int,
-        indices: Optional[Sequence[int]] = None,
-        classifier: Optional[FitScoreClassifier] = None,
-        detailed: bool = True,
-        restrict: Union[int, float] = 20,
-        last: bool = False,
-        axis: None = None,
-    ) -> tuple[Figure, Axes]:
-        ...
-
-    @overload
-    def plot_feature_score(
-        self,
-        components: int,
-        indices: Optional[Sequence[int]] = None,
-        classifier: Optional[FitScoreClassifier] = None,
-        detailed: bool = True,
-        restrict: Union[int, float] = 20,
-        last: bool = False,
-        axis: Optional[Axes] = None,
-    ) -> None:
-        ...
-
-    def plot_feature_score(
-        self,
-        components: int,
-        indices: Optional[Sequence[int]] = None,
-        classifier: Optional[FitScoreClassifier] = None,
-        detailed: bool = True,
-        restrict: Union[int, float] = 20,
-        last: bool = False,
-        axis: Optional[Axes] = None,
-    ) -> Optional[tuple[Figure, Axes]]:
-        """Plots the :underline:`normalized` scores calculated with
-        :meth:`Fruitalyser.feature_score` in a bar chart.
-        If ``len(indices) > 20``, the method plots ``20`` features
-        with the highest scores.
-        Additionally the classification accuracies of the cumulative
-        feature sets are plotted as a red line.
-
-        Args:
-            components (int): Number of principal components to
-                calculate.
-            indices (Sequence of int, optional): Sequence of feature
-                indices to use in the PCA. Defaults to all features.
-            classifier (FitScoreClassifier, optional): The classifier
-                to use for the cumulative classification.
-            detailed (bool, optional): If set to True, writes the
-                feature names to the plot. Defaults to True.
-            restrict (int | float, optional): Maximal number of
-                features to be plotted. If a float is given, it is
-                interpreted as the smallest allowed normalized feature
-                score a feature can have to be included in the plot.
-                Includes therefore all features with a score larger than
-                or equal to ``restrict``. Defaults to 20.
-            last (bool, optional): If set to True, plots the last
-                `restrict` features instead of the first ones
-                according to the ordered scores. Defaults to the first.
-            axis (Axes, optional): Matplotlib axis to plot the data
-                on. If None is given, a seperate figure and axis
-                will be created and returned.
-
-        Returns:
-            Tuple of a matplotlib figure and axes holding the inserted
-            plot or None if ``axis`` is provided.
-        """
-        fig, ax = (None, axis) if axis is not None else plt.subplots(1, 1)
-        if indices is None:
-            indices = range(self.fruit.nfeatures())
-        scores = self.feature_score(components=components, indices=indices)
-        scores /= np.max(scores)
-        scores_order = np.argsort(scores)[::-1]
-        if isinstance(restrict, float):
-            if last:
-                raise ValueError(
-                    "If 'last' is set to True, 'restrict' has to be an integer"
-                )
-            restrict = np.sum(scores >= restrict)
-        scores_order = scores_order[-restrict:] if last else (
-            scores_order[:restrict]
-        )
-        scores_trunc = scores[scores_order]
-        x = np.array(indices, dtype=int)[scores_order]
-        ax.bar(
-            range(len(x)),
-            scores_trunc,
-            color=get_color(0)+(0.8, ),
-            label="Normalized\nFeature Score",
-        )
-        ax.set_ylim(0, 1)
-        ax.set_xlabel("Feature")
-        ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
-        ax.set_yticks([], minor=True)
-        ax.set_xticks([])
-        ax.set_xticks([], minor=True)
-        if detailed:
-            for i, index in enumerate(x):
-                ax.annotate(
-                    f"{transformation_string(self.fruit, int(index))}: "
-                        f"{index}",
-                    xy=(i, 0),
-                    xytext=(0, 5),
-                    textcoords="offset pixels",
-                    rotation=90,
-                    ha="center",
-                    va="bottom",
-                )
-        accs = [
-            self.classify(
-                np.r_[scores_order[:-restrict], x[:i+1]]
-                    if last else x[:i+1],
-                classifier=classifier,
-                verbose=False,
-            )
-            for i in range(x.size)
-        ]
-        ax.plot(
-            accs,
-            marker="s",
-            color=get_color(1),
-            label="Accuracy of\nCumulative\nFeature Set",
-        )
-        acc = self.classify()
-        ax.hlines(
-            [acc],
-            xmin=ax.get_xlim()[0],
-            xmax=ax.get_xlim()[1],
-            color=get_color(1),
-        )
-        ax.annotate(
-            f"Total Accuracy: {acc:.2f}",
-            xy=(ax.get_xlim()[0], acc),
-            xytext=(10, 0),
-            textcoords="offset pixels",
-            va="center",
-            ha="left",
-            rotation=90,
-            color=get_color(1),
-        )
-        ax.legend(loc="best")
-        if fig is not None:
-            return fig, ax
-        return None
