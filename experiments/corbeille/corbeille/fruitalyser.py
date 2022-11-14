@@ -73,32 +73,64 @@ class _TransformationCallback(fruits.callback.AbstractCallback):
     within a fruit.
     """
 
-    def __init__(self) -> None:
-        self._current_slice = -1
-        self._current_iss = -1
-        self.prepared_data: list[np.ndarray] = []
-        self.iterated_sums: list[list[list[np.ndarray]]] = []
-        self.sieved_data: list[np.ndarray] = []
+    def __init__(
+        self,
+        prepared: bool = True,
+        iterated: bool = True,
+        sieved: bool = True,
+    ) -> None:
+        self._slc = -1
+        self._iss = -1
+        self._prepared = prepared
+        if self._prepared:
+            self._prepared_data: list[np.ndarray] = []
+        self._iterated = iterated
+        if self._iterated:
+            self._iterated_sums: list[list[list[np.ndarray]]] = []
+        self._sieved = sieved
+        if self._sieved:
+            self._sieved_data: list[np.ndarray] = []
+
+    @property
+    def prepared_data(self) -> list[np.ndarray]:
+        if not self._prepared:
+            raise RuntimeError("Didn't save prepared data")
+        return self._prepared_data
+
+    @property
+    def iterated_sums(self) -> list[list[list[np.ndarray]]]:
+        if not self._iterated:
+            raise RuntimeError("Didn't save iterated sums")
+        return self._iterated_sums
+
+    @property
+    def sieved_data(self) -> list[np.ndarray]:
+        if not self._sieved:
+            raise RuntimeError("Didn't save sieved data")
+        return self._sieved_data
 
     def on_next_slice(self) -> None:
-        self._current_slice += 1
-        self._current_iss = -1
+        self._slc += 1
+        self._iss = -1
 
     def on_next_iss(self) -> None:
-        self._current_iss += 1
+        self._iss += 1
 
     def on_preparation_end(self, X: np.ndarray) -> None:
-        self.prepared_data.append(X)
+        if self._prepared:
+            self._prepared_data.append(X)
 
     def on_iterated_sum(self, X: np.ndarray) -> None:
-        if len(self.iterated_sums) >= self._current_slice:
-            self.iterated_sums.append([])
-        if len(self.iterated_sums[self._current_slice]) >= self._current_iss:
-            self.iterated_sums[self._current_slice].append([])
-        self.iterated_sums[self._current_slice][self._current_iss].append(X)
+        if self._iterated:
+            if len(self._iterated_sums) >= self._slc:
+                self._iterated_sums.append([])
+            if len(self._iterated_sums[self._slc]) >= self._iss:
+                self._iterated_sums[self._slc].append([])
+            self._iterated_sums[self._slc][self._iss].append(X)
 
     def on_sieving_end(self, X: np.ndarray) -> None:
-        self.sieved_data.append(X)
+        if self._sieved:
+            self._sieved_data.append(X)
 
 
 class Fruitalyser:
@@ -125,6 +157,9 @@ class Fruitalyser:
         self,
         postprocess: Optional[FitTransform] = None,
         verbose: bool = False,
+        save_prepared: bool = False,
+        save_iterated: bool = False,
+        save_sieved: bool = False,
     ) -> tuple[float, float]:
         """Transforms training and testing dataset.
 
@@ -141,7 +176,11 @@ class Fruitalyser:
             float: Time for feature extraction in the training set.
             float: Time for feature extraction in the testing set.
         """
-        self.callback = _TransformationCallback()
+        self.callback = _TransformationCallback(
+            save_prepared,
+            save_iterated,
+            save_sieved,
+        )
         start = Timer()
         self.fruit.fit(self._X_train)
         if verbose:
