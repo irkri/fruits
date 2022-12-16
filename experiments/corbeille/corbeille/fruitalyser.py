@@ -6,7 +6,6 @@ import fruits
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from matplotlib import cm
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -505,40 +504,103 @@ class Fruitalyser:
         feats = pd.DataFrame(feat_table.T, columns=column_names)
         return feats
 
-    def plot_features(
+
+    @overload
+    def scatter_features(
         self,
-        indices: Optional[Sequence[int]] = None,
+        index1: int,
+        index2: int,
+        source: Optional[Literal["train", "test", "all"]] = ...,
+        axes: None = ...,
+    ) -> tuple[Figure, Axes, Axes, Axes]:
+        ...
+
+
+    @overload
+    def scatter_features(
+        self,
+        index1: int,
+        index2: int,
+        source: Optional[Literal["train", "test", "all"]] = ...,
+        axes: tuple[Axes, Axes, Axes] = ...,
+    ) -> None:
+        ...
+
+
+    def scatter_features(
+        self,
+        index1: int,
+        index2: int,
         source: Optional[Literal["train", "test", "all"]] = "all",
-    ) -> sns.PairGrid:
-        """Plots the features of the watched ``fruits.FruitSlice``
-        object. The ``seaborn.pairplot`` function is used to create
-        a plot based on a ``pandas.DataFrame`` consisting of selected
-        features.
-
-        Args:
-            indices (Sequence of int): List of features indices in the
-                fruit.
-
-        Returns:
-            seaborn.PairGrid: A PairGrid plot from the package seaborn.
-        """
-        feats = self.features(indices, source=source)
-        if source == "train":
-            feats["Class"] = self._y_train
-        elif source == "test":
-            feats["Class"] = self._y_test
-        elif source == "all":
-            feats["Class"] = np.r_[self._y_train, self._y_test]
+        axes: Optional[tuple[Axes, Axes, Axes]] = None,
+    ) -> Optional[tuple[Figure, Axes, Axes, Axes]]:
+        if axes is None:
+            fig = plt.figure()
+            gs = fig.add_gridspec(
+                2, 2,
+                width_ratios=(5, 1),
+                height_ratios=(1, 5),
+                left=0.1,
+                right=0.9,
+                bottom=0.1,
+                top=0.9,
+                wspace=0.0,
+                hspace=0.0,
+            )
+            ax = fig.add_subplot(gs[1, 0])
+            ax_histx = fig.add_subplot(gs[0, 0], sharex=ax)
+            ax_histx.axis("off")
+            ax_histy = fig.add_subplot(gs[1, 1], sharey=ax)
+            ax_histy.axis("off")
         else:
-            raise ValueError(f"Unknown Value for option 'source': {source}")
-        pp = sns.pairplot(
-            feats,
-            hue="Class",
-            diag_kind="hist",
-            markers="+",
-            palette=[
-                get_color(i) for i in range(feats["Class"].value_counts().size)
-            ],
-        )
-        pp.fig.suptitle(f"Features", y=1.01)
-        return pp
+            fig = None
+            ax = axes[0]
+            ax_histx = axes[1]
+            ax_histy = axes[2]
+
+        feat = self.features((index1, index2), source=source)
+        feat.columns = ["x", "y"]  # type: ignore
+        if source == "all":
+            feat["target"] = np.r_[self._y_train, self._y_test]
+        elif source == "train":
+            feat["target"] = self._y_train
+        elif source == "test":
+            feat["target"] = self._y_test
+
+        binwidth = 0.25
+        xymax = max(np.max(np.abs(feat.x)), np.max(np.abs(feat.y)))
+        lim = np.ceil(xymax/binwidth) * binwidth
+
+        bins = np.arange(-lim, lim + binwidth, binwidth)
+
+        lastx, lasty = None, None
+        for i, (label, group) in enumerate(feat.groupby("target")):
+            color = get_color(i)
+            ax.scatter(
+                group.x,
+                group.y,
+                marker="+",  # type: ignore
+                label=label,
+                color=color,
+            )
+            lastx, _, _ = ax_histx.hist(
+                group.x,
+                bins=bins,
+                bottom=lastx,
+                lw=1.2,
+                edgecolor="black",
+                fc=color + (0.5, ),
+            )
+            lasty, _, _ = ax_histy.hist(
+                group.y,
+                bins=bins,
+                bottom=lasty,
+                lw=1.2,
+                edgecolor="black",
+                fc=color + (0.5, ),
+                orientation="horizontal",
+            )
+
+        if fig is not None:
+            return fig, ax, ax_histx, ax_histy
+        return None

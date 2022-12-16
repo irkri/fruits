@@ -114,6 +114,8 @@ def transformation_string(
             ) + "]"
         else:
             string += str(iss.words[index[2]])
+        if not isinstance(iss.semiring, fruits.semiring.Reals):
+            string += f":{iss.semiring.__class__.__name__}"
     if level == "features":
         string += "->"
         if with_kwargs:
