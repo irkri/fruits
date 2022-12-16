@@ -27,7 +27,7 @@ def test_simpleword_minplus():
 
     results = fruits.ISS(
         [w1, w2, w3, w4, w5, w6],
-        semiring=fruits.iss.semiring.MinPlus(),
+        semiring=fruits.iss.semiring.Tropical(),
     ).batch_transform(X_1, batch_size=1)
 
     for i, result in enumerate(results):
@@ -41,7 +41,7 @@ def test_word_minplus():
 
     results = fruits.ISS(
         (word, ),
-        semiring=fruits.iss.semiring.MinPlus(),
+        semiring=fruits.iss.semiring.Tropical(),
     ).fit_transform(X_1)
 
     np.testing.assert_allclose(correct, results[:, 0, :])

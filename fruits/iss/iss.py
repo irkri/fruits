@@ -5,7 +5,7 @@ import numpy as np
 
 from ..seed import Seed
 from .cache import CachePlan
-from .semiring import ISSSemiRing, SumTimes
+from .semiring import Semiring, Reals
 from .words.word import Word
 
 
@@ -20,7 +20,7 @@ def _calculate_ISS(
     X: np.ndarray,
     words: Sequence[Word],
     batch_size: int,
-    semiring: ISSSemiRing,
+    semiring: Semiring,
     cache_plan: Optional[CachePlan] = None,
 ) -> Generator[np.ndarray, None, None]:
     i = 0
@@ -69,7 +69,7 @@ class ISS(Seed):
                 returns the iterated sums for ``[21]``,
                 ``[21][121]`` and ``[21][121][1]``.
         semiring (ISSSemiring): The semi-ring in which the iterated sums
-            are calculated. Defaults to :class:`SumTimes`.
+            are calculated. Defaults to :class:`Reals`.
     """
 
     def __init__(
@@ -77,11 +77,11 @@ class ISS(Seed):
         words: Sequence[Word],
         /, *,
         mode: ISSMode = ISSMode.SINGLE,
-        semiring: Optional[ISSSemiRing] = None,
+        semiring: Optional[Semiring] = None,
     ) -> None:
         self.words = words
         self.mode = mode
-        self.semiring = semiring if semiring is not None else SumTimes()
+        self.semiring = semiring if semiring is not None else Reals()
         self._cache_plan = CachePlan(
             self.words if mode == ISSMode.EXTENDED else []
         )
