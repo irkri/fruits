@@ -5,7 +5,7 @@ import fruits
 X_1 = np.array([
     [[-4, 0.8, 0, 5, -3], [2, 1, 0, 0, -7]],
     [[5, 8, 2, 6, 0], [-5, -1, -4, -0.5, -8]]
-])
+], dtype=float)
 
 
 def test_simpleword_iss():
@@ -55,3 +55,34 @@ def test_word_generation():
     for n in range(1, 7):
         assert len(fruits.words.of_weight(n, dim=1)) == 2**(n - 1)
     assert len(fruits.words.of_weight(4, dim=2)) == 82
+
+
+def test_negative_words():
+    word1 = fruits.words.SimpleWord("[-12][-2-21]")
+    assert word1._extended_letters == [[-1, 1], [1, -2]]
+    word1.multiply("[(-11)(-11)(11)][25]")
+    assert word1._extended_letters == [
+        [-1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1],
+        [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+    ]
+
+    w1 = fruits.words.SimpleWord("[1][2]")
+    w2 = fruits.words.SimpleWord("[-1][-2]")
+
+    np.testing.assert_allclose(
+        fruits.ISS([w1]).fit_transform(1/(X_1+10)),
+        fruits.ISS([w2]).fit_transform(X_1+10),
+    )
+
+    np.testing.assert_allclose(
+        fruits.ISS(
+            [w1],
+            semiring=fruits.semiring.Arctic(),
+        ).fit_transform(-X_1),
+        fruits.ISS(
+            [w2],
+            semiring=fruits.semiring.Arctic(),
+        ).fit_transform(X_1),
+    )

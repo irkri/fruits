@@ -7,17 +7,6 @@ from .words.word import Word, SimpleWord
 from .words.creation import replace_letters
 
 
-def _transform_simple_word(word: SimpleWord) -> np.ndarray:
-    # transforms the given simple word for faster calculation with a
-    # backend function
-    simple_word_raw = list(word)
-    word_transformed = np.zeros((len(word), word._max_dim), dtype=np.int32)
-    for i, dim in enumerate(simple_word_raw):
-        for j, nletters in enumerate(dim):
-            word_transformed[i, j] = nletters
-    return word_transformed
-
-
 class Semiring(ABC):
 
     def iterated_sums(
@@ -33,7 +22,7 @@ class Semiring(ABC):
                 for i in numba.prange(Z.shape[0]):
                     result[i] = self._iterated_sum_fast(
                         Z[i, :, :],
-                        _transform_simple_word(word),
+                        np.array(list(word)),
                         alphas,
                         extended,
                     )
@@ -122,9 +111,12 @@ class Reals(Semiring):
                 continue
             C = np.ones(Z.shape[1], dtype=np.float64)
             for dim, el in enumerate(ext_letter):
-                if el != 0:
+                if el > 0:
                     for _ in range(el):
                         C = C * Z[dim, :]
+                elif el < 0:
+                    for _ in range(-el):
+                        C = C / Z[dim, :]
             if k > 0:
                 tmp = np.roll(tmp, 1)
                 tmp[0] = 0

@@ -23,7 +23,9 @@ class Seed(ABC):
         """Fits the seed to the given data."""
         has_cache = hasattr(self, "_cache")
         if not has_cache:
-            self._cache = SharedSeedCache()
+            self._cache = SharedSeedCache(
+                X[:, np.newaxis, :] if X.ndim == 2 else X
+            )
         self._fit(X)
         if not has_cache:
             del self._cache
@@ -36,7 +38,9 @@ class Seed(ABC):
         """Transforms the given data and returns the results."""
         has_cache = hasattr(self, "_cache")
         if not has_cache:
-            self._cache = SharedSeedCache()
+            self._cache = SharedSeedCache(
+                X[:, np.newaxis, :] if X.ndim == 2 else X
+            )
         result = self._transform(X)
         if not has_cache:
             del self._cache

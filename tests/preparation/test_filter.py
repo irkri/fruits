@@ -15,7 +15,7 @@ def test_window():
 
         [[10, 20, 30, 40, 50],
          [111, 222, 333, 444, 555]]
-    ])
+    ], dtype=float)
 
     w = fruits.preparation.WIN(0.0, 0.7)
     result = w.fit_transform(X)

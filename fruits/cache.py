@@ -13,7 +13,7 @@ def _increments(X: np.ndarray) -> np.ndarray:
     return result
 
 
-@numba.njit("int64[:](float64[:,:,:], float32)", parallel=False, cache=True)
+@numba.njit("int64[:](float64[:,:,:], float64)", parallel=False, cache=True)
 def _coquantile(X: np.ndarray, q: float) -> np.ndarray:
     # calculates the coquantiles of each time series in X for given q
     Y = _increments(X)[:, 0, :]
@@ -37,15 +37,24 @@ class SharedSeedCache:
     reused by all the different components like coquantiles.
 
     Args:
-        X (np.ndarray): Input data for which all transformations will be
-            applied.
+        X (np.ndarray, optional): Input data for which all
+            transformations will be applied. If ``None``, the input has
+            to be given in a ``SharedSeedCache.get`` call.
     """
 
-    def __init__(self, X: np.ndarray) -> None:
+    def __init__(self, X: Optional[np.ndarray] = None) -> None:
         self._cache: dict[CacheType, dict[str, Union[None, np.ndarray]]] = {
             CacheType.COQUANTILE: {}
         }
-        self._input = X
+        if X is not None:
+            if X.ndim == 1:
+                self._input = X[np.newaxis, np.newaxis, :]
+            elif X.ndim == 2:
+                self._input = X[:, np.newaxis, :]
+            else:
+                self._input = X
+        else:
+            self._input = None
 
     def get(
         self,
@@ -67,11 +76,17 @@ class SharedSeedCache:
         """
         if (key not in self._cache[cache_id].keys()
                 or self._cache[cache_id][key] is None):
-            if X is None:
+            if X is None and self._input is not None:
                 self._cache[cache_id][key] = _coquantile(
                     self._input,
                     float(key),
                 )
-            else:
+            elif X is not None:
+                if X.ndim == 1:
+                    X = X[np.newaxis, np.newaxis, :]
+                elif X.ndim == 2:
+                    X = X[:, np.newaxis, :]
                 self._cache[cache_id][key] = _coquantile(X, float(key))
+            else:
+                raise RuntimeError("No input for cache given")
         return self._cache[cache_id][key]  # type: ignore
