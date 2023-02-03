@@ -111,9 +111,15 @@ class _TransformationCallback(fruits.callback.AbstractCallback):
     def on_next_slice(self) -> None:
         self._slc += 1
         self._iss = -1
+        if self._iterated:
+            if len(self._iterated_sums) >= self._slc:
+                self._iterated_sums.append([])
 
     def on_next_iss(self) -> None:
         self._iss += 1
+        if self._iterated:
+            if len(self._iterated_sums[self._slc]) >= self._iss:
+                self._iterated_sums[self._slc].append([])
 
     def on_preparation_end(self, X: np.ndarray) -> None:
         if self._prepared:
@@ -121,10 +127,6 @@ class _TransformationCallback(fruits.callback.AbstractCallback):
 
     def on_iterated_sum(self, X: np.ndarray) -> None:
         if self._iterated:
-            if len(self._iterated_sums) >= self._slc:
-                self._iterated_sums.append([])
-            if len(self._iterated_sums[self._slc]) >= self._iss:
-                self._iterated_sums[self._slc].append([])
             self._iterated_sums[self._slc][self._iss].append(X)
 
     def on_sieving_end(self, X: np.ndarray) -> None:
@@ -512,6 +514,7 @@ class Fruitalyser:
         index2: int,
         source: Optional[Literal["train", "test", "all"]] = ...,
         axes: None = ...,
+        nbins: int = ...,
     ) -> tuple[Figure, Axes, Axes, Axes]:
         ...
 
@@ -523,6 +526,7 @@ class Fruitalyser:
         index2: int,
         source: Optional[Literal["train", "test", "all"]] = ...,
         axes: tuple[Axes, Axes, Axes] = ...,
+        nbins: int = ...,
     ) -> None:
         ...
 
@@ -533,6 +537,7 @@ class Fruitalyser:
         index2: int,
         source: Optional[Literal["train", "test", "all"]] = "all",
         axes: Optional[tuple[Axes, Axes, Axes]] = None,
+        nbins: int = 50,
     ) -> Optional[tuple[Figure, Axes, Axes, Axes]]:
         if axes is None:
             fig = plt.figure()
@@ -559,6 +564,7 @@ class Fruitalyser:
             ax_histy = axes[2]
 
         feat = self.features((index1, index2), source=source)
+        label1, label2 = feat.columns
         feat.columns = ["x", "y"]  # type: ignore
         if source == "all":
             feat["target"] = np.r_[self._y_train, self._y_test]
@@ -567,11 +573,11 @@ class Fruitalyser:
         elif source == "test":
             feat["target"] = self._y_test
 
-        binwidth = 0.25
-        xymax = max(np.max(np.abs(feat.x)), np.max(np.abs(feat.y)))
-        lim = np.ceil(xymax/binwidth) * binwidth
+        xbins = np.linspace(feat.x.min(), feat.x.max(), num=nbins)
+        ybins = np.linspace(feat.y.min(), feat.y.max(), num=nbins)
 
-        bins = np.arange(-lim, lim + binwidth, binwidth)
+        ax.set_xlabel(label1)
+        ax.set_ylabel(label2)
 
         lastx, lasty = None, None
         for i, (label, group) in enumerate(feat.groupby("target")):
@@ -579,13 +585,12 @@ class Fruitalyser:
             ax.scatter(
                 group.x,
                 group.y,
-                marker="+",  # type: ignore
                 label=label,
-                color=color,
+                fc=color + (0.5, ),
             )
             lastx, _, _ = ax_histx.hist(
                 group.x,
-                bins=bins,
+                bins=xbins,
                 bottom=lastx,
                 lw=1.2,
                 edgecolor="black",
@@ -593,7 +598,7 @@ class Fruitalyser:
             )
             lasty, _, _ = ax_histy.hist(
                 group.y,
-                bins=bins,
+                bins=ybins,
                 bottom=lasty,
                 lw=1.2,
                 edgecolor="black",
@@ -602,5 +607,6 @@ class Fruitalyser:
             )
 
         if fig is not None:
+            fig.legend(title="Target", bbox_to_anchor=(1, 1, 0, -0.2))
             return fig, ax, ax_histx, ax_histy
         return None
