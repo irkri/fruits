@@ -1,5 +1,6 @@
 import os
-from typing import Generator, Optional, Sequence, Union
+from typing import Generator, Optional, Sequence, Callable
+from functools import partial
 
 import numpy as np
 from scipy.io import arff
@@ -19,6 +20,7 @@ def multisine(
     n_classes: int = 2,
     used_sines: int = 3,
     coefficients: Optional[np.ndarray] = None,
+    noise: Optional[Callable[[], float]] = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Generates a time series dataset based on a linear concatenation
     of sine functions with random parameters for period length and more.
@@ -46,6 +48,9 @@ def multisine(
             describes the properties of a single sine function:
             ``[amplitude, frequency, phaseshift]``. Defaults to random
             coefficients.
+        noise (callable, optional): Callable that returns a random noise
+            float value. If none is given, normally distributed values
+            with mean 0 and standard deviation 0.5 are used.
 
     Returns:
         tuple of numpy arrays: A dataset of time series in the order
@@ -84,7 +89,11 @@ def multisine(
     for i, n_i in enumerate(train_sizes):
         for j in range(n_i):
             X_train[s+j, :] = models[i]
-            X_train[s+j, :] += np.random.normal(loc=0, scale=0.5, size=length)
+            if noise is None:
+                a = np.random.normal(0, 0.5, length)
+                X_train[s+j, :] += a
+            else:
+                X_train[s+j, :] += np.array([noise() for _ in range(length)])
             y_train[s+j] = i
         s += n_i
 
@@ -92,7 +101,10 @@ def multisine(
     for i, n_i in enumerate(test_sizes):
         for j in range(n_i):
             X_test[s+j, :] = models[i]
-            X_test[s+j, :] += np.random.normal(loc=0, scale=0.5, size=length)
+            if noise is None:
+                X_test[s+j, :] += np.random.normal(0, 0.5, length)
+            else:
+                X_test[s+j, :] += np.array([noise() for _ in range(length)])
             y_test[s+j] = i
         s += n_i
 
