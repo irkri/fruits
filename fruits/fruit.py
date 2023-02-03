@@ -393,7 +393,7 @@ class FruitSlice:
         """
         self._compile()
 
-        cache = SharedSeedCache()
+        cache = SharedSeedCache(X)
         prepared_data = self._select_fit_sample(X)
         for prep in self._preparateurs:
             prep._cache = cache
@@ -425,8 +425,7 @@ class FruitSlice:
                 numpy array of shape
                 ``(n_series, n_dimensions, series_length)``.
             callbacks: A list of callbacks. To write your own callback,
-                override the class
-                :class:`~fruits.callback.AbstractCallback`.
+                inherit from :class:`~fruits.callback.AbstractCallback`.
                 Defaults to None.
 
         Raises:
@@ -437,7 +436,7 @@ class FruitSlice:
         if not self._fitted:
             raise RuntimeError("Missing call of self.fit")
 
-        cache = SharedSeedCache()
+        cache = SharedSeedCache(X)
         prepared_data = X
         for prep in self._preparateurs:
             prep._cache = cache

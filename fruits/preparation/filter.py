@@ -90,12 +90,10 @@ class WIN(Preparateur):
         coq_start = self._cache.get(
             CacheType.COQUANTILE,
             str(self._start),
-            X.astype(np.float64),
         )
         coq_end = self._cache.get(
             CacheType.COQUANTILE,
             str(self._end),
-            X.astype(np.float64),
         )
         result = np.zeros_like(X)
         for i in range(X.shape[0]):

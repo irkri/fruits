@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Union
+from typing import Union, Optional
 
 import numba
 import numpy as np
@@ -35,15 +35,43 @@ class SharedSeedCache:
     """Class that is given at a :meth:`fruits.Fruit.fit` call to every
     seed in the :class:`~fruits.Fruit`. It manages the cache that can be
     reused by all the different components like coquantiles.
+
+    Args:
+        X (np.ndarray): Input data for which all transformations will be
+            applied.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, X: np.ndarray) -> None:
         self._cache: dict[CacheType, dict[str, Union[None, np.ndarray]]] = {
             CacheType.COQUANTILE: {}
         }
+        self._input = X
 
-    def get(self, cache_id: CacheType, key: str, X: np.ndarray) -> np.ndarray:
+    def get(
+        self,
+        cache_id: CacheType,
+        key: str,
+        X: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        """Returns a stored cache or calculates and stores the results
+        of the target cache type.
+
+        Args:
+            cache_id (CacheType): Type of the calculation used.
+            key (str): A key that can be used for different
+                configurations of the given cache type.
+            X (np.ndarray, optional): If supplied, calculates the cache
+                with ``X`` as input if not already a stored value exists
+                for the given key. Otherwise, the stored class variable
+                ``X`` will be used. Defaults to None.
+        """
         if (key not in self._cache[cache_id].keys()
                 or self._cache[cache_id][key] is None):
-            self._cache[cache_id][key] = _coquantile(X, float(key))
+            if X is None:
+                self._cache[cache_id][key] = _coquantile(
+                    self._input,
+                    float(key),
+                )
+            else:
+                self._cache[cache_id][key] = _coquantile(X, float(key))
         return self._cache[cache_id][key]  # type: ignore

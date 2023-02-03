@@ -51,7 +51,6 @@ class ExplicitSieve(FeatureSieve, ABC):
                 new_cuts[:, i] = self._cache.get(
                     CacheType.COQUANTILE,
                     str(cut),
-                    X[:, np.newaxis, :],
                 )
             else:
                 if self._cut[i] <= 0:
