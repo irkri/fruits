@@ -215,7 +215,7 @@ class PIA(ExplicitSieve):
                 parallel=True, cache=True)
     def _backend(X: np.ndarray, cuts: np.ndarray) -> np.ndarray:
         result = np.zeros((X.shape[0], cuts.shape[1]))
-        X_inc = _increments(np.expand_dims(X, axis=1))[:, 0, :]
+        X_inc = _increments(np.expand_dims(X, axis=1), 1)[:, 0, :]
         for i in numba.prange(X.shape[0]):  # pylint: disable=not-an-iterable
             for j in range(cuts.shape[1]):
                 result[i, j] = np.sum(X_inc[i, :cuts[i, j]] > 0)

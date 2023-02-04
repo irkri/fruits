@@ -20,23 +20,39 @@ class INC(Preparateur):
         X_inc = [0, x_2-x_1, x_3-x_2, ..., x_n-x_{n-1}].
 
     Args:
+        shift (int or float, optional): If an integer is given, the time
+            series is shifted this number of indices bevor subtracting
+            it from the unshifted version. In the example above, this
+            shift is one. A float value will be multiplied with the
+            length of the time series to get the actual shift, rounded
+            up.
         zero_padding (bool, optional): If set to True, then the first
             entry in each time series will be set to 0. If False, it
             is set to the first value of the original time series.
             Defaults to True.
     """
 
-    def __init__(self, zero_padding: bool = True) -> None:
+    def __init__(
+        self,
+        shift: Union[int, float] = 1,
+        zero_padding: bool = True
+    ) -> None:
+        self._shift = shift
         self._zero_padding = zero_padding
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        out = _increments(X)
+        out = _increments(
+            X,
+            self._shift if isinstance(self._shift, int) else (
+                np.ceil(self._shift * X.shape[2])
+            )
+        )
         if not self._zero_padding:
-            out[:, :, 0] = X[:, :, 0]
+            out[:, :, :self._shift] = X[:, :, :self._shift]
         return out
 
     def _copy(self) -> "INC":
-        return INC(self._zero_padding)
+        return INC(self._shift, self._zero_padding)
 
     def __eq__(self, other) -> bool:
         if (isinstance(other, INC)
@@ -45,7 +61,7 @@ class INC(Preparateur):
         return False
 
     def __str__(self) -> str:
-        return f"INC(zero_padding={self._zero_padding})"
+        return f"INC({self._shift}, {self._zero_padding})"
 
 
 class STD(Preparateur):
@@ -79,7 +95,7 @@ class STD(Preparateur):
         return True
 
     def __str__(self) -> str:
-        return "STD"
+        return "STD()"
 
 
 class MAV(Preparateur):
@@ -134,7 +150,7 @@ class MAV(Preparateur):
         return self._w_given == other._w_given
 
     def __str__(self) -> str:
-        return f"MAV(width={self._w_given})"
+        return f"MAV({self._w_given})"
 
 
 class LAG(Preparateur):
@@ -218,4 +234,4 @@ class JLD(Preparateur):
         return False
 
     def __str__(self) -> str:
-        return f"JLD(dim={self._d})"
+        return f"JLD({self._d})"
