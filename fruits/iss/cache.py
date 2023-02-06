@@ -59,7 +59,9 @@ class CachePlan:
         for i in range(len(self._words)):
             is_index -= self.unique_el_depth(i)
             if is_index < 0:
-                return "]".join(str(self._words[i]).split("]")[:is_index-1])
+                return "]".join(str(self._words[i]).split("]")[
+                    :int(is_index)
+                ]) + "]"
         raise IndexError("Not enough iterated sums in cache plan")
 
     def n_iterated_sums(

@@ -433,17 +433,8 @@ class Fruitalyser:
                 index=index,
                 level="iterated sums",
             )
-            el = 0
-            iss = self.fruit[indices[0]].get_iss()[indices[1]]
-            if (iss.mode == fruits.ISSMode.EXTENDED):
-                el = indices[3] - (
-                    len(iss.words[indices[2]])
-                    - iss._cache_plan.unique_el_depth(indices[2])
-                )
             Fruitalyser._plot(
-                self.callback.iterated_sums[indices[0]][indices[1]][
-                    indices[2]
-                ][:, el, :],
+                self.callback.iterated_sums[indices[0]][indices[1]],
                 self._y_test,
                 axis=ax,
                 mean=mean,

@@ -93,6 +93,7 @@ def feature_path(
             word_indices[i] = (index[1] % n_i) // (
                 n_i / slc.get_iss()[i].n_iterated_sums()
             )
+            n_i /= slc.get_iss()[i].n_iterated_sums()
         for i, iss in enumerate(slc.get_iss()):
             if string != "":
                 string += "->"
