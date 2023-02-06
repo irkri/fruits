@@ -11,7 +11,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from sklearn.linear_model import RidgeClassifierCV
 
-from .tools import split_index, transformation_string
+from .tools import split_index, feature_path
 
 _COLORS: list[tuple[int, int, int]] = [
     (0, 100, 173),
@@ -79,13 +79,12 @@ class _TransformationCallback(fruits.callback.AbstractCallback):
         sieved: bool = True,
     ) -> None:
         self._slc = -1
-        self._iss = -1
         self._prepared = prepared
         if self._prepared:
             self._prepared_data: list[np.ndarray] = []
         self._iterated = iterated
         if self._iterated:
-            self._iterated_sums: list[list[list[np.ndarray]]] = []
+            self._iterated_sums: list[list[np.ndarray]] = []
         self._sieved = sieved
         if self._sieved:
             self._sieved_data: list[np.ndarray] = []
@@ -97,7 +96,7 @@ class _TransformationCallback(fruits.callback.AbstractCallback):
         return self._prepared_data
 
     @property
-    def iterated_sums(self) -> list[list[list[np.ndarray]]]:
+    def iterated_sums(self) -> list[list[np.ndarray]]:
         if not self._iterated:
             raise RuntimeError("Didn't save iterated sums")
         return self._iterated_sums
@@ -110,16 +109,9 @@ class _TransformationCallback(fruits.callback.AbstractCallback):
 
     def on_next_slice(self) -> None:
         self._slc += 1
-        self._iss = -1
         if self._iterated:
             if len(self._iterated_sums) >= self._slc:
                 self._iterated_sums.append([])
-
-    def on_next_iss(self) -> None:
-        self._iss += 1
-        if self._iterated:
-            if len(self._iterated_sums[self._slc]) >= self._iss:
-                self._iterated_sums[self._slc].append([])
 
     def on_preparation_end(self, X: np.ndarray) -> None:
         if self._prepared:
@@ -127,7 +119,7 @@ class _TransformationCallback(fruits.callback.AbstractCallback):
 
     def on_iterated_sum(self, X: np.ndarray) -> None:
         if self._iterated:
-            self._iterated_sums[self._slc][self._iss].append(X)
+            self._iterated_sums[self._slc].append(X)
 
     def on_sieving_end(self, X: np.ndarray) -> None:
         if self._sieved:
@@ -465,7 +457,7 @@ class Fruitalyser:
         if level == "input":
             ax.set_title("Input Data")
         else:
-            ax.set_title(transformation_string(
+            ax.set_title(feature_path(
                 self.fruit,
                 index if index is not None else 0,
                 level=level,
@@ -502,7 +494,7 @@ class Fruitalyser:
         column_names = []
         for i, index in enumerate(indices):
             feat_table[i] = features[:, index]
-            column_names.append(transformation_string(self.fruit, index))
+            column_names.append(feature_path(self.fruit, index))
         feats = pd.DataFrame(feat_table.T, columns=column_names)
         return feats
 
@@ -564,7 +556,7 @@ class Fruitalyser:
             ax_histy = axes[2]
 
         feat = self.features((index1, index2), source=source)
-        label1, label2 = feat.columns
+        label1, label2 = str(feat.columns[0]), str(feat.columns[1])
         feat.columns = ["x", "y"]  # type: ignore
         if source == "all":
             feat["target"] = np.r_[self._y_train, self._y_test]

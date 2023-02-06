@@ -1,14 +1,13 @@
 import inspect
-from typing import Any, Callable, Literal, Optional, Union
+from typing import Callable, Generator, Optional, Union
 
 import numpy as np
 
+from .cache import SharedSeedCache
 from .callback import AbstractCallback
-from .iss.iss import ISS, CachePlan
-from .iss.words.word import Word
+from .iss.iss import ISS
 from .preparation.abstract import Preparateur
 from .seed import Seed
-from .cache import SharedSeedCache
 from .sieving.abstract import FeatureSieve
 
 
@@ -263,7 +262,7 @@ class FruitSlice:
         # all sieves in one list are trained on an iterated sums of one
         # word (the second inner list iterates over extended letters if
         # the iss mode is set to extended)
-        self._sieves_extended: list[list[list[FeatureSieve]]] = []
+        self._sieves_extended: list[list[FeatureSieve]] = []
 
         # configurations for fitting
         self._fitted: bool = False
@@ -359,18 +358,18 @@ class FruitSlice:
         """Returns the total number of features the current
         configuration produces.
         """
-        return (
+        return int(
             sum(s.nfeatures() for s in self._sieves)
-            * sum(iss.n_iterated_sums() for iss in self._iss)
+            * np.prod([iss.n_iterated_sums() for iss in self._iss])
         )
 
     def _compile(self) -> None:
         # checks if the FruitSlice is configured correctly and ready
         # for fitting
         if not self._iss:
-            raise RuntimeError("No entries specified for ISS calculation")
+            raise RuntimeError("No ISS given")
         if not self._sieves:
-            raise RuntimeError("No FeatureSieve objects specified")
+            raise RuntimeError("No feature sieves given")
 
     def _select_fit_sample(self, X: np.ndarray) -> np.ndarray:
         # returns a sample of the data used for fitting
@@ -381,6 +380,22 @@ class FruitSlice:
         s = max(int(self.fit_sample_size * X.shape[0]), 1)
         indices = np.random.choice(X.shape[0], size=s, replace=False)
         return X[indices, :, :]
+
+    def _iterate_iss(
+        self,
+        X: np.ndarray,
+        iss_index: int = 0,
+    ) -> Generator[np.ndarray, None, None]:
+        # iteratively calculate all iterated sums from all ISS
+        if iss_index == len(self._iss):
+            yield X[:, 0, :]
+        else:
+            for itsums in self._iss[iss_index].batch_transform(X):
+                for itsum in itsums:
+                    yield from self._iterate_iss(
+                        itsum[:, np.newaxis, :],
+                        iss_index+1,
+                    )
 
     def fit(self, X: np.ndarray) -> None:
         """Fits the slice to the given dataset. What this action
@@ -401,15 +416,13 @@ class FruitSlice:
             prepared_data = prep.transform(prepared_data)
 
         self._sieves_extended = []
-        for iss in self._iss:
-            for itsums in iss.batch_transform(prepared_data):
-                self._sieves_extended.append([])
-                for j in range (itsums.shape[1]):
-                    sieves_copy = [sieve.copy() for sieve in self._sieves]
-                    for sieve in sieves_copy:
-                        sieve._cache = cache
-                        sieve.fit(itsums[:, j, :])
-                    self._sieves_extended[-1].append(sieves_copy)
+
+        for itsum in self._iterate_iss(prepared_data):
+            sieves_copy = [sieve.copy() for sieve in self._sieves]
+            for sieve in sieves_copy:
+                sieve._cache = cache
+                sieve.fit(itsum)
+            self._sieves_extended.append(sieves_copy)
         self._fitted = True
 
     def transform(
@@ -449,22 +462,16 @@ class FruitSlice:
         sieved_data = np.zeros((prepared_data.shape[0],
                                 self.nfeatures()))
         k = 0
-        for iss in self._iss:
+        for i, itsum in enumerate(self._iterate_iss(prepared_data)):
             for callback in callbacks:
-                callback.on_next_iss()
-            for i, itsums in enumerate(iss.batch_transform(prepared_data)):
+                callback.on_iterated_sum(itsum)
+            for sieve in self._sieves_extended[i]:
+                sieve._cache = cache
+                nf = sieve.nfeatures()
+                sieved_data[:, k:k+nf] = sieve.transform(itsum)
                 for callback in callbacks:
-                    callback.on_iterated_sum(itsums)
-                for j in range(itsums.shape[1]):
-                    for sieve in self._sieves_extended[i][j]:
-                        sieve._cache = cache
-                        nf = sieve.nfeatures()
-                        sieved_data[:, k:k+nf] = sieve.transform(
-                            itsums[:, j, :]
-                        )
-                        for callback in callbacks:
-                            callback.on_sieve(sieved_data[k:k+nf])
-                        k += nf
+                    callback.on_sieve(sieved_data[k:k+nf])
+                k += nf
         for callback in callbacks:
             callback.on_sieving_end(sieved_data)
         return sieved_data

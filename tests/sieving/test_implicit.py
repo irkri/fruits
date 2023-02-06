@@ -4,8 +4,8 @@ import numpy as np
 import fruits
 
 X_1 = np.array([
-    [[-4, 0.8, 0, 5, -3], [2, 1, 0, 0, -7]],
-    [[5, 8, 2, 6, 0], [-5, -1, -4, -0.5, -8]]
+    [[-4., .8, 0., 5., -3.], [2., 1., 0., 0., -7.]],
+    [[5., 8., 2., 6., 0.], [-5., -1., -4., -.5, -8.]]
 ])
 
 
@@ -41,7 +41,7 @@ def test_ppv():
                                      sample_size=1,
                                      segments=False)
 
-    np.testing.assert_allclose(np.array([[1, 1, 3/5], [0, 4/5, 0]]),
+    np.testing.assert_allclose(np.array([[1., 1., 3/5], [0., 4/5, 0.]]),
                                ppv_group_1.fit_transform(X_1[1]))
 
     ppv_group_2 = fruits.sieving.PPV(quantile=[0.5, 0.1, 0.7],
@@ -49,7 +49,7 @@ def test_ppv():
                                      sample_size=1,
                                      segments=True)
 
-    np.testing.assert_allclose(np.array([[0, 2/5], [4/5, 0]]),
+    np.testing.assert_allclose(np.array([[0., 2/5], [4/5, 0.]]),
                                ppv_group_2.fit_transform(X_1[1]))
 
     ppv_group_3 = fruits.sieving.PPV(quantile=[-5, 0, 2],
@@ -57,7 +57,7 @@ def test_ppv():
                                      sample_size=1,
                                      segments=False)
 
-    np.testing.assert_allclose(np.array([[1, 1, 4/5], [4/5, 0, 0]]),
+    np.testing.assert_allclose(np.array([[1., 1., 4/5], [4/5, 0., 0.]]),
                                ppv_group_3.fit_transform(X_1[1]))
 
     ppv_group_4 = fruits.sieving.PPV(quantile=[0, -5, 2],
@@ -65,7 +65,7 @@ def test_ppv():
                                      sample_size=1,
                                      segments=True)
 
-    np.testing.assert_allclose(np.array([[0, 1/5], [4/5, 0]]),
+    np.testing.assert_allclose(np.array([[0., 1/5], [4/5, 0.]]),
                                ppv_group_4.fit_transform(X_1[1]))
 
     ppv_group_4_copy = ppv_group_4.copy()

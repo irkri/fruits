@@ -3,9 +3,9 @@ import numpy as np
 import fruits
 
 X_1 = np.array([
-    [[-4, 0.8, 0, 5, -3], [2, 1, 0, 0, -7]],
-    [[5, 8, 2, 6, 0], [-5, -1, -4, -0.5, -8]]
-], dtype=float)
+    [[-4, 0.8, 0, 5, -3], [2.0, 1, 0, 0, -7]],
+    [[5.0, 8, 2, 6, 0], [-5, -1, -4, -0.5, -8]]
+])
 
 
 def test_simpleword_iss():
@@ -22,7 +22,7 @@ def test_simpleword_iss():
         np.array([[16, 16.64, 16.64, 41.64, 50.64], [25, 89, 93, 129, 129]]),
         np.array([[-8, -7.2, -7.2, -7.2, 13.8], [-25, -33, -41, -44, -44]]),
         np.array([[0, -3.2, -3.2, -19.2, -24.6], [0, 40, 66, 156, 156]]),
-        np.array([[0, -4, -4, -4, -16.6], [0, -5, -57, -64.5, -232.5]]),
+        np.array([[0., -4., -4., -4., -16.6], [0, -5, -57, -64.5, -232.5]]),
     )
 
     results = fruits.ISS([w1, w2, w3, w4, w5, w6]).batch_transform(
@@ -31,13 +31,13 @@ def test_simpleword_iss():
     )
 
     for i, result in enumerate(results):
-        np.testing.assert_allclose(correct[i], result[:, 0, :])
+        np.testing.assert_allclose(correct[i], result[0, :, :])
 
     w1_copy = w1.copy()
 
     np.testing.assert_allclose(
         correct[0],
-        fruits.ISS([w1_copy]).fit_transform(X_1)[:, 0, :],
+        fruits.ISS([w1_copy]).fit_transform(X_1)[0, :, :],
     )
 
 
@@ -48,7 +48,7 @@ def test_theoretical_cases():
 
     result = fruits.ISS([fruits.words.SimpleWord("[1][1]")]).fit_transform(X)
 
-    np.testing.assert_allclose(np.ones((25,)) * -50, result[:, 0, -1])
+    np.testing.assert_allclose(np.ones((25,)) * -50, result[0, :, -1])
 
 
 def test_word_generation():

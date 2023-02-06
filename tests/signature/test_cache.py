@@ -3,8 +3,8 @@ import numpy as np
 import fruits
 
 X_1 = np.array([
-    [[-4, 0.8, 0, 5, -3], [2, 1, 0, 0, -7]],
-    [[5, 8, 2, 6, 0], [-5, -1, -4, -0.5, -8]]
+    [[-4, 0.8, 0, 5, -3], [2.0, 1, 0, 0, -7]],
+    [[5.0, 8, 2, 6, 0], [-5, -1, -4, -0.5, -8]]
 ])
 
 
@@ -40,18 +40,18 @@ def test_extented_mode_simple_1():
     word3 = fruits.words.SimpleWord("[11][12][133]")
     word4 = fruits.words.SimpleWord("[11][12][133][22]")
 
-    result_single = np.zeros((10, 4, 100))
+    result_single = np.zeros((4, 10, 100))
 
-    result_single[:, 0:1, :] = fruits.ISS([word1]).fit_transform(X)
-    result_single[:, 1:2, :] = fruits.ISS([word2]).fit_transform(X)
-    result_single[:, 2:3, :] = fruits.ISS([word3]).fit_transform(X)
-    result_single[:, 3:4, :] = fruits.ISS([word4]).fit_transform(X)
+    result_single[0, :, :] = fruits.ISS([word1]).fit_transform(X)
+    result_single[1, :, :] = fruits.ISS([word2]).fit_transform(X)
+    result_single[2, :, :] = fruits.ISS([word3]).fit_transform(X)
+    result_single[3, :, :] = fruits.ISS([word4]).fit_transform(X)
 
     np.testing.assert_allclose(result_single, result_extended)
 
 
 def test_extended_mode_simple_2():
-    X = np.random.random_sample((10, 3, 100))
+    X = np.random.random_sample((10, 1, 100))
 
     word = fruits.words.SimpleWord("[1][11][111][1111]")
 
@@ -65,12 +65,12 @@ def test_extended_mode_simple_2():
     word3 = fruits.words.SimpleWord("[1][11][111]")
     word4 = fruits.words.SimpleWord("[1][11][111][1111]")
 
-    result_single = np.zeros((10, 4, 100))
+    result_single = np.zeros((4, 10, 100))
 
-    result_single[:, 0:1, :] = fruits.ISS([word1]).fit_transform(X)
-    result_single[:, 1:2, :] = fruits.ISS([word2]).fit_transform(X)
-    result_single[:, 2:3, :] = fruits.ISS([word3]).fit_transform(X)
-    result_single[:, 3:4, :] = fruits.ISS([word4]).fit_transform(X)
+    result_single[0, :, :] = fruits.ISS([word1]).fit_transform(X)
+    result_single[1, :, :] = fruits.ISS([word2]).fit_transform(X)
+    result_single[2, :, :] = fruits.ISS([word3]).fit_transform(X)
+    result_single[3, :, :] = fruits.ISS([word4]).fit_transform(X)
 
     np.testing.assert_allclose(result_single, result_extended)
 
@@ -162,10 +162,10 @@ def test_extended_mode_general_1():
         [relu_word], mode=fruits.ISSMode.EXTENDED
     ).fit_transform(X)
 
-    result_single = np.zeros((10, 3, 100))
+    result_single = np.zeros((3, 10, 100))
 
-    result_single[:, 0:1, :] = fruits.ISS([relu_word1]).fit_transform(X)
-    result_single[:, 1:2, :] = fruits.ISS([relu_word2]).fit_transform(X)
-    result_single[:, 2:3, :] = fruits.ISS([relu_word3]).fit_transform(X)
+    result_single[0, :, :] = fruits.ISS([relu_word1]).fit_transform(X)
+    result_single[1, :, :] = fruits.ISS([relu_word2]).fit_transform(X)
+    result_single[2, :, :] = fruits.ISS([relu_word3]).fit_transform(X)
 
     np.testing.assert_allclose(result_single, result_extended)

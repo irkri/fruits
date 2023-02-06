@@ -31,18 +31,21 @@ def _calculate_ISS(
         n_itsum = batch_size
         if cache_plan is not None:
             n_itsum = cache_plan.n_iterated_sums(range(i, i+batch_size))
-        results = np.zeros((X.shape[0], n_itsum, X.shape[2]))
+        results = np.zeros((n_itsum, X.shape[0], X.shape[2]))
 
         index = 0
         for word in words[i:i+batch_size]:
-            n_itsum_word = 1
-            if cache_plan is not None:
-                n_itsum_word = cache_plan.unique_el_depth(i)
-            results[:, index:index+n_itsum_word, :] = semiring.iterated_sums(
-                X,
-                word,
-                np.array([0.0] + word.alpha + [0.0], dtype=np.float32),
-                n_itsum_word,
+            n_itsum_word = 1 if cache_plan is None else (
+                cache_plan.unique_el_depth(i)
+            )
+            results[index:index+n_itsum_word, :, :] = np.swapaxes(
+                semiring.iterated_sums(
+                    X,
+                    word,
+                    np.array([0.0] + word.alpha + [0.0], dtype=np.float32),
+                    n_itsum_word,
+                ),
+                0, 1,
             )
             index += n_itsum_word
             i += 1

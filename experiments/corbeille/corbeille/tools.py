@@ -1,7 +1,8 @@
 from typing import Literal, Union
 
 import fruits
-from fruits.iss import CachePlan
+
+import numpy as np
 
 
 def split_index(
@@ -22,11 +23,8 @@ def split_index(
     Returns:
         A tuple of integer indices. The length of the tuple is
         dependent on the level chosen. The indices in order
-        correspond to
-        ``(slice, iss, word, [extended letter,] sieve, feature)`` as one
-        sieve can output many features. The ``extended letter`` will
-        only be produced if the corresponding fruit slice and ISS
-        calculator has its ``mode`` set to ``fruits.ISSMode.EXTENDED``.
+        correspond to ``(slice, word, sieve, feature)`` as one sieve can
+        output many features.
     """
     if level == "prepared":
         for slc_index in range(len(fruit)):
@@ -35,49 +33,33 @@ def split_index(
             index -= 1
     elif level == "iterated sums":
         for slc_index, slc in enumerate(fruit):
-            for iss_index, iss in enumerate(slc.get_iss()):
-                for word_index, word in enumerate(iss.words):
-                    n = 1
-                    if iss.mode == fruits.ISSMode.EXTENDED:
-                        n = iss._cache_plan.unique_el_depth(word_index)
-                    for ext_letter in range(len(word)-n, len(word)):
-                        if index == 0:
-                            return (
-                                (slc_index, iss_index, word_index, ext_letter)
-                                if iss.mode == fruits.ISSMode.EXTENDED
-                                else (slc_index, iss_index, word_index)
-                            )
-                        index -= 1
+            nwords = np.prod([iss.n_iterated_sums() for iss in slc.get_iss()])
+            for word_index in range(nwords):
+                if index == 0:
+                    return (slc_index, word_index)
+                index -= 1
     elif level == "features":
         for slc_index, slc in enumerate(fruit):
-            for iss_index, iss in enumerate(slc.get_iss()):
-                for word_index, word in enumerate(iss.words):
-                    n = 1
-                    if iss.mode == fruits.ISSMode.EXTENDED:
-                        n = iss._cache_plan.unique_el_depth(word_index)
-                    for ext_letter in range(len(word)-n, len(word)):
-                        for s_index, sieve in enumerate(slc.get_sieves()):
-                            for feature_index in range(sieve.nfeatures()):
-                                if index == 0:
-                                    return (
-                                        (slc_index, iss_index, word_index,
-                                         ext_letter, s_index, feature_index)
-                                        if iss.mode == fruits.ISSMode.EXTENDED
-                                        else (slc_index, iss_index, word_index,
-                                              s_index, feature_index)
-                                    )
-                                index -= 1
+            nwords = np.prod([iss.n_iterated_sums() for iss in slc.get_iss()])
+            for word_index in range(nwords):
+                for s_index, sieve in enumerate(slc.get_sieves()):
+                    for feature_index in range(sieve.nfeatures()):
+                        if index == 0:
+                            return (
+                                slc_index, word_index, s_index, feature_index,
+                            )
+                        index -= 1
     raise ValueError("Index out of range or unknown level")
 
 
-def transformation_string(
+def feature_path(
     fruit: fruits.Fruit,
     index: Union[int, tuple[int, ...]],
     level: Literal["prepared", "iterated sums", "features"] = "features",
     with_kwargs: bool = False,
 ) -> str:
-    """Returns a string characterising the transformation needed to get
-    to the supplied data result with the given fruit. The string
+    """Returns a string representation of all steps in the given fruit
+    pipeline needed to get to the supplied index of a result. The string
     consists of seed identifiers within the fruit.
 
     Args:
@@ -105,17 +87,21 @@ def transformation_string(
             slc.get_preparateurs()
         ))
     if level == "iterated sums" or level == "features":
-        iss = slc.get_iss()[index[1]]
-        if string != "":
-            string += "->"
-        if iss.mode == fruits.ISSMode.EXTENDED:
-            string += "]".join(
-                str(iss.words[index[2]]).split("]")[:-1][:index[3]+1]
-            ) + "]"
-        else:
-            string += str(iss.words[index[2]])
-        if not isinstance(iss.semiring, fruits.semiring.Reals):
-            string += f":{iss.semiring.__class__.__name__}"
+        word_indices = np.zeros((len(slc.get_iss()),))
+        n_i = np.prod([iss.n_iterated_sums() for iss in slc.get_iss()])
+        for i in range(word_indices.size):
+            word_indices[i] = (index[1] % n_i) // (
+                n_i / slc.get_iss()[i].n_iterated_sums()
+            )
+        for i, iss in enumerate(slc.get_iss()):
+            if string != "":
+                string += "->"
+            if iss.mode == fruits.ISSMode.EXTENDED:
+                string += iss._cache_plan.get_word_string(word_indices[i])
+            else:
+                string += str(iss.words[word_indices[i]])
+            if not isinstance(iss.semiring, fruits.semiring.Reals):
+                string += f":{iss.semiring.__class__.__name__}"
     if level == "features":
         string += "->"
         if with_kwargs:

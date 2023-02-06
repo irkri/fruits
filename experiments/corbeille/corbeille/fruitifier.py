@@ -65,7 +65,7 @@ def fruitify(
         classifier.fit(X_train_feat, y_train)  # type: ignore
         accs.append(classifier.score(X_test_feat, y_test))  # type: ignore
 
-    return np.mean(times), np.mean(accs)
+    return float(np.mean(times)), float(np.mean(accs))
 
 
 def fruitify_all(

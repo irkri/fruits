@@ -3,12 +3,12 @@ import numpy as np
 import fruits
 
 X_1 = np.array([
-    [[-4, 0.8, 0, 5, -3], [2, 1, 0, 0, -7]],
-    [[5, 8, 2, 6, 0], [-5, -1, -4, -0.5, -8]]
+    [[-4, 0.8, 0, 5, -3], [2.0, 1, 0, 0, -7]],
+    [[5.0, 8, 2, 6, 0], [-5, -1, -4, -0.5, -8]]
 ])
 
 
-def test_simpleword_minplus():
+def test_simpleword_tropical():
     w1 = fruits.words.SimpleWord("[1]")
     w2 = fruits.words.SimpleWord("[2]")
     w3 = fruits.words.SimpleWord("[11]")
@@ -31,10 +31,10 @@ def test_simpleword_minplus():
     ).batch_transform(X_1, batch_size=1)
 
     for i, result in enumerate(results):
-        np.testing.assert_allclose(correct[i], result[:, 0, :])
+        np.testing.assert_allclose(correct[i], result[0])
 
 
-def test_word_minplus():
+def test_word_tropical():
     word = fruits.words.Word("[DIM(1)DIM(2)][DIM(1)ABS(1)]")
 
     correct = np.array([[0, -0.4, -2, -2, -2], [0, 16, 4, 4, -2]])
@@ -44,4 +44,4 @@ def test_word_minplus():
         semiring=fruits.iss.semiring.Tropical(),
     ).fit_transform(X_1)
 
-    np.testing.assert_allclose(correct, results[:, 0, :])
+    np.testing.assert_allclose(correct, results[0, :, :])

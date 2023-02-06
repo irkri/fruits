@@ -42,6 +42,26 @@ class CachePlan:
         """
         return self._plan[index]
 
+    def get_word_index(self, is_index: int) -> int:
+        """Returns the word index for the given index of an iterated
+        sum.
+        """
+        for i in range(len(self._words)):
+            is_index -= self.unique_el_depth(i)
+            if is_index < 0:
+                return i
+        raise IndexError("Not enough iterated sums in cache plan")
+
+    def get_word_string(self, is_index: int) -> str:
+        """Returns the word string for the given index of an iterated
+        sum. This can be a prefix of a given word.
+        """
+        for i in range(len(self._words)):
+            is_index -= self.unique_el_depth(i)
+            if is_index < 0:
+                return "]".join(str(self._words[i]).split("]")[:is_index-1])
+        raise IndexError("Not enough iterated sums in cache plan")
+
     def n_iterated_sums(
         self,
         word_indices: Optional[Sequence[int]] = None,
