@@ -1,5 +1,5 @@
 import itertools
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 
 from .letters import ExtendedLetter
 from .word import SimpleWord, Word
@@ -81,3 +81,23 @@ def replace_letters(
                 new_el.append(letter, dim)
         new_word.multiply(new_el)
     return new_word
+
+
+def alternate_sign(words: Sequence[SimpleWord]) -> list[SimpleWord]:
+    new_words = []
+    for word in words:
+        new_word1 = ""
+        new_word2 = ""
+        for i, el in enumerate(word):
+            s = ""
+            for dim, letter in enumerate(el):
+                s += letter*f"-{dim+1}"
+            if i % 2 == 0:
+                new_word1 += f"[{s}]"
+                new_word2 += f"[{s.replace('-', '')}]"
+            else:
+                new_word1 += f"[{s.replace('-', '')}]"
+                new_word2 += f"[{s}]"
+        new_words.append(SimpleWord(new_word1))
+        new_words.append(SimpleWord(new_word2))
+    return new_words
