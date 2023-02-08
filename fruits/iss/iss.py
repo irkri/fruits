@@ -144,4 +144,4 @@ class ISS(Seed):
         )
 
     def _copy(self) -> "ISS":
-        return ISS(self.words, mode=self.mode)
+        return ISS(self.words, mode=self.mode, semiring=self.semiring)

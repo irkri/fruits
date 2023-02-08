@@ -59,7 +59,8 @@ class Fruit:
         self._iterator_index: int = -1
 
     def cut(self, slice: Optional["FruitSlice"] = None) -> None:
-        """Cuts the fruit and adds a new slice to the pipeline.
+        """Cuts the fruit and adds a new slice to the pipeline. The new
+        slice will be switched to after creation.
 
         Args:
             slice (FruitSlice, optional): A slice to add to the fruit.
@@ -70,6 +71,13 @@ class Fruit:
         self._slices.append(slice)
         self._slc_index = len(self._slices) - 1
         self._fitted = False
+
+    def copycut(self) -> None:
+        """Cuts the fruit and adds a deepcopy of the currently selected
+        slice to it. This method saves to write code for similar slices.
+        The new slice will be switched to after creation.
+        """
+        self.cut(self.get_slice().deepcopy())
 
     def get_slice(self, index: Optional[int] = None) -> "FruitSlice":
         """Returns the currently selected slice or the slice
