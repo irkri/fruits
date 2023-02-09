@@ -247,7 +247,7 @@ class SimpleWord(Word):
                     el.append(0)
             self._max_dim = max_dim
         for el_int in els_int:
-            el = [0 for _ in range(max_dim)]
+            el = [0 for _ in range(self._max_dim)]
             for letter in set(el_int):
                 el[abs(letter)-1] = el[abs(letter)-1] + (
                     el_int.count(letter) if letter > 0 else
