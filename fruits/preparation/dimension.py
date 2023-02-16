@@ -1,4 +1,4 @@
-__all__ = ["ONE", "DIM"]
+__all__ = ["ONE", "DIM", "LAY"]
 
 from typing import Any, Callable
 
@@ -62,3 +62,65 @@ class DIM(Preparateur):
 
     def __str__(self) -> str:
         return f"DIM(f={self._function.__name__})"
+
+
+class LAY(Preparateur):
+    """Preparateur: Two-Layer Nerual Network
+
+    Adds a dimension to the given time series dataset which is the
+    linear combination of a transformed existing dimension.
+    The transformation involves computing the pointwise ReLU of the
+    linearly transformed input series.
+
+    Args:
+        n (int, optional): Number of linear transformations to use in
+            the first layer of this two-step transform. Defaults to 10.
+        dim (int, optional): The dimension to use from the input time
+            series. Defaults to the first dimension.
+        std (float, optional): Standard deviation of the normally
+            distributed weights and biases in all linear transformations
+            used. Defaults to 1.
+        overwrite (bool, optional): If set to true, the preparateur will
+            replace the original dimension with the new one.
+    """
+
+    def __init__(
+        self,
+        n: int = 10,
+        dim: int = 0,
+        std: float = 1.0,
+        overwrite: bool = False,
+    ) -> None:
+        self._n = n
+        self._dim = dim
+        self._std = std
+        self._overwrite = overwrite
+
+    def _fit(self, X: np.ndarray) -> None:
+        self._weights1 = np.random.normal(scale=self._std, size=self._n)
+        self._biases1 = np.random.normal(scale=self._std, size=self._n)
+        self._weights2 = np.random.normal(scale=self._std, size=self._n)
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        if not hasattr(self, "_weights1"):
+            raise RuntimeError("Preparateur LAY was not fitted")
+        new_dim = np.outer(self._weights1, X[:, self._dim, :]).reshape(
+            self._n, X.shape[0], X.shape[2]
+        ) + self._biases1[:, np.newaxis, np.newaxis]
+        new_dim = new_dim * (new_dim > 0)
+        new_dim = np.tensordot(self._weights2, new_dim, axes=1)
+        if not self._overwrite:
+            result = np.zeros((X.shape[0], X.shape[1]+1, X.shape[2]))
+            result[:, :X.shape[1], :] = X
+            result[:, X.shape[1], :] = new_dim
+        else:
+            result = np.zeros((X.shape[0], X.shape[1], X.shape[2]))
+            result[:, :, :] = X
+            result[:, self._dim, :] = new_dim
+        return result
+
+    def _copy(self) -> "LAY":
+        return LAY(self._n, self._dim, self._std)
+
+    def __str__(self) -> str:
+        return f"LAY({self._n}, {self._dim}, {self._std}, {self._overwrite})"
