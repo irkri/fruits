@@ -285,6 +285,13 @@ class LCS(ExplicitSieve):
 
 
 class CUR(ExplicitSieve):
+    """FeatureSieve: Curvature
+
+    Calculates the curvature of the time series as the total sum of
+    squared increments. This will be done for each cut index given. For
+    more information on the available arguments, have a look at the
+    definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
+    """
 
     def __init__(self, cut: Union[list[float], float] = -1) -> None:
         super().__init__(cut, False)
