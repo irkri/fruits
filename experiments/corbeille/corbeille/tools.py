@@ -87,7 +87,7 @@ def feature_path(
             slc.get_preparateurs()
         ))
     if level == "iterated sums" or level == "features":
-        word_indices = np.zeros((len(slc.get_iss()),))
+        word_indices = np.zeros((len(slc.get_iss()),), dtype=np.int32)
         n_i = np.prod([iss.n_iterated_sums() for iss in slc.get_iss()])
         for i in range(word_indices.size):
             word_indices[i] = (index[1] % n_i) // (
