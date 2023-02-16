@@ -3,8 +3,8 @@ import numpy as np
 import fruits
 
 X_1 = np.array([
-    [[-4, 0.8, 0, 5, -3], [2, 1, 0, 0, -7]],
-    [[5, 8, 2, 6, 0], [-5, -1, -4, -0.5, -8]]
+    [[-4., .8, 0., 5., -3.], [2., 1., 0., 0., -7.]],
+    [[5., 8., 2., 6., 0.], [-5., -1., -4., -.5, -8.]]
 ])
 
 
@@ -15,7 +15,7 @@ def test_window():
 
         [[10, 20, 30, 40, 50],
          [111, 222, 333, 444, 555]]
-    ])
+    ], dtype=float)
 
     w = fruits.preparation.WIN(0.0, 0.7)
     result = w.fit_transform(X)
@@ -36,8 +36,8 @@ def test_dot():
     d = fruits.preparation.DOT(0.4)
 
     np.testing.assert_allclose(np.array([
-        [[0, 0.8, 0, 5, 0], [0, 1, 0, 0, 0]],
-        [[0, 8, 0, 6, 0], [0, -1, 0, -0.5, 0]]
+        [[0., 0.8, 0., 5., 0.], [0., 1., 0., 0., 0.]],
+        [[0., 8., 0., 6., 0.], [0., -1., 0., -0.5, 0.]]
     ]), d.fit_transform(X_1))
 
     d = fruits.preparation.DOT(0.9)

@@ -1,4 +1,4 @@
-__all__ = ["INC", "STD", "MAV", "LAG"]
+__all__ = ["INC", "STD", "MAV", "LAG", "JLD"]
 
 from typing import Any, Union
 
@@ -20,23 +20,39 @@ class INC(Preparateur):
         X_inc = [0, x_2-x_1, x_3-x_2, ..., x_n-x_{n-1}].
 
     Args:
+        shift (int or float, optional): If an integer is given, the time
+            series is shifted this number of indices bevor subtracting
+            it from the unshifted version. In the example above, this
+            shift is one. A float value will be multiplied with the
+            length of the time series to get the actual shift, rounded
+            up.
         zero_padding (bool, optional): If set to True, then the first
             entry in each time series will be set to 0. If False, it
             is set to the first value of the original time series.
             Defaults to True.
     """
 
-    def __init__(self, zero_padding: bool = True) -> None:
+    def __init__(
+        self,
+        shift: Union[int, float] = 1,
+        zero_padding: bool = True
+    ) -> None:
+        self._shift = shift
         self._zero_padding = zero_padding
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        out = _increments(X)
+        out = _increments(
+            X,
+            self._shift if isinstance(self._shift, int) else (
+                np.ceil(self._shift * X.shape[2])
+            )
+        )
         if not self._zero_padding:
-            out[:, :, 0] = X[:, :, 0]
+            out[:, :, :self._shift] = X[:, :, :self._shift]
         return out
 
     def _copy(self) -> "INC":
-        return INC(self._zero_padding)
+        return INC(self._shift, self._zero_padding)
 
     def __eq__(self, other) -> bool:
         if (isinstance(other, INC)
@@ -45,7 +61,7 @@ class INC(Preparateur):
         return False
 
     def __str__(self) -> str:
-        return f"INC(zero_padding={self._zero_padding})"
+        return f"INC({self._shift}, {self._zero_padding})"
 
 
 class STD(Preparateur):
@@ -79,7 +95,7 @@ class STD(Preparateur):
         return True
 
     def __str__(self) -> str:
-        return "STD"
+        return "STD()"
 
 
 class MAV(Preparateur):
@@ -134,7 +150,7 @@ class MAV(Preparateur):
         return self._w_given == other._w_given
 
     def __str__(self) -> str:
-        return f"MAV(width={self._w_given})"
+        return f"MAV({self._w_given})"
 
 
 class LAG(Preparateur):
@@ -142,9 +158,9 @@ class LAG(Preparateur):
 
     This preparateur applies the so called lead-lag transform to every
     dimension of the given time series.
-    For one dimension ``[x_1,x_2,...,x_n]`` this results in a new
-    two-dimensional vector
-    ``[(x_1,x_1),(x_2,x_1),(x_2,x_2),(x_3,x_2),...,(x_n,x_n)]``.
+    For one dimension ``[x_1,x_2,...,x_n]`` this results in a new series
+    of two-dimensional vectors
+    ``[(x_1,x_1), (x_2,x_1), (x_2,x_2), (x_3,x_2), ..., (x_n,x_n)]``.
     """
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
@@ -166,3 +182,56 @@ class LAG(Preparateur):
 
     def __str__(self) -> str:
         return "LAG()"
+
+
+class JLD(Preparateur):
+    """Preparatuer: Johnson-Lindenstrauss Dimensionality Reduction
+
+    This preparateur transforms the input dimensions of one time series
+    by multiplying each time step with a vector having random gaussian
+    distributed entries.
+    According to the Johnson-Lindenstrauss lemma, the distance between
+    vectors in the lower dimensional space are nearly preserved.
+
+    Args:
+        dim (int or float, optional): The number of output dimensions.
+            If a float ``f`` in (0, 1) is given, this number will be the
+            smallest integer ``>= 24*log(d) / (3*f**2 - 2*f**3)``, where
+            ``d`` is the number of input dimensions. Defaults to
+            ``0.99``. The default argument should only be used when
+            dealing with high dimensional time series (``d>500``). It is
+            designed so that the Johnson-Lindenstrauss lemma is
+            applicable.
+    """
+
+    def __init__(self, dim: Union[int, float] = 0.99) -> None:
+        if isinstance(dim, float) and not (0 < dim < 1):
+            raise ValueError(
+                "'dim' has to be an integer or a float in (0, 1)"
+            )
+        self._d = dim
+        self._operator: np.ndarray
+
+    def _fit(self, X: np.ndarray) -> None:
+        if isinstance(self._d, float):
+            div_ = 3*self._d**2 - 2*self._d**3
+            d = int(24 * np.log(X.shape[1]) / div_) + 1
+        else:
+            d = self._d
+        self._operator = np.random.randn(d, X.shape[1])
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        return np.matmul(self._operator, X)
+
+    def _copy(self) -> "JLD":
+        return JLD()
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, JLD):
+            return False
+        if self._d == other._d:
+            return True
+        return False
+
+    def __str__(self) -> str:
+        return f"JLD({self._d})"

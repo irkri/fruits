@@ -1,7 +1,7 @@
 import os
 import time
 from timeit import default_timer as Timer
-from typing import Optional, Sequence
+from typing import Callable, Optional, Sequence, Union
 
 import fruits
 import numpy as np
@@ -10,14 +10,15 @@ from sklearn.linear_model import RidgeClassifierCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
-from .data import load, load_all
+from .data import load_all
 from .fruitalyser import FitScoreClassifier
 
 
 def fruitify(
     dataset: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
-    fruit: Optional[fruits.Fruit] = None,
+    fruit: Union[fruits.Fruit, Callable[[np.ndarray], fruits.Fruit]],
     classifier: Optional[FitScoreClassifier] = None,
+    mean_over_n_runs: int = 1,
 ) -> tuple[float, float]:
     """Classifies the given time series dataset using the given fruit
     and classifier.
@@ -31,6 +32,9 @@ def fruitify(
             ``score`` method. Defaults to a RidgeClassifierCV from the
             package sklearn with a prior standardization of the input
             features.
+        mean_over_n_runs (int, optional): The method repeats the
+            classification a given number of times and returns the
+            average time and accuracy. Defaults to 1.
 
     Returns:
         float: The time needed to extract the features with the
@@ -43,30 +47,35 @@ def fruitify(
             ("scaler", StandardScaler()),
             ("nantonum", FunctionTransformer(np.nan_to_num)),
             ("ridge", RidgeClassifierCV(alphas=np.logspace(-3, 3, 10))),
-        ])
+        ])  # type: ignore
     X_train = np.nan_to_num(X_train)
     X_test = np.nan_to_num(X_test)
 
-    fruit = fruit if fruit is not None else fruits.build(X_train)
+    if callable(fruit):
+        fruit = fruit(X_train)
+    times, accs = [], []
 
-    start = Timer()
-    fruit.fit(X_train)
-    X_train_feat = fruit.transform(X_train)
-    X_test_feat = fruit.transform(X_test)
-    timing = Timer() - start
+    for _ in range(mean_over_n_runs):
+        start = Timer()
+        fruit.fit(X_train)
+        X_train_feat = fruit.transform(X_train)
+        X_test_feat = fruit.transform(X_test)
+        times.append(Timer() - start)
 
-    classifier.fit(X_train_feat, y_train)
-    acc = classifier.score(X_test_feat, y_test)
-    return timing, acc
+        classifier.fit(X_train_feat, y_train)  # type: ignore
+        accs.append(classifier.score(X_test_feat, y_test))  # type: ignore
+
+    return float(np.mean(times)), float(np.mean(accs))
 
 
 def fruitify_all(
     path: str,
-    univariate: bool = True,
+    fruit: Union[fruits.Fruit, Callable[[np.ndarray], fruits.Fruit]],
     datasets: Optional[Sequence[str]] = None,
-    fruit: Optional[fruits.Fruit] = None,
+    univariate: bool = True,
     classifier: Optional[FitScoreClassifier] = None,
     output_csv: Optional[str] = None,
+    mean_over_n_runs: int = 1,
 ) -> pd.DataFrame:
     if output_csv is None:
         output_csv = "results_fruits"
@@ -74,15 +83,16 @@ def fruitify_all(
         output_csv = output_csv[:-4]
     if os.path.exists(output_csv + ".csv"):
         output_csv += "_" + time.strftime("%Y-%m-%d-%H%M%S")
+    output_csv = output_csv + ".csv"
 
     results: list[tuple[str, float, float]] = []
 
     for data in load_all(path, univariate, datasets):
-        timing, acc = fruitify(data[1:], fruit, classifier)
+        timing, acc = fruitify(data[1:], fruit, classifier, mean_over_n_runs)
         results.append((data[0], acc, timing))
         pd.DataFrame(
             results,
             columns=["Dataset", "Accuracy", "Time"],
-        ).to_csv(output_csv)
+        ).to_csv(output_csv, index=False)
 
     return pd.DataFrame(results, columns=["Dataset", "Accuracy", "Time"])

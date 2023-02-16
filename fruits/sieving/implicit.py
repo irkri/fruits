@@ -175,12 +175,13 @@ class CPV(PPV):
                 diff = _increments(np.expand_dims(np.logical_and(
                     self._q[j-1] <= X,
                     X < self._q[j],
-                ).astype(np.float64), axis=1))[:, 0, :]
+                ).astype(np.float64), axis=1), 1)[:, 0, :]
                 result[:, j-1] = 2 * np.sum(diff == 1, axis=-1) / n
         else:
             for j, q in enumerate(self._q):
                 diff = _increments(
-                    np.expand_dims((X >= q).astype(np.float64), axis=1)
+                    np.expand_dims((X >= q).astype(np.float64), axis=1),
+                    1
                 )[:, 0, :]
                 result[:, j] = 2 * np.sum(diff == 1, axis=-1) / n
         return result

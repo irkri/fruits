@@ -1,13 +1,10 @@
 import re
 from typing import Optional, Union
 
-import numpy as np
-
-from ...seed import Seed
 from .letters import ExtendedLetter
 
 
-class Word(Seed):
+class Word:
     """A word is a collection of
     :class:`~fruits.words.letter.ExtendedLetter` objects.
     An extended letter is a collection of letters.
@@ -111,16 +108,7 @@ class Word(Seed):
         else:
             raise TypeError(f"Cannot multiply Word with {type(other)}")
 
-    def _fit(self, X: np.ndarray) -> None:
-        pass
-
-    def _transform(self, X: np.ndarray) -> np.ndarray:
-        raise NotImplementedError(
-            "Please use fruits.ISS for the proper calculation of iterated sums"
-            " specifying this word as an argument"
-        )
-
-    def _copy(self) -> "Word":
+    def copy(self) -> "Word":
         sw = Word()
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
@@ -132,7 +120,7 @@ class Word(Seed):
         self._el_iterator_index = -1
         return self
 
-    def __next__(self):
+    def __next__(self) -> ExtendedLetter:
         if self._el_iterator_index < len(self._extended_letters)-1:
             self._el_iterator_index += 1
             return self._extended_letters[self._el_iterator_index]
@@ -193,12 +181,19 @@ class SimpleWord(Word):
     of occurences of letter ``i`` in the ``j``-th extended letter.
 
     Enclose dimensions with normal brackets that have two or more
-    digits, like ``SimpleWord("[122(10)(62)][(24)5]")``.
+    digits, like ``SimpleWord("[122(10)(62)][(24)5]")`` for a time
+    series with at least 62 dimensions.
+
+    It is possible to use negative numbers for negative exponents in a
+    standard iterated sum. An example is
+    ``SimpleWord("[-1-12][(-11)3])")`` for a time series with at least
+    11 dimensions. Its first dimension will be included as
+    ``X[0, :]**(-2)`` in the iterated sum.
 
     Args:
         string (str): Will be used to create the SimpleWord as
             shown in the example above. It has to match the regular
-            expression ``(\\[(\\d|\\(\\d+\\))+\\])+``.
+            expression ``(\\[(-?\\d|\\(-?\\d+\\))+\\])+``.
     """
 
     def __init__(self, string: str) -> None:
@@ -216,10 +211,10 @@ class SimpleWord(Word):
         """
         if not isinstance(other, str):
             raise NotImplementedError
-        if not re.fullmatch(r"(\[(\d|\(\d+\))+\])+", other):
+        if not re.fullmatch(r"(\[(-?\d|\(-?\d+\))+\])+", other):
             raise ValueError("SimpleWord can only be multiplied with a "
                              "string matching the regular expression "
-                             r"'(\[(\d|\(\d+\))+\])+'")
+                             r"'(\[(-?\d|\(-?\d+\))+\])+'")
         self._name = self._name + other
         els_raw = [x[1:] for x in other.split("]")][:-1]
         els_int: list[list[int]] = []
@@ -236,25 +231,44 @@ class SimpleWord(Word):
                     if temp == "":
                         temp = "1"
                     els_int[-1].append(int(temp))
+                elif el_raw[j] == "-":
+                    if j+1 == len(el_raw):
+                        els_int[-1].append(-1)
+                    else:
+                        els_int[-1].append(int(el_raw[j:j+2]))
+                        j += 1
                 else:
                     els_int[-1].append(int(el_raw[j]))
                 j += 1
-        max_dim = max(letter for el_int in els_int for letter in el_int)
+        max_dim = max(abs(letter) for el_int in els_int for letter in el_int)
         if max_dim > self._max_dim:
             for el in self._extended_letters:
                 for _ in range(max_dim-self._max_dim):
                     el.append(0)
             self._max_dim = max_dim
         for el_int in els_int:
-            el = [0 for _ in range(max_dim)]
+            el = [0 for _ in range(self._max_dim)]
             for letter in set(el_int):
-                el[letter-1] = el_int.count(letter)
+                el[abs(letter)-1] = el[abs(letter)-1] + (
+                    el_int.count(letter) if letter > 0 else
+                    -el_int.count(letter)
+                )
             self._extended_letters.append(el)
 
-    def _copy(self) -> "SimpleWord":
+    def copy(self) -> "SimpleWord":
         sw = SimpleWord(self._name)
         sw._extended_letters = [el.copy() for el in self._extended_letters]
         return sw
+
+    def __iter__(self) -> "SimpleWord":
+        self._el_iterator_index = -1
+        return self
+
+    def __next__(self) -> list[int]:
+        if self._el_iterator_index < len(self._extended_letters)-1:
+            self._el_iterator_index += 1
+            return self._extended_letters[self._el_iterator_index]
+        raise StopIteration()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, SimpleWord):

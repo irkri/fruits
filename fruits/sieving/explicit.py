@@ -1,4 +1,4 @@
-__all__ = ["MAX", "MIN", "END", "PIA", "LCS"]
+__all__ = ["MAX", "MIN", "END", "PIA", "LCS", "CUR"]
 
 from abc import ABC
 from typing import Union
@@ -51,7 +51,6 @@ class ExplicitSieve(FeatureSieve, ABC):
                 new_cuts[:, i] = self._cache.get(
                     CacheType.COQUANTILE,
                     str(cut),
-                    X[:, np.newaxis, :],
                 )
             else:
                 if self._cut[i] <= 0:
@@ -216,7 +215,7 @@ class PIA(ExplicitSieve):
                 parallel=True, cache=True)
     def _backend(X: np.ndarray, cuts: np.ndarray) -> np.ndarray:
         result = np.zeros((X.shape[0], cuts.shape[1]))
-        X_inc = _increments(np.expand_dims(X, axis=1))[:, 0, :]
+        X_inc = _increments(np.expand_dims(X, axis=1), 1)[:, 0, :]
         for i in numba.prange(X.shape[0]):  # pylint: disable=not-an-iterable
             for j in range(cuts.shape[1]):
                 result[i, j] = np.sum(X_inc[i, :cuts[i, j]] > 0)
@@ -283,3 +282,49 @@ class LCS(ExplicitSieve):
 
     def __str__(self) -> str:
         return f"LCS(cut={self._cut}, segments={self._segments})"
+
+
+class CUR(ExplicitSieve):
+    """FeatureSieve: Curvature
+
+    Calculates the curvature of the time series as the total sum of
+    squared increments. This will be done for each cut index given. For
+    more information on the available arguments, have a look at the
+    definition of :class:`~fruits.sieving.explicit.ExplicitSieve`.
+    """
+
+    def __init__(self, cut: Union[list[float], float] = -1) -> None:
+        super().__init__(cut, False)
+
+    @staticmethod
+    @numba.njit("float64[:,:](float64[:,:], int64[:,:])",
+                parallel=True, cache=True)
+    def _backend(X: np.ndarray, cuts: np.ndarray) -> np.ndarray:
+        result = np.zeros((X.shape[0], cuts.shape[1]))
+        X_inc = _increments(
+            _increments(np.expand_dims(X, axis=1), 1),
+            1,
+        )[:, 0, :]
+        for i in numba.prange(X.shape[0]):  # pylint: disable=not-an-iterable
+            for j in range(cuts.shape[1]):
+                result[i, j] = np.sum(X_inc[i, :cuts[i, j]]**2)
+        return result
+
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        cuts = self._get_transformed_cuts(X, **kwargs)
+        return CUR._backend(X, cuts)
+
+    def _summary(self) -> str:
+        string = "CUR"
+        if self._segments:
+            string += " [segments]"
+        string += f" -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
+
+    def _copy(self) -> "CUR":
+        return CUR(self._cut)
+
+    def __str__(self) -> str:
+        return f"CUR(cut={self._cut})"

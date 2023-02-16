@@ -1,14 +1,13 @@
 import inspect
-from typing import Any, Callable, Literal, Optional, Union
+from typing import Callable, Generator, Optional, Union
 
 import numpy as np
 
+from .cache import SharedSeedCache
 from .callback import AbstractCallback
-from .iss.iss import ISS, CachePlan
-from .iss.words.word import Word
+from .iss.iss import ISS
 from .preparation.abstract import Preparateur
 from .seed import Seed
-from .cache import SharedSeedCache
 from .sieving.abstract import FeatureSieve
 
 
@@ -60,7 +59,8 @@ class Fruit:
         self._iterator_index: int = -1
 
     def cut(self, slice: Optional["FruitSlice"] = None) -> None:
-        """Cuts the fruit and adds a new slice to the pipeline.
+        """Cuts the fruit and adds a new slice to the pipeline. The new
+        slice will be switched to after creation.
 
         Args:
             slice (FruitSlice, optional): A slice to add to the fruit.
@@ -71,6 +71,13 @@ class Fruit:
         self._slices.append(slice)
         self._slc_index = len(self._slices) - 1
         self._fitted = False
+
+    def copycut(self) -> None:
+        """Cuts the fruit and adds a deepcopy of the currently selected
+        slice to it. This method saves to write code for similar slices.
+        The new slice will be switched to after creation.
+        """
+        self.cut(self.get_slice().deepcopy())
 
     def get_slice(self, index: Optional[int] = None) -> "FruitSlice":
         """Returns the currently selected slice or the slice
@@ -110,33 +117,6 @@ class Fruit:
     def nfeatures(self) -> int:
         """Returns the total sum of features in all slices."""
         return sum(slc.nfeatures() for slc in self._slices)
-
-    def configure(self, **kwargs: Any) -> None:
-        """Calls ``slc.configure(**kwargs)`` for each FruitSlice
-        ``slc`` in the Fruit with the specified arguments.
-
-        Args:
-            iss_mode (str, optional): Mode of the ISS calculator.
-                Following options are available.
-
-                - 'single':
-                    Calculates one iterated sum for each given word.
-                    Default behaviour.
-                - 'extended':
-                    For each given word, the iterated sum for
-                    each sequential combination of extended letters
-                    in that word will be calculated. So for a simple
-                    word like ``[21][121][1]`` the calculator
-                    returns the iterated sums for ``[21]``,
-                    ``[21][121]`` and ``[21][121][1]``.
-            fit_sample_size (float or int, optional): Size of the random
-                time series sample that is used for fitting. This is
-                represented as a float which will be multiplied by
-                ``X.shape[0]`` or ``1`` for one random time series.
-                Defaults to 1.
-        """
-        for slc in self._slices:
-            slc.configure(**kwargs)
 
     def fit(self, X: np.ndarray) -> None:
         """Fits all slices to the given data.
@@ -194,27 +174,42 @@ class Fruit:
 
     def summary(self) -> str:
         """Returns a summary of this object. The summary contains a
-        summary for each FruitSlice in this Fruit object.
+        summary for each slice in this fruit.
         """
-        summary = f"{f'Summary of fruits.Fruit: {self.name}':=^80}"
-        summary += f"\nSlices: {len(self)}"
-        summary += f"\nFeatures: {self.nfeatures()}"
-        for slc in self:
-            summary += "\n\n" + slc.summary()
-        summary += f"\n{'End of Summary':=^80}"
+        summary = 80*"=" + "\n"
+        ident_string = "Fruit"
+        if self.name != "":
+            ident_string += f" {self.name!r}"
+        ident_string += f" -> Features: {self.nfeatures()}"
+        summary += "<" + f"{ident_string: ^78}" + ">\n"
+        summary += 80*"=" + "\n"
+        n = len(self._slices)
+        if n%2 != 0:
+            n -= 1
+        for islc in range(0, n, 2):
+            summary += "|" + 38*"-" + "||" + 38*"-" + "|\n"
+            left = self._slices[islc].summary().split("\n")
+            right = self._slices[islc+1].summary().split("\n")
+            left += [38*" " for _ in range(len(right)-len(left))]
+            right += [38*" " for _ in range(len(left)-len(right))]
+            summary += "\n".join(f"|{l}||{r}|" for l, r in zip(left, right))
+            summary += "\n|" + 38*"-" + "||" + 38*"-" + "|\n"
+        if len(self._slices)%2 != 0:
+            summary += "|" + 38*"-" + "|\n|"
+            summary += self._slices[-1].summary().replace("\n", "|\n|")
+            summary += "|\n|" + 38*"-" + "|\n"
+        summary += f"{'':=^80}"
         return summary
 
     def copy(self) -> "Fruit":
-        """Creates a shallow copy of this Fruit by copying all slices.
-        """
+        """Creates a shallow copy of this Fruit by copying all slices."""
         copy_ = Fruit(self.name + " (Copy)")
         for slc in self._slices:
             copy_.cut(slc.copy())
         return copy_
 
     def deepcopy(self) -> "Fruit":
-        """Creates a deep copy of this Fruit by deep copying all slices.
-        """
+        """Creates a deep copy of this Fruit by deep copying all slices."""
         copy_ = Fruit(self.name + " (Deepcopy)")
         for slc in self._slices:
             copy_.cut(slc.deepcopy())
@@ -268,52 +263,18 @@ class FruitSlice:
     def __init__(self) -> None:
         # lists of used classes for data processing
         self._preparateurs: list[Preparateur] = []
-        self._words: list[Word] = []
+        self._iss: list[ISS] = []
         self._sieves: list[FeatureSieve] = []
 
-        # options for the ISS calculation
-        self.iss_mode: Literal['single', 'extended'] = "single"
-
         # list with inner lists containing sieves
-        # all sieves in one list are trained on one specific output
-        # of an ISS-result
+        # all sieves in one list are trained on an iterated sums of one
+        # word (the second inner list iterates over extended letters if
+        # the iss mode is set to extended)
         self._sieves_extended: list[list[FeatureSieve]] = []
 
         # configurations for fitting
         self._fitted: bool = False
         self.fit_sample_size: Union[float, int] = 1
-
-    def configure(
-        self,
-        *,
-        iss_mode: Literal['single', 'extended'] = "single",
-        fit_sample_size: Union[float, int] = 1,
-    ) -> None:
-        """Makes changes to the default configuration of a fruit slice
-        if arguments differ from ``None``.
-
-        Args:
-            iss_mode (str, optional): Mode of the ISS calculator.
-                Following options are available.
-
-                - 'single':
-                    Calculates one iterated sum for each given word.
-                    Default behaviour.
-                - 'extended':
-                    For each given word, the iterated sum for
-                    each sequential combination of extended letters
-                    in that word will be calculated. So for a simple
-                    word like ``[21][121][1]`` the calculator
-                    returns the iterated sums for ``[21]``,
-                    ``[21][121]`` and ``[21][121][1]``.
-            fit_sample_size (float or int, optional): Size of the random
-                time series sample that is used for fitting. This is
-                represented as a float which will be multiplied by
-                ``X.shape[0]`` or ``1`` for one random time series.
-                Defaults to 1.
-        """
-        self.iss_mode = iss_mode
-        self.fit_sample_size = fit_sample_size
 
     def add_preparateur(self, preparateur: Preparateur) -> None:
         """Adds a preparateur to the fruit slice."""
@@ -331,20 +292,20 @@ class FruitSlice:
         self._preparateurs = []
         self._fitted = False
 
-    def add_word(self, word: Word) -> None:
-        """Adds a word to this fruit slice."""
-        if not isinstance(word, Word):
+    def add_iss(self, iss: ISS) -> None:
+        """Adds a iss to this fruit slice."""
+        if not isinstance(iss, ISS):
             raise TypeError
-        self._words.append(word)
+        self._iss.append(iss)
         self._fitted = False
 
-    def get_words(self) -> list[Word]:
-        """Returns a list of all words in this fruit slice."""
-        return self._words
+    def get_iss(self) -> list[ISS]:
+        """Returns a list of all iss in this fruit slice."""
+        return self._iss
 
-    def clear_words(self) -> None:
-        """Removes all words in this fruit slice."""
-        self._words = []
+    def clear_iss(self) -> None:
+        """Removes all iss in this fruit slice."""
+        self._iss = []
         self._sieves_extended = []
         self._fitted = False
 
@@ -371,8 +332,8 @@ class FruitSlice:
         Args:
             objects: One or more objects of the following types:
 
-                - :class:`~fruits.preparation.abstract.DataPreparateur`
-                - :class:`~fruits.words.word.Word`
+                - :class:`~fruits.preparation.abstract.Preparateur`
+                - :class:`~fruits.iss.iss.ISS`
                 - :class:`~fruits.sieving.abstract.FeatureSieve`
         """
         for obj in objects:
@@ -381,8 +342,8 @@ class FruitSlice:
 
             if isinstance(obj, Preparateur):
                 self.add_preparateur(obj)
-            elif isinstance(obj, Word):
-                self.add_word(obj)
+            elif isinstance(obj, ISS):
+                self.add_iss(obj)
             elif isinstance(obj, FeatureSieve):
                 self.add_sieve(obj)
             else:
@@ -396,7 +357,7 @@ class FruitSlice:
         created :class:`FruitSlice` object.
         """
         self.clear_preparateurs()
-        self.clear_words()
+        self.clear_iss()
         self.clear_sieves()
         self.iss_mode = "single"
         self.fit_sample_size = 1
@@ -405,22 +366,18 @@ class FruitSlice:
         """Returns the total number of features the current
         configuration produces.
         """
-        if self.iss_mode == "extended":
-            return (
-                sum(s.nfeatures() for s in self._sieves)
-                * CachePlan(self._words).n_iterated_sums(
-                    list(range(len(self._words)))
-                  )
-            )
-        return sum(s.nfeatures() for s in self._sieves) * len(self._words)
+        return int(
+            sum(s.nfeatures() for s in self._sieves)
+            * np.prod([iss.n_iterated_sums() for iss in self._iss])
+        )
 
     def _compile(self) -> None:
         # checks if the FruitSlice is configured correctly and ready
         # for fitting
-        if not self._words:
-            raise RuntimeError("No words specified for ISS calculation")
+        if not self._iss:
+            raise RuntimeError("No ISS given")
         if not self._sieves:
-            raise RuntimeError("No FeatureSieve objects specified")
+            raise RuntimeError("No feature sieves given")
 
     def _select_fit_sample(self, X: np.ndarray) -> np.ndarray:
         # returns a sample of the data used for fitting
@@ -431,6 +388,22 @@ class FruitSlice:
         s = max(int(self.fit_sample_size * X.shape[0]), 1)
         indices = np.random.choice(X.shape[0], size=s, replace=False)
         return X[indices, :, :]
+
+    def _iterate_iss(
+        self,
+        X: np.ndarray,
+        iss_index: int = 0,
+    ) -> Generator[np.ndarray, None, None]:
+        # iteratively calculate all iterated sums from all ISS
+        if iss_index == len(self._iss):
+            yield X[:, 0, :]
+        else:
+            for itsums in self._iss[iss_index].batch_transform(X):
+                for itsum in itsums:
+                    yield from self._iterate_iss(
+                        itsum[:, np.newaxis, :],
+                        iss_index+1,
+                    )
 
     def fit(self, X: np.ndarray) -> None:
         """Fits the slice to the given dataset. What this action
@@ -443,7 +416,7 @@ class FruitSlice:
         """
         self._compile()
 
-        cache = SharedSeedCache()
+        cache = SharedSeedCache(X)
         prepared_data = self._select_fit_sample(X)
         for prep in self._preparateurs:
             prep._cache = cache
@@ -451,18 +424,12 @@ class FruitSlice:
             prepared_data = prep.transform(prepared_data)
 
         self._sieves_extended = []
-        iss_calculations = ISS(
-            prepared_data,
-            words=self._words,
-            mode=self.iss_mode,
-            batch_size=1,
-        )
-        for iterated_data in iss_calculations:
-            iterated_data = iterated_data[:, 0, :]
+
+        for itsum in self._iterate_iss(prepared_data):
             sieves_copy = [sieve.copy() for sieve in self._sieves]
             for sieve in sieves_copy:
                 sieve._cache = cache
-                sieve.fit(iterated_data[:, :])
+                sieve.fit(itsum)
             self._sieves_extended.append(sieves_copy)
         self._fitted = True
 
@@ -479,8 +446,7 @@ class FruitSlice:
                 numpy array of shape
                 ``(n_series, n_dimensions, series_length)``.
             callbacks: A list of callbacks. To write your own callback,
-                override the class
-                :class:`~fruits.callback.AbstractCallback`.
+                inherit from :class:`~fruits.callback.AbstractCallback`.
                 Defaults to None.
 
         Raises:
@@ -491,7 +457,7 @@ class FruitSlice:
         if not self._fitted:
             raise RuntimeError("Missing call of self.fit")
 
-        cache = SharedSeedCache()
+        cache = SharedSeedCache(X)
         prepared_data = X
         for prep in self._preparateurs:
             prep._cache = cache
@@ -504,21 +470,13 @@ class FruitSlice:
         sieved_data = np.zeros((prepared_data.shape[0],
                                 self.nfeatures()))
         k = 0
-        iss_calculations = ISS(
-            prepared_data,
-            words=self._words,
-            mode=self.iss_mode,
-            batch_size=1,
-        )
-        for i, iterated_data in enumerate(iss_calculations):
+        for i, itsum in enumerate(self._iterate_iss(prepared_data)):
             for callback in callbacks:
-                callback.on_iterated_sum(iterated_data)
+                callback.on_iterated_sum(itsum)
             for sieve in self._sieves_extended[i]:
                 sieve._cache = cache
                 nf = sieve.nfeatures()
-                sieved_data[:, k:k+nf] = sieve.transform(
-                    iterated_data[:, 0, :]
-                )
+                sieved_data[:, k:k+nf] = sieve.transform(itsum)
                 for callback in callbacks:
                     callback.on_sieve(sieved_data[k:k+nf])
                 k += nf
@@ -537,33 +495,32 @@ class FruitSlice:
         """Returns a summary of this object. The summary contains all
         added preparateurs, words and sieves.
         """
-        summary = f"{'fruits.FruitSlice':-^80}"
-        summary += f"\nNumber of features: {self.nfeatures()}"
-        summary += f"\n\nPreparateurs ({len(self._preparateurs)}): "
+        summary = f"{f'FruitSlice -> {self.nfeatures()}': ^38}"
+        summary += "\n" + 38*"-" + "\n"
+        summary += f"{f'Preparateurs ({len(self._preparateurs)}):': <38}"
+        summary += "\n"
+        summary += f"\n".join(
+            f"{f'    + {x}': <38}" for x in self._preparateurs
+        )
         if len(self._preparateurs) == 0:
-            summary += "-"
-        else:
-            summary += "\n\t+ " + \
-                       "\n\t+ ".join([str(x) for x in self._preparateurs])
-        summary += f"\nIterators ({len(self._words)}): "
-        if len(self._words) == 0:
-            summary += "-"
-        elif len(self._words) > 10:
-            summary += "\n\t+ " + \
-                       "\n\t+ ".join([str(x) for x in self._words[:9]])
-            summary += "\n\t..."
-        else:
-            summary += "\n\t+ " + \
-                       "\n\t+ ".join([str(x) for x in self._words])
-        summary += f"\nSieves ({len(self._sieves)}): "
+            summary += 38*" "
+        summary += "\n"
+        summary += f"{f'ISS Calculators ({len(self._iss)}):': <38}"
+        if len(self._iss) == 0:
+            summary += 38*" "
+        for iss in self._iss:
+            summary += f"\n{f'    + {iss} -> {iss.n_iterated_sums()}': <38}"
+            summary += f"\n{f'       | words: {len(iss.words)}': <38}"
+            semiring = iss.semiring.__class__.__name__
+            summary += f"\n{f'       | semiring: {semiring}': <38}"
+        if len(self._iss) == 0:
+            summary += "\n"
+        summary += f"\n{f'Sieves ({len(self._sieves)}):': <38}"
         if len(self._sieves) == 0:
-            summary += "-"
-        else:
-            for x in self._sieves:
-                lines = x.summary().split("\n")
-                summary += "\n\t+ " + lines[0]
-                summary += "\n\t  "
-                summary += "\n\t  ".join(lines[1:])
+            summary += "\n" + 38*" "
+        for sv in self._sieves:
+            name = sv.__class__.__name__
+            summary += f"\n{f'    + {name} -> {sv.nfeatures()}': <38}"
         return summary
 
     def copy(self) -> "FruitSlice":
@@ -573,8 +530,8 @@ class FruitSlice:
         copy_ = FruitSlice()
         for preparateur in self._preparateurs:
             copy_.add(preparateur)
-        for iterator in self._words:
-            copy_.add(iterator)
+        for iss in self._iss:
+            copy_.add(iss)
         for sieve in self._sieves:
             copy_.add(sieve)
         return copy_
@@ -586,10 +543,9 @@ class FruitSlice:
         copy_ = FruitSlice()
         for preparateur in self._preparateurs:
             copy_.add(preparateur.copy())
-        for iterator in self._words:
-            copy_.add(iterator.copy())
+        for iss in self._iss:
+            copy_.add(iss.copy())
         for sieve in self._sieves:
             copy_.add(sieve.copy())
-        copy_.iss_mode = self.iss_mode
         copy_.fit_sample_size = self.fit_sample_size
         return copy_
