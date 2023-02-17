@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import numba
 import numpy as np
 
 from .words.word import Word, SimpleWord
 from .words.creation import replace_letters
+from .weighting import Weighting
 
 
 class Semiring(ABC):
@@ -13,8 +15,8 @@ class Semiring(ABC):
         self,
         Z: np.ndarray,
         word: Word,
-        alphas: np.ndarray,
         extended: int,
+        weighting: Optional[Weighting] = None,
     ) -> np.ndarray:
         if isinstance(word, SimpleWord):
             try:
@@ -23,7 +25,7 @@ class Semiring(ABC):
                     result[i] = self._iterated_sum_fast(
                         Z[i, :, :],
                         np.array(list(word)),
-                        alphas,
+                        np.array([0.]+word.alpha+[0.], dtype=np.float32),
                         extended,
                     )
                 return result
@@ -31,7 +33,7 @@ class Semiring(ABC):
                 word = replace_letters(word, ("DIM" for _ in range(1)))
         result = np.zeros((Z.shape[0], extended, Z.shape[2]))
         for i in range(Z.shape[0]):
-            result[i] = self._iterated_sum(Z[i], word, alphas, extended)
+            result[i] = self._iterated_sum(Z[i], word, extended, weighting)
         return result
 
     @staticmethod
@@ -47,8 +49,8 @@ class Semiring(ABC):
         self,
         Z: np.ndarray,
         word: Word,
-        alphas: np.ndarray,
         extended: int,
+        weighting: Optional[Weighting] = None,
     ) -> np.ndarray:
         result = np.zeros((extended, Z.shape[1]), dtype=np.float64)
         tmp = self._identity(Z)
@@ -60,10 +62,8 @@ class Semiring(ABC):
                 tmp = np.roll(tmp, 1)
                 tmp[0] = 0
             tmp[k:] = self._operation(tmp[k:], C[k:])
-            if alphas[k+1] != alphas[k] or alphas[k] != 0:
-                tmp = tmp * np.exp(np.arange(Z.shape[1])
-                                * (alphas[k+1]-alphas[k])
-                                + alphas[k])
+            if weighting is not None:
+                tmp = self._operation(tmp, weighting.weights(Z.shape[1], k))
             tmp[k:] = self._cumulative_operation(tmp[k:])
             if len(word)-k <= extended:
                 # save result

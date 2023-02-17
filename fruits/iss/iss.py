@@ -1,11 +1,12 @@
 from enum import Enum, auto
-from typing import Generator, Optional, Sequence
+from typing import Generator, Optional, Sequence, Type
 
 import numpy as np
 
 from ..seed import Seed
 from .cache import CachePlan
 from .semiring import Semiring, Reals
+from .weighting import Weighting
 from .words.word import Word
 
 
@@ -21,6 +22,7 @@ def _calculate_ISS(
     words: Sequence[Word],
     batch_size: int,
     semiring: Semiring,
+    weighting: Optional[Type[Weighting]] = None,
     cache_plan: Optional[CachePlan] = None,
 ) -> Generator[np.ndarray, None, None]:
     i = 0
@@ -42,8 +44,8 @@ def _calculate_ISS(
                 semiring.iterated_sums(
                     X,
                     word,
-                    np.array([0.0] + word.alpha + [0.0], dtype=np.float32),
                     n_itsum_word,
+                    weighting(word) if weighting is not None else None,
                 ),
                 0, 1,
             )
@@ -81,6 +83,7 @@ class ISS(Seed):
         /, *,
         mode: ISSMode = ISSMode.SINGLE,
         semiring: Optional[Semiring] = None,
+        weighting: Optional[Type[Weighting]] = None,
     ) -> None:
         self.words = words
         self.mode = mode
@@ -88,6 +91,7 @@ class ISS(Seed):
         self._cache_plan = CachePlan(
             self.words if mode == ISSMode.EXTENDED else []
         )
+        self.weighting = weighting
 
     def _fit(self, X: np.ndarray) -> None:
         pass
@@ -100,8 +104,8 @@ class ISS(Seed):
                 self._cache_plan if self.mode == ISSMode.EXTENDED else None
             ),
             semiring=self.semiring,
+            weighting=self.weighting,
             batch_size=len(self.words),
-
         )
         return next(iter(result))
 
