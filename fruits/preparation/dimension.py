@@ -1,4 +1,4 @@
-__all__ = ["ONE", "DIM", "LAY"]
+__all__ = ["ONE", "DIM", "FFN"]
 
 from typing import Any, Callable
 
@@ -64,8 +64,8 @@ class DIM(Preparateur):
         return f"DIM(f={self._function.__name__})"
 
 
-class LAY(Preparateur):
-    """Preparateur: Two-Layer Nerual Network
+class FFN(Preparateur):
+    """Preparateur: Feed-Forward Two-Layer Neural Network
 
     Adds a dimension to the given time series dataset which is the
     linear combination of a transformed existing dimension.
@@ -81,7 +81,8 @@ class LAY(Preparateur):
             distributed weights and biases in all linear transformations
             used. Defaults to 1.
         overwrite (bool, optional): If set to true, the preparateur will
-            replace the original dimension with the new one.
+            replace the original dimension with the new one. Otherwise a
+            new dimensions gets appended. Defaults to false.
     """
 
     def __init__(
@@ -103,7 +104,7 @@ class LAY(Preparateur):
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_weights1"):
-            raise RuntimeError("Preparateur LAY was not fitted")
+            raise RuntimeError("Preparateur FFN was not fitted")
         new_dim = np.outer(self._weights1, X[:, self._dim, :]).reshape(
             self._n, X.shape[0], X.shape[2]
         ) + self._biases1[:, np.newaxis, np.newaxis]
@@ -119,8 +120,8 @@ class LAY(Preparateur):
             result[:, self._dim, :] = new_dim
         return result
 
-    def _copy(self) -> "LAY":
-        return LAY(self._n, self._dim, self._std)
+    def _copy(self) -> "FFN":
+        return FFN(self._n, self._dim, self._std, self._overwrite)
 
     def __str__(self) -> str:
-        return f"LAY({self._n}, {self._dim}, {self._std}, {self._overwrite})"
+        return f"FFN({self._n}, {self._dim}, {self._std}, {self._overwrite})"

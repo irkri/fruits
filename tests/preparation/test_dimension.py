@@ -37,7 +37,7 @@ def test_one():
 
 
 def test_lay():
-    lay = fruits.preparation.LAY(n=3, dim=0, std=0, overwrite=False)
+    lay = fruits.preparation.FNN(n=3, dim=0, std=0, overwrite=False)
 
     lay._weights1 = np.array([[-1, -2, 1]])
     lay._biases1 = np.array([6, -5, 0])
