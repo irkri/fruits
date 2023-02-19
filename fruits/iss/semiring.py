@@ -97,6 +97,7 @@ class Reals(Semiring):
         "float64[:,:,:](float64[:,:,:], int32[:,:], float32[:], int32)",
         fastmath=True,
         cache=True,
+        parallel=True,
     )
     def _iterated_sum_fast(
         Z: np.ndarray,
@@ -110,26 +111,26 @@ class Reals(Semiring):
             if not np.any(ext_letter):
                 continue
             C = np.ones((Z.shape[0], Z.shape[2]), dtype=np.float64)
-            for dim, el in enumerate(ext_letter):
-                if el > 0:
-                    for _ in range(el):
-                        C = C * Z[:, dim, :]
-                elif el < 0:
-                    for _ in range(-el):
-                        C = C / Z[:, dim, :]
-            if k > 0:
-                tmp = np.roll(tmp, 1)
-                tmp[:, 0] = 0
-            tmp[:, k:] = tmp[:, k:] * C[:, k:]
-            if alphas[k+1] != alphas[k] or alphas[k] != 0:
-                tmp = tmp * np.exp(np.arange(Z.shape[2])
-                                   * (alphas[k+1]-alphas[k])
-                                   + alphas[k])
-            for i in range(k+1, tmp.shape[1]):
-                tmp[:, i] = tmp[:, i-1] + tmp[:, i]
-            if len(word)-k <= extended:
-                # save result
-                result[:, extended-(len(word)-k), :] = tmp.copy()
+            for j in numba.prange(Z.shape[0]):
+                for dim, el in enumerate(ext_letter):
+                    if el > 0:
+                        for _ in range(el):
+                            C[j] = C[j] * Z[j, dim, :]
+                    elif el < 0:
+                        for _ in range(-el):
+                            C[j] = C[j] / Z[j, dim, :]
+                if k > 0:
+                    tmp[j] = np.roll(tmp[j], 1)
+                    tmp[j, 0] = 0
+                tmp[j, k:] = tmp[j, k:] * C[j, k:]
+                if alphas[k+1] != alphas[k] or alphas[k] != 0:
+                    tmp[j] = tmp[j] * np.exp(np.arange(Z.shape[2])
+                                             * (alphas[k+1]-alphas[k])
+                                             + alphas[k])
+                for i in range(k+1, tmp.shape[1]):
+                    tmp[j, i] = tmp[j, i-1] + tmp[j, i]
+                if len(word)-k <= extended:
+                    result[j, extended-(len(word)-k), :] = tmp[j]
         return result
 
     @staticmethod
@@ -171,23 +172,22 @@ class Tropical(Semiring):
             if not np.any(ext_letter):
                 continue
             C = np.zeros((Z.shape[0], Z.shape[2]), dtype=np.float64)
-            for dim, el in enumerate(ext_letter):
-                if el != 0:
-                    C = C + el * Z[:, dim, :]
-            if k > 0:
-                tmp = np.roll(tmp, 1)
-                tmp[:, 0] = 0
-            tmp[:, k:] = tmp[:, k:] + C[:, k:]
-            # if alphas[k+1] != alphas[k] or alphas[k] != 0:
-            #     tmp = tmp * np.exp(np.arange(Z.shape[1])
-            #                     * (alphas[k+1]-alphas[k])
-            #                     + alphas[k])
-            for i in numba.prange(tmp.shape[0]):
-                for j in range(k+1, tmp.shape[1]):
-                    tmp[i, j] = min(tmp[i, j-1], tmp[i, j])
-            if len(word)-k <= extended:
-                # save result
-                result[:, extended-(len(word)-k), :] = tmp.copy()
+            for j in numba.prange(Z.shape[0]):
+                for dim, el in enumerate(ext_letter):
+                    if el != 0:
+                        C[j] = C[j] + el * Z[j, dim, :]
+                if k > 0:
+                    tmp[j] = np.roll(tmp[j], 1)
+                    tmp[j, 0] = 0
+                tmp[j, k:] = tmp[j, k:] + C[j, k:]
+                # if alphas[k+1] != alphas[k] or alphas[k] != 0:
+                #     tmp = tmp * np.exp(np.arange(Z.shape[1])
+                #                     * (alphas[k+1]-alphas[k])
+                #                     + alphas[k])
+                for i in range(k+1, tmp.shape[1]):
+                    tmp[j, i] = min(tmp[j, i-1], tmp[j, i])
+                if len(word)-k <= extended:
+                    result[j, extended-(len(word)-k), :] = tmp[j]
         return result
 
     @staticmethod
@@ -229,23 +229,22 @@ class Arctic(Semiring):
             if not np.any(ext_letter):
                 continue
             C = np.zeros((Z.shape[0], Z.shape[2]), dtype=np.float64)
-            for dim, el in enumerate(ext_letter):
-                if el != 0:
-                    C = C + el * Z[:, dim, :]
-            if k > 0:
-                tmp = np.roll(tmp, 1)
-                tmp[:, 0] = 0
-            tmp[:, k:] = tmp[:, k:] + C[:, k:]
-            # if alphas[k+1] != alphas[k] or alphas[k] != 0:
-            #     tmp = tmp * np.exp(np.arange(Z.shape[1])
-            #                     * (alphas[k+1]-alphas[k])
-            #                     + alphas[k])
-            for i in numba.prange(tmp.shape[0]):
-                for j in range(k+1, tmp.shape[1]):
-                    tmp[i, j] = max(tmp[i, j-1], tmp[i, j])
-            if len(word)-k <= extended:
-                # save result
-                result[:, extended-(len(word)-k), :] = tmp.copy()
+            for j in numba.prange(Z.shape[0]):
+                for dim, el in enumerate(ext_letter):
+                    if el != 0:
+                        C[j] = C[j] + el * Z[j, dim, :]
+                if k > 0:
+                    tmp[j] = np.roll(tmp[j], 1)
+                    tmp[j, 0] = 0
+                tmp[j, k:] = tmp[j, k:] + C[j, k:]
+                # if alphas[k+1] != alphas[k] or alphas[k] != 0:
+                #     tmp = tmp * np.exp(np.arange(Z.shape[1])
+                #                     * (alphas[k+1]-alphas[k])
+                #                     + alphas[k])
+                for i in range(k+1, tmp.shape[1]):
+                    tmp[j, i] = max(tmp[j, i-1], tmp[j, i])
+                if len(word)-k <= extended:
+                    result[j, extended-(len(word)-k), :] = tmp[j]
         return result
 
     @staticmethod
@@ -287,27 +286,27 @@ class Bayesian(Semiring):
             if not np.any(ext_letter):
                 continue
             C = np.ones((Z.shape[0], Z.shape[2]), dtype=np.float64)
-            for dim, el in enumerate(ext_letter):
-                if el > 0:
-                    for _ in range(el):
-                        C = C * Z[:, dim, :]
-                elif el < 0:
-                    for _ in range(-el):
-                        C = C / Z[:, dim, :]
-            if k > 0:
-                tmp = np.roll(tmp, 1)
-                tmp[:, 0] = 0
-            tmp[:, k:] = tmp[:, k:] + C[:, k:]
-            # if alphas[k+1] != alphas[k] or alphas[k] != 0:
-            #     tmp = tmp * np.exp(np.arange(Z.shape[1])
-            #                     * (alphas[k+1]-alphas[k])
-            #                     + alphas[k])
-            for i in numba.prange(tmp.shape[0]):
-                for j in range(k+1, tmp.shape[1]):
-                    tmp[i, j] = max(tmp[i, j-1], tmp[i, j])
-            if len(word)-k <= extended:
-                # save result
-                result[:, extended-(len(word)-k), :] = tmp.copy()
+            for j in numba.prange(Z.shape[0]):
+                for dim, el in enumerate(ext_letter):
+                    if el > 0:
+                        for _ in range(el):
+                            C[j] = C[j] * Z[j, dim, :]
+                    elif el < 0:
+                        for _ in range(-el):
+                            C[j] = C[j] / Z[j, dim, :]
+                if k > 0:
+                    tmp[j] = np.roll(tmp[j], 1)
+                    tmp[j, 0] = 0
+                tmp[j, k:] = tmp[j, k:] + C[j, k:]
+                # if alphas[k+1] != alphas[k] or alphas[k] != 0:
+                #     tmp = tmp * np.exp(np.arange(Z.shape[1])
+                #                     * (alphas[k+1]-alphas[k])
+                #                     + alphas[k])
+                for i in range(k+1, tmp.shape[1]):
+                    tmp[j, i] = max(tmp[j, i-1], tmp[j, i])
+                if len(word)-k <= extended:
+                    # save result
+                    result[j, extended-(len(word)-k), :] = tmp[j]
         return result
 
     @staticmethod
