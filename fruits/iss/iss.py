@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Generator, Optional, Sequence, Type
+from typing import Generator, Optional, Sequence
 
 import numpy as np
 
@@ -22,7 +22,7 @@ def _calculate_ISS(
     words: Sequence[Word],
     batch_size: int,
     semiring: Semiring,
-    weighting: Optional[Type[Weighting]] = None,
+    weighting: Optional[Weighting] = None,
     cache_plan: Optional[CachePlan] = None,
 ) -> Generator[np.ndarray, None, None]:
     i = 0
@@ -45,7 +45,7 @@ def _calculate_ISS(
                     X,
                     word,
                     n_itsum_word,
-                    weighting(word) if weighting is not None else None,
+                    weighting,
                 ),
                 0, 1,
             )
@@ -83,7 +83,7 @@ class ISS(Seed):
         /, *,
         mode: ISSMode = ISSMode.SINGLE,
         semiring: Optional[Semiring] = None,
-        weighting: Optional[Type[Weighting]] = None,
+        weighting: Optional[Weighting] = None,
     ) -> None:
         self.words = words
         self.mode = mode

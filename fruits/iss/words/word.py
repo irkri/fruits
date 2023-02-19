@@ -60,36 +60,10 @@ class Word:
     """
 
     def __init__(self, word_string: Optional[str] = None) -> None:
-        self._alpha: Union[float, list[float]] = 0.0
         self._extended_letters: list[ExtendedLetter] = []
         self._el_iterator_index = -1
         if word_string is not None:
             self.multiply(word_string)
-
-    @property
-    def alpha(self) -> list[float]:
-        """Penalization term for the calculation of iterated sums.
-        Sums that use multiplication of indices that are further away
-        are scaled down. The ammount of downscaling depends on this
-        alpha.
-        Its default value is 0, meaning no scaling. The value can be
-        changed for each contiguous extended letter pair in the word
-        respectively (given as a list of length ``len(word)-1``) or by
-        choosing the same value once for the whole list.
-        """
-        if isinstance(self._alpha, float):
-            return [self._alpha] * (len(self) - 1)
-        return self._alpha
-
-    @alpha.setter
-    def alpha(self, alpha: Union[float, list[float]]) -> None:
-        if isinstance(alpha, list):
-            if len(alpha) != len(self) - 1:
-                raise ValueError("alpha has to have the same length as " +
-                                 "number of extended letters in the word - 1")
-        elif not isinstance(alpha, float):
-            raise ValueError("alpha has to be a float or list of floats")
-        self._alpha = alpha
 
     def multiply(self, other: Union["Word", ExtendedLetter, str]) -> None:
         """Appends one or more extended letters to the word. A group of
@@ -197,7 +171,6 @@ class SimpleWord(Word):
     """
 
     def __init__(self, string: str) -> None:
-        self._alpha: Union[float, list[float]] = 0.0
         self._extended_letters: list[list[int]] = []
         self._max_dim = 0
         self._name = ""

@@ -11,8 +11,10 @@ X_1 = np.array([
 def test_weighted_iss():
     X = np.random.random_sample((10, 3, 50))
     word = fruits.words.SimpleWord("[12][2][33]")
-    word.alpha = [0.5, -0.2]
-    result = fruits.ISS([word]).fit_transform(X)[0, :, -1]
+    result = fruits.ISS(
+        [word],
+        weighting=fruits.iss.ExponentialWeighting([.5, -.2]),
+    ).fit_transform(X)[0, :, -1]
     the_result = np.zeros((X.shape[0]))
     for m in range(X.shape[0]):
         for k in range(X.shape[2]):
@@ -28,8 +30,10 @@ def test_weighted_iss():
 
     X = np.random.random_sample((10, 10, 50))
     word = fruits.words.SimpleWord("[(10)12345][9][23]")
-    word.alpha = [-0.45, -3.14]
-    result = fruits.ISS([word]).fit_transform(X)[0, :, -1]
+    result = fruits.ISS(
+        [word],
+        weighting=fruits.iss.ExponentialWeighting([-.45, -3.14]),
+    ).fit_transform(X)[0, :, -1]
     the_result = np.zeros((X.shape[0]))
     for m in range(X.shape[0]):
         for k in range(X.shape[2]):
@@ -47,10 +51,9 @@ def test_weighted_iss():
 
     X = np.random.random_sample((10, 10, 50))
     word = fruits.words.Word("[ABS(3)][ABS(1)DIM(10)][ABS(5)DIM(10)]")
-    word.alpha = [0.99, -2.71]
     result = fruits.ISS(
         [word],
-        weighting=fruits.iss.ExponentialWeighting,
+        weighting=fruits.iss.ExponentialWeighting([.99, -2.71]),
     ).fit_transform(X)[0, :, -1]
     the_result = np.zeros((X.shape[0]))
     for m in range(X.shape[0]):
