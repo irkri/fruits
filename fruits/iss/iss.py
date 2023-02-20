@@ -3,6 +3,7 @@ from typing import Generator, Optional, Sequence
 
 import numpy as np
 
+from ..cache import SharedSeedCache
 from ..seed import Seed
 from .cache import CachePlan
 from .semiring import Semiring, Reals
@@ -97,6 +98,10 @@ class ISS(Seed):
         pass
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
+        if hasattr(self, "_cache") and self.weighting is not None:
+            self.weighting._cache = self._cache
+        elif self.weighting is not None:
+            self.weighting._cache = SharedSeedCache(X)
         result = _calculate_ISS(
             X,
             self.words,
@@ -137,6 +142,10 @@ class ISS(Seed):
         """
         if batch_size > len(self.words):
             raise ValueError("batch_size too large, has to be < len(words)")
+        if hasattr(self, "_cache") and self.weighting is not None:
+            self.weighting._cache = self._cache
+        elif self.weighting is not None:
+            self.weighting._cache = SharedSeedCache(X)
         yield from _calculate_ISS(
             X,
             self.words,
@@ -144,6 +153,7 @@ class ISS(Seed):
                 self._cache_plan if self.mode == ISSMode.EXTENDED else None
             ),
             semiring=self.semiring,
+            weighting=self.weighting,
             batch_size=batch_size,
         )
 

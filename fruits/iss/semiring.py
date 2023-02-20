@@ -20,20 +20,25 @@ class Semiring(ABC):
     ) -> np.ndarray:
         if isinstance(word, SimpleWord):
             try:
+                if weighting is not None:
+                    scalars, lookup = weighting.get_fast_args(
+                        Z.shape[0], Z.shape[2]
+                    )
+                else:
+                    scalars = np.zeros((len(word)+1, ), dtype=np.float32)
+                    lookup = np.ones((Z.shape[0], Z.shape[2]))
+                    lookup *= np.arange(Z.shape[2], dtype=np.float32)
                 result = self._iterated_sum_fast(
                     Z,
                     np.array(list(word)),
-                    weighting.get_fast_args() if weighting is not None else (
-                        np.zeros((len(word)+1, ), dtype=np.float32)
-                    ),
+                    scalars,
+                    lookup,
                     extended,
                 )
                 return result
             except NotImplementedError:
                 word = replace_letters(word, ("DIM" for _ in range(1)))
-        result = np.zeros((Z.shape[0], extended, Z.shape[2]))
-        for i in range(Z.shape[0]):
-            result[i] = self._iterated_sum(Z[i], word, extended, weighting)
+        result = self._iterated_sum(Z, word, extended, weighting)
         return result
 
     @staticmethod
@@ -41,6 +46,7 @@ class Semiring(ABC):
         Z: np.ndarray,
         word: np.ndarray,
         alphas: np.ndarray,
+        lookup: np.ndarray,
         extended: int,
     ) -> np.ndarray:
         raise NotImplementedError("No fast way of calculating iterated sums")
@@ -52,22 +58,26 @@ class Semiring(ABC):
         extended: int,
         weighting: Optional[Weighting] = None,
     ) -> np.ndarray:
-        result = np.zeros((extended, Z.shape[1]), dtype=np.float64)
-        tmp = self._identity(Z)
-        for k, ext_letter in enumerate(word):
-            C = self._identity(Z)
-            for letter in ext_letter:
-                C = self._operation(C, letter(Z))
-            if k > 0:
-                tmp = np.roll(tmp, 1)
-                tmp[0] = 0
-            tmp[k:] = self._operation(tmp[k:], C[k:])
-            if weighting is not None:
-                tmp = self._operation(tmp, weighting.weights(Z.shape[1], k))
-            tmp[k:] = self._cumulative_operation(tmp[k:])
-            if len(word)-k <= extended:
-                # save result
-                result[extended-(len(word)-k), :] = tmp.copy()
+        result = np.zeros((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
+        for i in range(Z.shape[0]):
+            tmp = self._identity(Z[i])
+            for k, ext_letter in enumerate(word):
+                C = self._identity(Z[i])
+                for letter in ext_letter:
+                    C = self._operation(C, letter(Z[i]))
+                if k > 0:
+                    tmp = np.roll(tmp, 1)
+                    tmp[0] = 0
+                tmp[k:] = self._operation(tmp[k:], C[k:])
+                if weighting is not None:
+                    tmp = self._operation(
+                        tmp,
+                        weighting.weights(Z.shape[2], k, i),
+                    )
+                tmp[k:] = self._cumulative_operation(tmp[k:])
+                if len(word)-k <= extended:
+                    # save result
+                    result[i, extended-(len(word)-k), :] = tmp.copy()
         return result
 
     @staticmethod
@@ -94,7 +104,8 @@ class Reals(Semiring):
 
     @staticmethod
     @numba.njit(
-        "float64[:,:,:](float64[:,:,:], int32[:,:], float32[:], int32)",
+        "float64[:,:,:](float64[:,:,:], int32[:,:], "
+                       "float32[:], float64[:,:], int32)",
         fastmath=True,
         cache=True,
         parallel=True,
@@ -103,6 +114,7 @@ class Reals(Semiring):
         Z: np.ndarray,
         word: np.ndarray,
         alphas: np.ndarray,
+        lookup: np.ndarray,
         extended: int,
     ) -> np.ndarray:
         result = np.ones((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
@@ -123,10 +135,10 @@ class Reals(Semiring):
                     tmp[j] = np.roll(tmp[j], 1)
                     tmp[j, 0] = 0
                 tmp[j, k:] = tmp[j, k:] * C[j, k:]
-                if alphas[k+1] != alphas[k] or alphas[k] != 0:
-                    tmp[j] = tmp[j] * np.exp(np.arange(Z.shape[2])
-                                             * (alphas[k+1]-alphas[k])
-                                             + alphas[k])
+                if alphas[k+1] != alphas[k]:
+                    tmp[j] = tmp[j] * np.exp(
+                        lookup[j] * (alphas[k+1] - alphas[k])
+                    )
                 for i in range(k+1, tmp.shape[1]):
                     tmp[j, i] = tmp[j, i-1] + tmp[j, i]
                 if len(word)-k <= extended:
@@ -155,7 +167,8 @@ class Tropical(Semiring):
 
     @staticmethod
     @numba.njit(
-        "float64[:,:,:](float64[:,:,:], int32[:,:], float32[:], int32)",
+        "float64[:,:,:](float64[:,:,:], int32[:,:], "
+                       "float32[:], float64[:,:], int32)",
         fastmath=True,
         cache=True,
         parallel=True,
@@ -164,6 +177,7 @@ class Tropical(Semiring):
         Z: np.ndarray,
         word: np.ndarray,
         alphas: np.ndarray,
+        lookup: np.ndarray,
         extended: int,
     ) -> np.ndarray:
         result = np.zeros((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
@@ -212,7 +226,8 @@ class Arctic(Semiring):
 
     @staticmethod
     @numba.njit(
-        "float64[:,:,:](float64[:,:,:], int32[:,:], float32[:], int32)",
+        "float64[:,:,:](float64[:,:,:], int32[:,:], "
+                       "float32[:], float64[:,:], int32)",
         fastmath=True,
         cache=True,
         parallel=True,
@@ -221,6 +236,7 @@ class Arctic(Semiring):
         Z: np.ndarray,
         word: np.ndarray,
         alphas: np.ndarray,
+        lookup: np.ndarray,
         extended: int,
     ) -> np.ndarray:
         result = np.zeros((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
@@ -269,7 +285,8 @@ class Bayesian(Semiring):
 
     @staticmethod
     @numba.njit(
-        "float64[:,:,:](float64[:,:,:], int32[:,:], float32[:], int32)",
+        "float64[:,:,:](float64[:,:,:], int32[:,:], "
+                       "float32[:], float64[:,:], int32)",
         fastmath=True,
         cache=True,
         parallel=True,
@@ -278,6 +295,7 @@ class Bayesian(Semiring):
         Z: np.ndarray,
         word: np.ndarray,
         alphas: np.ndarray,
+        lookup: np.ndarray,
         extended: int,
     ) -> np.ndarray:
         result = np.ones((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)

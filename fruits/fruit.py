@@ -425,6 +425,8 @@ class FruitSlice:
 
         self._sieves_extended = []
 
+        for iss in self._iss:
+            iss._cache = cache
         for itsum in self._iterate_iss(prepared_data):
             sieves_copy = [sieve.copy() for sieve in self._sieves]
             for sieve in sieves_copy:
@@ -467,8 +469,9 @@ class FruitSlice:
         for callback in callbacks:
             callback.on_preparation_end(prepared_data)
 
-        sieved_data = np.zeros((prepared_data.shape[0],
-                                self.nfeatures()))
+        sieved_data = np.zeros((prepared_data.shape[0], self.nfeatures()))
+        for iss in self._iss:
+            iss._cache = cache
         k = 0
         for i, itsum in enumerate(self._iterate_iss(prepared_data)):
             for callback in callbacks:

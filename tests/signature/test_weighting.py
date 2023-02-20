@@ -8,7 +8,7 @@ X_1 = np.array([
 ])
 
 
-def test_weighted_iss():
+def test_index_weighting():
     X = np.random.random_sample((10, 3, 50))
     word = fruits.words.SimpleWord("[12][2][33]")
     result = fruits.ISS(
@@ -23,8 +23,8 @@ def test_weighted_iss():
                     the_result[m] += X[m, 0, i] * X[m, 1, i] \
                         * X[m, 1, j] \
                         * X[m, 2, k]**2 \
-                        * np.exp(-0.5 * (j - i - 1)) \
-                        * np.exp(0.2 * (k - j - 1))
+                        * np.exp(-0.5 * (j - i)) \
+                        * np.exp(0.2 * (k - j))
 
     np.testing.assert_allclose(the_result, result, rtol=1e-02)
 
@@ -44,8 +44,8 @@ def test_weighted_iss():
                         * X[m, 3, i] * X[m, 4, i] \
                         * X[m, 8, j] \
                         * X[m, 1, k] * X[m, 2, k] \
-                                     * np.exp(0.45 * (j - i - 1)) \
-                                     * np.exp(3.14 * (k - j - 1))
+                                     * np.exp(0.45 * (j - i)) \
+                                     * np.exp(3.14 * (k - j))
 
     np.testing.assert_allclose(the_result, result, rtol=1e-02)
 
@@ -63,7 +63,61 @@ def test_weighted_iss():
                     the_result[m] += np.abs(X[m, 2, i]) \
                         * np.abs(X[m, 0, j]) * X[m, 9, j] \
                         * np.abs(X[m, 4, k]) * X[m, 9, k] \
-                        * np.exp(-0.99 * (j - i - 1)) \
-                        * np.exp(2.71 * (k - j - 1))
+                        * np.exp(-0.99 * (j - i)) \
+                        * np.exp(2.71 * (k - j))
+
+    np.testing.assert_allclose(the_result, result, rtol=1e-02)
+
+
+def test_L1_weighting():
+    X = np.random.random_sample((10, 3, 50))
+    Y = np.zeros_like(X)
+    Y[:, :, 1:] = X[:, :, 1:] - X[:, :, :-1]
+    Y = np.cumsum(np.abs(Y[:, 0, :]), axis=1)
+    word = fruits.words.SimpleWord("[12][2][33]")
+    result = fruits.ISS(
+        [word],
+        weighting=fruits.iss.ExponentialWeighting(
+            [.5, -.2],
+            lookup="L1",
+        ),
+    ).fit_transform(X)[0, :, -1]
+    the_result = np.zeros((X.shape[0]))
+    for m in range(X.shape[0]):
+        for k in range(X.shape[2]):
+            for j in range(k):
+                for i in range(j):
+                    the_result[m] += X[m, 0, i] * X[m, 1, i] \
+                        * X[m, 1, j] \
+                        * X[m, 2, k]**2 \
+                        * np.exp(-0.5 * (Y[m, j] - Y[m, i])) \
+                        * np.exp(0.2 * (Y[m, k] - Y[m, j]))
+
+    np.testing.assert_allclose(the_result, result, rtol=1e-02)
+
+
+def test_L2_weighting():
+    X = np.random.random_sample((10, 3, 50))
+    Y = np.zeros_like(X)
+    Y[:, :, 1:] = X[:, :, 1:] - X[:, :, :-1]
+    Y = np.cumsum(Y[:, 0, :]**2, axis=1)
+    word = fruits.words.SimpleWord("[12][2][33]")
+    result = fruits.ISS(
+        [word],
+        weighting=fruits.iss.ExponentialWeighting(
+            [.5, -.2],
+            lookup="L2",
+        ),
+    ).fit_transform(X)[0, :, -1]
+    the_result = np.zeros((X.shape[0]))
+    for m in range(X.shape[0]):
+        for k in range(X.shape[2]):
+            for j in range(k):
+                for i in range(j):
+                    the_result[m] += X[m, 0, i] * X[m, 1, i] \
+                        * X[m, 1, j] \
+                        * X[m, 2, k]**2 \
+                        * np.exp(-0.5 * (Y[m, j] - Y[m, i])) \
+                        * np.exp(0.2 * (Y[m, k] - Y[m, j]))
 
     np.testing.assert_allclose(the_result, result, rtol=1e-02)
