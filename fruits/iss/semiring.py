@@ -119,27 +119,30 @@ class Reals(Semiring):
     ) -> np.ndarray:
         result = np.ones((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
         tmp = np.ones((Z.shape[0], Z.shape[2]), dtype=np.float64)
-        for k, ext_letter in enumerate(word):
-            if not np.any(ext_letter):
-                continue
-            C = np.ones((Z.shape[0], Z.shape[2]), dtype=np.float64)
-            for j in numba.prange(Z.shape[0]):
+        for j in numba.prange(Z.shape[0]):
+            for k, ext_letter in enumerate(word):
+                if not np.any(ext_letter):
+                    continue
+                C = np.ones((Z.shape[2], ), dtype=np.float64)
                 for dim, el in enumerate(ext_letter):
                     if el > 0:
                         for _ in range(el):
-                            C[j] = C[j] * Z[j, dim, :]
+                            C = C * Z[j, dim, :]
                     elif el < 0:
                         for _ in range(-el):
-                            C[j] = C[j] / Z[j, dim, :]
+                            C = C / Z[j, dim, :]
                 if k > 0:
                     tmp[j] = np.roll(tmp[j], 1)
                     tmp[j, 0] = 0
-                tmp[j, k:] = tmp[j, k:] * C[j, k:]
-                if alphas[k+1] != alphas[k]:
-                    tmp[j] = tmp[j] * np.exp(
-                        lookup[j] * (alphas[k+1] - alphas[k])
-                    )
-                for i in range(k+1, tmp.shape[1]):
+                tmp[j, k:] = tmp[j, k:] * C[k:]
+                if alphas.size > 1 and alphas[k+1] != alphas[k]:
+                    tmp[j] = tmp[j] * np.exp(lookup[j]*(alphas[k+1]-alphas[k]))
+                elif alphas.size == 1:
+                    if k == 0:
+                        tmp[j] = tmp[j] * np.exp(lookup[j])
+                    elif k == len(word) - 1:
+                        tmp[j] = tmp[j] * np.exp(-lookup[j])
+                for i in range(k+1, Z.shape[2]):
                     tmp[j, i] = tmp[j, i-1] + tmp[j, i]
                 if len(word)-k <= extended:
                     result[j, extended-(len(word)-k), :] = tmp[j]

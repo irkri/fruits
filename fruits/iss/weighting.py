@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Literal, Sequence
+from typing import Literal, Optional, Sequence
 
 import numpy as np
 
-from .words import Word
 from ..cache import CacheType, SharedSeedCache
+from .words import Word
 
 
 class Weighting(ABC):
@@ -16,7 +16,7 @@ class Weighting(ABC):
         ...
 
     @abstractmethod
-    def weights(self, n: int, k: int, i: int) -> np.ndarray:
+    def weights(self, l: int, k: int, i: int) -> np.ndarray:
         ...
 
     def get_fast_args(self, n: int, l: int) -> np.ndarray:
@@ -52,20 +52,25 @@ class ExponentialWeighting(Weighting):
 
     def __init__(
         self,
-        scalars: Sequence[float],
+        scalars: Optional[Sequence[float]] = None,
         lookup: Literal["indices", "L1", "L2"] = "indices",
     ) -> None:
-        self._scalars = np.array(
-            [.0]+list(scalars)+[.0],
-            dtype=np.float32,
-        )
+        if scalars is not None:
+            self._scalars = np.array(
+                [0.]+list(scalars)+[0.],
+                dtype=np.float32,
+            )
+        else:
+            self._scalars = np.array([0.], dtype=np.float32)
         self._lookup = lookup
 
-    def weights(self, n: int, k: int, i: int) -> np.ndarray:
+    def weights(self, l: int, k: int, i: int) -> np.ndarray:
         if self._lookup != "indices":
             lookup = self._cache.get(CacheType.ISS, self._lookup)[i]
         else:
-            lookup = np.arange(n)
+            lookup = np.arange(l)
+        if self._scalars.size == 1:
+            return np.exp(lookup)
         return np.exp(
             lookup * (self._scalars[k+1] - self._scalars[k])
         )
