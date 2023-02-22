@@ -4,9 +4,9 @@ from typing import Optional
 import numba
 import numpy as np
 
-from .words.word import Word, SimpleWord
-from .words.creation import replace_letters
 from .weighting import Weighting
+from .words.creation import replace_letters
+from .words.word import SimpleWord, Word
 
 
 class Semiring(ABC):
@@ -24,10 +24,11 @@ class Semiring(ABC):
                     scalars, lookup = weighting.get_fast_args(
                         Z.shape[0], Z.shape[2]
                     )
+                    if scalars is None:
+                        scalars = np.ones((len(word)-1, ), dtype=np.float32)
                 else:
-                    scalars = np.zeros((len(word)+1, ), dtype=np.float32)
+                    scalars = np.zeros((len(word)-1, ), dtype=np.float32)
                     lookup = np.ones((Z.shape[0], Z.shape[2]))
-                    lookup *= np.arange(Z.shape[2], dtype=np.float32)
                 result = self._iterated_sum_fast(
                     Z,
                     np.array(list(word)),
@@ -45,7 +46,7 @@ class Semiring(ABC):
     def _iterated_sum_fast(
         Z: np.ndarray,
         word: np.ndarray,
-        alphas: np.ndarray,
+        scalar: np.ndarray,
         lookup: np.ndarray,
         extended: int,
     ) -> np.ndarray:
@@ -107,13 +108,14 @@ class Reals(Semiring):
     def _iterated_sum_fast(
         Z: np.ndarray,
         word: np.ndarray,
-        alphas: np.ndarray,
+        scalar: np.ndarray,
         lookup: np.ndarray,
         extended: int,
     ) -> np.ndarray:
         result = np.ones((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
         tmp = np.ones((Z.shape[0], Z.shape[2]), dtype=np.float64)
         for j in numba.prange(Z.shape[0]):
+            weight = lookup[j] - lookup[j, -1]
             for k, extended_letter in enumerate(word):
                 if not np.any(extended_letter):
                     continue
@@ -129,15 +131,12 @@ class Reals(Semiring):
                     tmp[j] = np.roll(tmp[j], 1)
                     tmp[j, 0] = 0
                 tmp[j, k:] = tmp[j, k:] * C[k:]
-                if alphas.size > 1 and alphas[k+1] != alphas[k]:
-                    tmp[j] = tmp[j] * np.exp(
-                        (lookup[j] - lookup[j, -1]) * (alphas[k+1] - alphas[k])
-                    )
-                elif alphas.size == 1:
-                    if k == 0:
-                        tmp[j] = tmp[j] * np.exp(lookup[j] - lookup[j, -1])
-                    elif k == len(word) - 1:
-                        tmp[j] = tmp[j] * np.exp(-(lookup[j] - lookup[j, -1]))
+                if k == 0:
+                    tmp[j] = tmp[j] * np.exp(weight * scalar[k])
+                elif k == len(word) - 1:
+                    tmp[j] = tmp[j] * np.exp(- weight * scalar[k-1])
+                elif len(word) > 1:
+                    tmp[j] = tmp[j] * np.exp(weight * (scalar[k]-scalar[k-1]))
                 tmp[j, k:] = np.cumsum(tmp[j, k:])
                 if len(word)-k <= extended:
                     result[j, extended-(len(word)-k), :] = tmp[j, :]
@@ -174,33 +173,31 @@ class Tropical(Semiring):
     def _iterated_sum_fast(
         Z: np.ndarray,
         word: np.ndarray,
-        alphas: np.ndarray,
+        scalar: np.ndarray,
         lookup: np.ndarray,
         extended: int,
     ) -> np.ndarray:
         result = np.zeros((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
         tmp = np.zeros((Z.shape[0], Z.shape[2]), dtype=np.float64)
-        for k, ext_letter in enumerate(word):
-            if not np.any(ext_letter):
-                continue
-            C = np.zeros((Z.shape[0], Z.shape[2]), dtype=np.float64)
-            for j in numba.prange(Z.shape[0]):
+        for j in numba.prange(Z.shape[0]):
+            weight = lookup[j]
+            for k, ext_letter in enumerate(word):
+                if not np.any(ext_letter):
+                    continue
+                C = np.zeros(Z.shape[2], dtype=np.float64)
                 for dim, el in enumerate(ext_letter):
                     if el != 0:
-                        C[j] = C[j] + el * Z[j, dim, :]
+                        C = C + el * Z[j, dim, :]
                 if k > 0:
                     tmp[j] = np.roll(tmp[j], 1)
                     tmp[j, 0] = 0
-                tmp[j, k:] = tmp[j, k:] + C[j, k:]
-                if alphas.size > 1 and alphas[k+1] != alphas[k]:
-                    tmp[j] = tmp[j] + (
-                        (lookup[j] / lookup[j, -1]) * (alphas[k+1] - alphas[k])
-                    )
-                elif alphas.size == 1:
-                    if k == 0:
-                        tmp[j] = tmp[j] + (lookup[j] / lookup[j, -1])
-                    elif k == len(word) - 1:
-                        tmp[j] = tmp[j] - (lookup[j] / lookup[j, -1])
+                tmp[j, k:] = tmp[j, k:] + C[k:]
+                if k == 0:
+                    tmp[j] = tmp[j] + weight * scalar[k]
+                elif k == len(word) - 1:
+                    tmp[j] = tmp[j] - weight * scalar[k-1]
+                elif len(word) > 1:
+                    tmp[j] = tmp[j] + weight * (scalar[k] - scalar[k-1])
                 for i in range(k+1, tmp.shape[1]):
                     tmp[j, i] = min(tmp[j, i-1], tmp[j, i])
                 if len(word)-k <= extended:
@@ -238,33 +235,31 @@ class Arctic(Semiring):
     def _iterated_sum_fast(
         Z: np.ndarray,
         word: np.ndarray,
-        alphas: np.ndarray,
+        scalar: np.ndarray,
         lookup: np.ndarray,
         extended: int,
     ) -> np.ndarray:
         result = np.zeros((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
         tmp = np.zeros((Z.shape[0], Z.shape[2]), dtype=np.float64)
-        for k, ext_letter in enumerate(word):
-            if not np.any(ext_letter):
-                continue
-            C = np.zeros((Z.shape[0], Z.shape[2]), dtype=np.float64)
-            for j in numba.prange(Z.shape[0]):
+        for j in numba.prange(Z.shape[0]):
+            weight = lookup[j]
+            for k, ext_letter in enumerate(word):
+                if not np.any(ext_letter):
+                    continue
+                C = np.zeros(Z.shape[2], dtype=np.float64)
                 for dim, el in enumerate(ext_letter):
                     if el != 0:
-                        C[j] = C[j] + el * Z[j, dim, :]
+                        C = C + el * Z[j, dim, :]
                 if k > 0:
                     tmp[j] = np.roll(tmp[j], 1)
                     tmp[j, 0] = 0
-                tmp[j, k:] = tmp[j, k:] + C[j, k:]
-                if alphas.size > 1 and alphas[k+1] != alphas[k]:
-                    tmp[j] = tmp[j] + (
-                        (lookup[j] / lookup[j, -1]) * (alphas[k+1] - alphas[k])
-                    )
-                elif alphas.size == 1:
-                    if k == 0:
-                        tmp[j] = tmp[j] + (lookup[j] / lookup[j, -1])
-                    elif k == len(word) - 1:
-                        tmp[j] = tmp[j] - (lookup[j] / lookup[j, -1])
+                tmp[j, k:] = tmp[j, k:] + C[k:]
+                if k == 0:
+                    tmp[j] = tmp[j] + weight * scalar[k]
+                elif k == len(word) - 1:
+                    tmp[j] = tmp[j] - weight * scalar[k-1]
+                elif len(word) > 1:
+                    tmp[j] = tmp[j] + weight * (scalar[k] - scalar[k-1])
                 for i in range(k+1, tmp.shape[1]):
                     tmp[j, i] = max(tmp[j, i-1], tmp[j, i])
                 if len(word)-k <= extended:
@@ -302,13 +297,14 @@ class Bayesian(Semiring):
     def _iterated_sum_fast(
         Z: np.ndarray,
         word: np.ndarray,
-        alphas: np.ndarray,
+        scalar: np.ndarray,
         lookup: np.ndarray,
         extended: int,
     ) -> np.ndarray:
         result = np.ones((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
         tmp = np.ones((Z.shape[0], Z.shape[2]), dtype=np.float64)
         for j in numba.prange(Z.shape[0]):
+            weight = lookup[j] - lookup[j, -1]
             for k, extended_letter in enumerate(word):
                 if not np.any(extended_letter):
                     continue
@@ -324,15 +320,12 @@ class Bayesian(Semiring):
                     tmp[j] = np.roll(tmp[j], 1)
                     tmp[j, 0] = 0
                 tmp[j, k:] = tmp[j, k:] * C[k:]
-                if alphas.size > 1 and alphas[k+1] != alphas[k]:
-                    tmp[j] = tmp[j] * np.exp(
-                        (lookup[j] - lookup[j, -1]) * (alphas[k+1] - alphas[k])
-                    )
-                elif alphas.size == 1:
-                    if k == 0:
-                        tmp[j] = tmp[j] * np.exp(lookup[j] - lookup[j, -1])
-                    elif k == len(word) - 1:
-                        tmp[j] = tmp[j] * np.exp(-(lookup[j] - lookup[j, -1]))
+                if k == 0:
+                    tmp[j] = tmp[j] * np.exp(weight * scalar[k])
+                elif k == len(word) - 1:
+                    tmp[j] = tmp[j] * np.exp(- weight * scalar[k-1])
+                elif len(word) > 1:
+                    tmp[j] = tmp[j] * np.exp(weight * (scalar[k]-scalar[k-1]))
                 for i in range(k+1, tmp.shape[1]):
                     tmp[j, i] = max(tmp[j, i-1], tmp[j, i])
                 if len(word)-k <= extended:

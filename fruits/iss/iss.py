@@ -6,7 +6,7 @@ import numpy as np
 from ..cache import SharedSeedCache
 from ..seed import Seed
 from .cache import CachePlan
-from .semiring import Semiring, Reals
+from .semiring import Reals, Semiring
 from .weighting import Weighting
 from .words.word import Word
 

@@ -1,26 +1,11 @@
-from abc import ABC, abstractmethod
 from typing import Literal, Optional, Sequence
 
 import numpy as np
 
 from ..cache import CacheType, SharedSeedCache
-from .words import Word
 
 
-class Weighting(ABC):
-
-    _cache: SharedSeedCache
-
-    def weights(self, X: np.ndarray, i: int, word: Word, k: int) -> np.ndarray:
-        raise NotImplementedError(
-            "Weighting not supported for non-simple words"
-        )
-
-    def get_fast_args(self, n: int, l: int) -> np.ndarray:
-        raise NotImplementedError("Weighting not supported for simple words")
-
-
-class ExponentialWeighting(Weighting):
+class Weighting:
     """Exponential penalization for the calculation of iterated sums.
     Sums that use multiplications of time steps that are further apart
     from each other are scaled down exponentially. For two time steps
@@ -47,21 +32,24 @@ class ExponentialWeighting(Weighting):
             step.
     """
 
+    _cache: SharedSeedCache
+
     def __init__(
         self,
         scalars: Optional[Sequence[float]] = None,
         use_sum: Optional[Literal["L1", "L2"]] = None,
     ) -> None:
         if scalars is not None:
-            self._scalars = np.array(
-                [0.]+list(scalars)+[0.],
-                dtype=np.float32,
-            )
+            self._scalars = np.array(scalars, dtype=np.float32)
         else:
-            self._scalars = np.array([0.], dtype=np.float32)
+            self._scalars = None
         self._norm = use_sum
 
-    def get_fast_args(self, n: int, l: int) -> tuple[np.ndarray, np.ndarray]:
+    def get_fast_args(
+        self,
+        n: int,
+        l: int,
+    ) -> tuple[Optional[np.ndarray], np.ndarray]:
         if self._norm is not None:
             lookup = self._cache.get(CacheType.ISS, self._norm)
         else:

@@ -1,3 +1,3 @@
 from . import semiring
 from .iss import ISS, CachePlan, ISSMode
-from .weighting import ExponentialWeighting
+from .weighting import Weighting
