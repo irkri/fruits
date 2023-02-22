@@ -38,7 +38,7 @@ class Semiring(ABC):
                 return result
             except NotImplementedError:
                 word = replace_letters(word, ("DIM" for _ in range(1)))
-        result = self._iterated_sum(Z, word, extended, weighting)
+        result = self._iterated_sum(Z, word, extended)
         return result
 
     @staticmethod
@@ -56,7 +56,6 @@ class Semiring(ABC):
         Z: np.ndarray,
         word: Word,
         extended: int,
-        weighting: Optional[Weighting] = None,
     ) -> np.ndarray:
         result = np.zeros((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
         for i in range(Z.shape[0]):
@@ -69,11 +68,6 @@ class Semiring(ABC):
                     tmp = np.roll(tmp, 1)
                     tmp[0] = 0
                 tmp[k:] = self._operation(tmp[k:], C[k:])
-                if weighting is not None:
-                    tmp = self._operation(
-                        tmp,
-                        weighting.weights(Z.shape[2], k, i),
-                    )
                 tmp[k:] = self._cumulative_operation(tmp[k:])
                 if len(word)-k <= extended:
                     # save result
@@ -120,32 +114,33 @@ class Reals(Semiring):
         result = np.ones((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
         tmp = np.ones((Z.shape[0], Z.shape[2]), dtype=np.float64)
         for j in numba.prange(Z.shape[0]):
-            for k, ext_letter in enumerate(word):
-                if not np.any(ext_letter):
+            for k, extended_letter in enumerate(word):
+                if not np.any(extended_letter):
                     continue
                 C = np.ones((Z.shape[2], ), dtype=np.float64)
-                for dim, el in enumerate(ext_letter):
-                    if el > 0:
-                        for _ in range(el):
-                            C = C * Z[j, dim, :]
-                    elif el < 0:
-                        for _ in range(-el):
-                            C = C / Z[j, dim, :]
+                for letter, occurence in enumerate(extended_letter):
+                    if occurence > 0:
+                        for _ in range(occurence):
+                            C = C * Z[j, letter, :]
+                    elif occurence < 0:
+                        for _ in range(-occurence):
+                            C = C / Z[j, letter, :]
                 if k > 0:
                     tmp[j] = np.roll(tmp[j], 1)
                     tmp[j, 0] = 0
                 tmp[j, k:] = tmp[j, k:] * C[k:]
                 if alphas.size > 1 and alphas[k+1] != alphas[k]:
-                    tmp[j] = tmp[j] * np.exp(lookup[j]*(alphas[k+1]-alphas[k]))
+                    tmp[j] = tmp[j] * np.exp(
+                        (lookup[j] - lookup[j, -1]) * (alphas[k+1] - alphas[k])
+                    )
                 elif alphas.size == 1:
                     if k == 0:
-                        tmp[j] = tmp[j] * np.exp(lookup[j])
+                        tmp[j] = tmp[j] * np.exp(lookup[j] - lookup[j, -1])
                     elif k == len(word) - 1:
-                        tmp[j] = tmp[j] * np.exp(-lookup[j])
-                for i in range(k+1, Z.shape[2]):
-                    tmp[j, i] = tmp[j, i-1] + tmp[j, i]
+                        tmp[j] = tmp[j] * np.exp(-(lookup[j] - lookup[j, -1]))
+                tmp[j, k:] = np.cumsum(tmp[j, k:])
                 if len(word)-k <= extended:
-                    result[j, extended-(len(word)-k), :] = tmp[j]
+                    result[j, extended-(len(word)-k), :] = tmp[j, :]
         return result
 
     @staticmethod
@@ -197,10 +192,15 @@ class Tropical(Semiring):
                     tmp[j] = np.roll(tmp[j], 1)
                     tmp[j, 0] = 0
                 tmp[j, k:] = tmp[j, k:] + C[j, k:]
-                # if alphas[k+1] != alphas[k] or alphas[k] != 0:
-                #     tmp = tmp * np.exp(np.arange(Z.shape[1])
-                #                     * (alphas[k+1]-alphas[k])
-                #                     + alphas[k])
+                if alphas.size > 1 and alphas[k+1] != alphas[k]:
+                    tmp[j] = tmp[j] + (
+                        (lookup[j] / lookup[j, -1]) * (alphas[k+1] - alphas[k])
+                    )
+                elif alphas.size == 1:
+                    if k == 0:
+                        tmp[j] = tmp[j] + (lookup[j] / lookup[j, -1])
+                    elif k == len(word) - 1:
+                        tmp[j] = tmp[j] - (lookup[j] / lookup[j, -1])
                 for i in range(k+1, tmp.shape[1]):
                     tmp[j, i] = min(tmp[j, i-1], tmp[j, i])
                 if len(word)-k <= extended:
@@ -256,10 +256,15 @@ class Arctic(Semiring):
                     tmp[j] = np.roll(tmp[j], 1)
                     tmp[j, 0] = 0
                 tmp[j, k:] = tmp[j, k:] + C[j, k:]
-                # if alphas[k+1] != alphas[k] or alphas[k] != 0:
-                #     tmp = tmp * np.exp(np.arange(Z.shape[1])
-                #                     * (alphas[k+1]-alphas[k])
-                #                     + alphas[k])
+                if alphas.size > 1 and alphas[k+1] != alphas[k]:
+                    tmp[j] = tmp[j] + (
+                        (lookup[j] / lookup[j, -1]) * (alphas[k+1] - alphas[k])
+                    )
+                elif alphas.size == 1:
+                    if k == 0:
+                        tmp[j] = tmp[j] + (lookup[j] / lookup[j, -1])
+                    elif k == len(word) - 1:
+                        tmp[j] = tmp[j] - (lookup[j] / lookup[j, -1])
                 for i in range(k+1, tmp.shape[1]):
                     tmp[j, i] = max(tmp[j, i-1], tmp[j, i])
                 if len(word)-k <= extended:
@@ -303,26 +308,31 @@ class Bayesian(Semiring):
     ) -> np.ndarray:
         result = np.ones((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
         tmp = np.ones((Z.shape[0], Z.shape[2]), dtype=np.float64)
-        for k, ext_letter in enumerate(word):
-            if not np.any(ext_letter):
-                continue
-            C = np.ones((Z.shape[0], Z.shape[2]), dtype=np.float64)
-            for j in numba.prange(Z.shape[0]):
-                for dim, el in enumerate(ext_letter):
-                    if el > 0:
-                        for _ in range(el):
-                            C[j] = C[j] * Z[j, dim, :]
-                    elif el < 0:
-                        for _ in range(-el):
-                            C[j] = C[j] / Z[j, dim, :]
+        for j in numba.prange(Z.shape[0]):
+            for k, extended_letter in enumerate(word):
+                if not np.any(extended_letter):
+                    continue
+                C = np.ones((Z.shape[2], ), dtype=np.float64)
+                for letter, occurence in enumerate(extended_letter):
+                    if occurence > 0:
+                        for _ in range(occurence):
+                            C = C * Z[j, letter, :]
+                    elif occurence < 0:
+                        for _ in range(-occurence):
+                            C = C / Z[j, letter, :]
                 if k > 0:
                     tmp[j] = np.roll(tmp[j], 1)
                     tmp[j, 0] = 0
-                tmp[j, k:] = tmp[j, k:] + C[j, k:]
-                # if alphas[k+1] != alphas[k] or alphas[k] != 0:
-                #     tmp = tmp * np.exp(np.arange(Z.shape[1])
-                #                     * (alphas[k+1]-alphas[k])
-                #                     + alphas[k])
+                tmp[j, k:] = tmp[j, k:] * C[k:]
+                if alphas.size > 1 and alphas[k+1] != alphas[k]:
+                    tmp[j] = tmp[j] * np.exp(
+                        (lookup[j] - lookup[j, -1]) * (alphas[k+1] - alphas[k])
+                    )
+                elif alphas.size == 1:
+                    if k == 0:
+                        tmp[j] = tmp[j] * np.exp(lookup[j] - lookup[j, -1])
+                    elif k == len(word) - 1:
+                        tmp[j] = tmp[j] * np.exp(-(lookup[j] - lookup[j, -1]))
                 for i in range(k+1, tmp.shape[1]):
                     tmp[j, i] = max(tmp[j, i-1], tmp[j, i])
                 if len(word)-k <= extended:

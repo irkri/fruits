@@ -30,7 +30,6 @@ def _L1_sum(X: np.ndarray) -> np.ndarray:
     results = np.zeros((Y.shape[0], Y.shape[1]), dtype=np.float64)
     for i in numba.prange(Y.shape[0]):
         results[i, :] = np.cumsum(np.abs(Y[i, :]))
-        results[i, :] /= results[i, -1]
     return results
 
 
@@ -40,7 +39,6 @@ def _L2_sum(X: np.ndarray) -> np.ndarray:
     results = np.zeros((Y.shape[0], Y.shape[1]), dtype=np.float64)
     for i in numba.prange(Y.shape[0]):
         results[i, :] = np.cumsum(Y[i, :] * Y[i, :])
-        results[i, :] /= results[i, -1]
     return results
 
 

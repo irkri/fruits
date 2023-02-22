@@ -11,18 +11,13 @@ class Weighting(ABC):
 
     _cache: SharedSeedCache
 
-    @abstractmethod
-    def __init__(self, word: Word) -> None:
-        ...
-
-    @abstractmethod
-    def weights(self, l: int, k: int, i: int) -> np.ndarray:
-        ...
+    def weights(self, X: np.ndarray, i: int, word: Word, k: int) -> np.ndarray:
+        raise NotImplementedError(
+            "Weighting not supported for non-simple words"
+        )
 
     def get_fast_args(self, n: int, l: int) -> np.ndarray:
-        raise NotImplementedError(
-            "Weighting not supported for compiled calculation of iterated sums"
-        )
+        raise NotImplementedError("Weighting not supported for simple words")
 
 
 class ExponentialWeighting(Weighting):
@@ -31,7 +26,7 @@ class ExponentialWeighting(Weighting):
     from each other are scaled down exponentially. For two time steps
     ``i`` and ``j`` in the iterated sum, the summand is scaled by::
 
-        e^(a*(j-i-1))
+        e^(a*(j-i))
 
     where ``a`` is a given scalar. This scalar can be specified in a
     list of floats, each single float being applied to two consecutive
@@ -41,19 +36,21 @@ class ExponentialWeighting(Weighting):
     :class:`ISS`.
 
     Args:
-        scalars (sequence of float): The float values used to scale the
-            time index differences.
-        lookup ("indices", "L1" or "L2"): An array where instead of
-            indices, appropriate values are used to compute the time
-            index differences. For example, "L1" refers to the sum of
-            absolute values of increments. "L2" is the sum of squared
-            increments up to the given time step. Defaults to "indices".
+        scalars (sequence of float, optional): The float values used to
+            scale the time index differences. If None is given, all
+            scalars are assumed to be 1.
+        use_sum ("L1" or "L2", optional): If this argument is supplied,
+            instead of the original indices, the sum of the norms of
+            time series values is used in the weighting. For example,
+            "L1" refers to the sum of absolute values of increments.
+            "L2" is the sum of squared increments up to the given time
+            step.
     """
 
     def __init__(
         self,
         scalars: Optional[Sequence[float]] = None,
-        lookup: Literal["indices", "L1", "L2"] = "indices",
+        use_sum: Optional[Literal["L1", "L2"]] = None,
     ) -> None:
         if scalars is not None:
             self._scalars = np.array(
@@ -62,22 +59,11 @@ class ExponentialWeighting(Weighting):
             )
         else:
             self._scalars = np.array([0.], dtype=np.float32)
-        self._lookup = lookup
-
-    def weights(self, l: int, k: int, i: int) -> np.ndarray:
-        if self._lookup != "indices":
-            lookup = self._cache.get(CacheType.ISS, self._lookup)[i]
-        else:
-            lookup = np.arange(l)
-        if self._scalars.size == 1:
-            return np.exp(lookup)
-        return np.exp(
-            lookup * (self._scalars[k+1] - self._scalars[k])
-        )
+        self._norm = use_sum
 
     def get_fast_args(self, n: int, l: int) -> tuple[np.ndarray, np.ndarray]:
-        if self._lookup != "indices":
-            lookup = self._cache.get(CacheType.ISS, self._lookup)
+        if self._norm is not None:
+            lookup = self._cache.get(CacheType.ISS, self._norm)
         else:
             lookup = np.ones((n, l)) * np.arange(l)
         return self._scalars, lookup
