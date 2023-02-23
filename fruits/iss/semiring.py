@@ -28,7 +28,7 @@ class Semiring(ABC):
                         scalars = np.ones((len(word)-1, ), dtype=np.float32)
                 else:
                     scalars = np.zeros((len(word)-1, ), dtype=np.float32)
-                    lookup = np.ones((Z.shape[0], Z.shape[2]))
+                    lookup = np.zeros((Z.shape[0], Z.shape[2]))
                 result = self._iterated_sum_fast(
                     Z,
                     np.array(list(word)),
@@ -112,7 +112,7 @@ class Reals(Semiring):
         lookup: np.ndarray,
         extended: int,
     ) -> np.ndarray:
-        result = np.ones((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
+        result = np.zeros((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
         tmp = np.ones((Z.shape[0], Z.shape[2]), dtype=np.float64)
         for j in numba.prange(Z.shape[0]):
             weight = lookup[j] - lookup[j, -1]
@@ -131,15 +131,15 @@ class Reals(Semiring):
                     tmp[j] = np.roll(tmp[j], 1)
                     tmp[j, 0] = 0
                 tmp[j, k:] = tmp[j, k:] * C[k:]
-                if k == 0:
-                    tmp[j] = tmp[j] * np.exp(weight * scalar[k])
-                elif k == len(word) - 1:
+                if k > 0 and len(word) > 1:
                     tmp[j] = tmp[j] * np.exp(- weight * scalar[k-1])
-                elif len(word) > 1:
-                    tmp[j] = tmp[j] * np.exp(weight * (scalar[k]-scalar[k-1]))
-                tmp[j, k:] = np.cumsum(tmp[j, k:])
                 if len(word)-k <= extended:
-                    result[j, extended-(len(word)-k), :] = tmp[j, :]
+                    result[j, extended-(len(word)-k), k:] = np.cumsum(
+                        tmp[j, k:]
+                    )
+                if k < len(word) - 1 and len(word) > 1:
+                    tmp[j] = tmp[j] * np.exp(weight * scalar[k])
+                tmp[j, k:] = np.cumsum(tmp[j, k:])
         return result
 
     @staticmethod
