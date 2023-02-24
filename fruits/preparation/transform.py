@@ -1,4 +1,4 @@
-__all__ = ["INC", "STD", "MAV", "LAG", "JLD"]
+__all__ = ["INC", "STD", "NRM", "MAV", "LAG", "JLD"]
 
 from typing import Any, Union
 
@@ -96,6 +96,31 @@ class STD(Preparateur):
 
     def __str__(self) -> str:
         return "STD()"
+
+
+class NRM(Preparateur):
+    """Preparateur: Normalization
+
+    Used for normalization of a given time series dataset. The
+    transformation returns ``(X-min)/(max-min)`` where ``max``, ``min``
+    is the maximum and minimum of single time series dimensions ``X``.
+    """
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        min_ = np.min(X, axis=2)[:, :, np.newaxis]
+        max_ = np.max(X, axis=2)[:, :, np.newaxis]
+        return (X - min_) / (max_ - min_)
+
+    def _copy(self) -> "NRM":
+        return NRM()
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, NRM):
+            return False
+        return True
+
+    def __str__(self) -> str:
+        return "NRM()"
 
 
 class MAV(Preparateur):
