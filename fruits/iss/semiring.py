@@ -221,9 +221,6 @@ def _tropical_single_iterated_sum_fast(
         for dim, el in enumerate(ext_letter):
             if el != 0:
                 C = C + el * Z[dim, :]
-        if k > 0:
-            tmp = np.roll(tmp, 1)
-            tmp[0] = 0
         tmp[k:] = tmp[k:] + C[k:]
         if k > 0 and len(word) > 1:
             tmp = tmp - weights * scalar[k-1]
@@ -324,9 +321,6 @@ def _arctic_single_iterated_sum_fast(
         for dim, el in enumerate(ext_letter):
             if el != 0:
                 C = C + el * Z[dim, :]
-        if k > 0:
-            tmp = np.roll(tmp, 1)
-            tmp[0] = 0
         tmp[k:] = tmp[k:] + C[k:]
         if k > 0 and len(word) > 1:
             tmp = tmp - weights * scalar[k-1]
@@ -431,9 +425,6 @@ def _bayesian_single_iterated_sum_fast(
             elif occurence < 0:
                 for _ in range(-occurence):
                     C = C / Z[letter, :]
-        if k > 0:
-            tmp = np.roll(tmp, 1)
-            tmp[0] = 0
         tmp[k:] = tmp[k:] * C[k:]
         if k > 0 and len(word) > 1:
             tmp = tmp * np.exp(- weights * scalar[k-1])
