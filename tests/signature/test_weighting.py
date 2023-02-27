@@ -125,7 +125,7 @@ def test_tropical_weighting():
     Y = np.zeros_like(X)
     Y[:, :, 1:] = X[:, :, 1:] - X[:, :, :-1]
     Y = np.cumsum(np.abs(Y[:, 0, :]), axis=1)
-    word = fruits.words.SimpleWord("[12][3][2213]")
+    word = fruits.words.SimpleWord("[12][-3][2213]")
     result = fruits.ISS(
         [word],
         semiring=fruits.semiring.Tropical(),
@@ -134,11 +134,11 @@ def test_tropical_weighting():
     the_result = np.zeros((X.shape[0])) + np.inf
     for m in range(X.shape[0]):
         for k in range(X.shape[2]):
-            for j in range(k):
-                for i in range(j):
+            for j in range(k+1):
+                for i in range(j+1):
                     the_result[m] = min(the_result[m],
                         X[m, 0, i] + X[m, 1, i]
-                        + X[m, 2, j]
+                        - X[m, 2, j]
                         + 2*X[m, 1, k] + X[m, 0, k] + X[m, 2, k]
                         + .2 * (Y[m, j] - Y[m, k]) + .5 * (Y[m, i] - Y[m, j])
                     )
@@ -151,7 +151,7 @@ def test_arctic_weighting():
     Y = np.zeros_like(X)
     Y[:, :, 1:] = X[:, :, 1:] - X[:, :, :-1]
     Y = np.cumsum(np.abs(Y[:, 0, :]), axis=1)
-    word = fruits.words.SimpleWord("[12][3][2213]")
+    word = fruits.words.SimpleWord("[12][-3][2213]")
     result = fruits.ISS(
         [word],
         semiring=fruits.semiring.Arctic(),
@@ -160,11 +160,11 @@ def test_arctic_weighting():
     the_result = np.zeros((X.shape[0])) - np.inf
     for m in range(X.shape[0]):
         for k in range(X.shape[2]):
-            for j in range(k):
-                for i in range(j):
+            for j in range(k+1):
+                for i in range(j+1):
                     the_result[m] = max(the_result[m],
                         X[m, 0, i] + X[m, 1, i]
-                        + X[m, 2, j]
+                        - X[m, 2, j]
                         + 2*X[m, 1, k] + X[m, 0, k] + X[m, 2, k]
                         + .2 * (Y[m, j] - Y[m, k]) + .5 * (Y[m, i] - Y[m, j])
                     )
@@ -188,8 +188,8 @@ def test_bayesian_weighting():
     the_result = np.zeros((X.shape[0])) - np.inf
     for m in range(X.shape[0]):
         for k in range(X.shape[2]):
-            for j in range(k):
-                for i in range(j):
+            for j in range(k+1):
+                for i in range(j+1):
                     the_result[m] = max(the_result[m],
                         X[m, 0, i] * X[m, 1, i]
                         * X[m, 2, j]

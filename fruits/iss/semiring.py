@@ -31,7 +31,7 @@ class Semiring(ABC):
                     lookup = np.zeros((Z.shape[0], Z.shape[2]))
                 result = self.iterated_sum_fast(
                     Z,
-                    np.array(list(word)),
+                    np.array(list(word), dtype=np.int32),
                     scalars,
                     lookup,
                     extended,
@@ -93,7 +93,7 @@ class Semiring(ABC):
 
 @numba.njit(
     "float64[:,:]("
-        "float64[:,:], int32[:,:], float32[:], float64[:], int32)",
+        "float64[:,:], int32[:,:], float32[:], float64[:], int64)",
     fastmath=True,
     cache=True,
 )
@@ -124,9 +124,7 @@ def _reals_single_iterated_sum_fast(
         if k > 0 and len(word) > 1:
             tmp = tmp * np.exp(- weights * scalar[k-1])
         if len(word) - k <= extended:
-            result[extended-(len(word)-k), k:] = np.cumsum(
-                tmp[k:]
-            )
+            result[extended-(len(word)-k), k:] = np.cumsum(tmp[k:])
         if k < len(word) - 1 and len(word) > 1:
             tmp = tmp * np.exp(weights * scalar[k])
             tmp[k:] = np.cumsum(tmp[k:])
@@ -162,8 +160,8 @@ class Reals(Semiring):
 
     @staticmethod
     @numba.njit(
-        "float64[:,:,:](float64[:,:,:], int32[:,:], "
-                       "float32[:], float64[:,:], int32)",
+        "float64[:,:,:]("
+            "float64[:,:,:], int32[:,:], float32[:], float64[:,:], int64)",
         fastmath=True,
         cache=True,
         parallel=True,
@@ -201,7 +199,7 @@ class Reals(Semiring):
 
 @numba.njit(
     "float64[:,:]("
-        "float64[:,:], int32[:,:], float32[:], float64[:], int32)",
+        "float64[:,:], int32[:,:], float32[:], float64[:], int64)",
     fastmath=True,
     cache=True,
 )
@@ -221,18 +219,18 @@ def _tropical_single_iterated_sum_fast(
         for dim, el in enumerate(ext_letter):
             if el != 0:
                 C = C + el * Z[dim, :]
-        tmp[k:] = tmp[k:] + C[k:]
+        tmp = tmp + C
         if k > 0 and len(word) > 1:
             tmp = tmp - weights * scalar[k-1]
         if len(word) - k <= extended:
-            result[extended-(len(word)-k), k] = tmp[k]
-            for i in range(k+1, Z.shape[1]):
+            result[extended-(len(word)-k), 0] = tmp[0]
+            for i in range(1, Z.shape[1]):
                 result[extended-(len(word)-k), i] = min(
                     result[extended-(len(word)-k), i-1], tmp[i]
                 )
         if k < len(word) - 1 and len(word) > 1:
             tmp = tmp + weights * scalar[k]
-            for i in range(k+1, Z.shape[1]):
+            for i in range(1, Z.shape[1]):
                 tmp[i] = min(tmp[i-1], tmp[i])
     return result
 
@@ -262,8 +260,8 @@ class Tropical(Semiring):
 
     @staticmethod
     @numba.njit(
-        "float64[:,:,:](float64[:,:,:], int32[:,:], "
-                       "float32[:], float64[:,:], int32)",
+        "float64[:,:,:]("
+            "float64[:,:,:], int32[:,:], float32[:], float64[:,:], int64)",
         fastmath=True,
         cache=True,
         parallel=True,
@@ -301,7 +299,7 @@ class Tropical(Semiring):
 
 @numba.njit(
     "float64[:,:]("
-        "float64[:,:], int32[:,:], float32[:], float64[:], int32)",
+        "float64[:,:], int32[:,:], float32[:], float64[:], int64)",
     fastmath=True,
     cache=True,
 )
@@ -321,18 +319,18 @@ def _arctic_single_iterated_sum_fast(
         for dim, el in enumerate(ext_letter):
             if el != 0:
                 C = C + el * Z[dim, :]
-        tmp[k:] = tmp[k:] + C[k:]
+        tmp = tmp + C
         if k > 0 and len(word) > 1:
             tmp = tmp - weights * scalar[k-1]
         if len(word) - k <= extended:
-            result[extended-(len(word)-k), k] = tmp[k]
-            for i in range(k+1, Z.shape[1]):
+            result[extended-(len(word)-k), 0] = tmp[0]
+            for i in range(1, Z.shape[1]):
                 result[extended-(len(word)-k), i] = max(
                     result[extended-(len(word)-k), i-1], tmp[i]
                 )
         if k < len(word) - 1 and len(word) > 1:
             tmp = tmp + weights * scalar[k]
-            for i in range(k+1, Z.shape[1]):
+            for i in range(1, Z.shape[1]):
                 tmp[i] = max(tmp[i-1], tmp[i])
     return result
 
@@ -362,8 +360,8 @@ class Arctic(Semiring):
 
     @staticmethod
     @numba.njit(
-        "float64[:,:,:](float64[:,:,:], int32[:,:], "
-                       "float32[:], float64[:,:], int32)",
+        "float64[:,:,:]("
+            "float64[:,:,:], int32[:,:], float32[:], float64[:,:], int64)",
         fastmath=True,
         cache=True,
         parallel=True,
@@ -401,7 +399,7 @@ class Arctic(Semiring):
 
 @numba.njit(
     "float64[:,:]("
-        "float64[:,:], int32[:,:], float32[:], float64[:], int32)",
+        "float64[:,:], int32[:,:], float32[:], float64[:], int64)",
     fastmath=True,
     cache=True,
 )
@@ -425,18 +423,18 @@ def _bayesian_single_iterated_sum_fast(
             elif occurence < 0:
                 for _ in range(-occurence):
                     C = C / Z[letter, :]
-        tmp[k:] = tmp[k:] * C[k:]
+        tmp = tmp * C
         if k > 0 and len(word) > 1:
             tmp = tmp * np.exp(- weights * scalar[k-1])
         if len(word)-k <= extended:
-            result[extended-(len(word)-k), k] = tmp[k]
-            for i in range(k+1, Z.shape[1]):
+            result[extended-(len(word)-k), 0] = tmp[0]
+            for i in range(1, Z.shape[1]):
                 result[extended-(len(word)-k), i] = max(
                     result[extended-(len(word)-k), i-1], tmp[i]
                 )
         if k < len(word) - 1 and len(word) > 1:
             tmp = tmp * np.exp(weights * scalar[k])
-            for i in range(k+1, Z.shape[1]):
+            for i in range(1, Z.shape[1]):
                 tmp[i] = max(tmp[i-1], tmp[i])
     return result
 
@@ -471,8 +469,8 @@ class Bayesian(Semiring):
 
     @staticmethod
     @numba.njit(
-        "float64[:,:,:](float64[:,:,:], int32[:,:], "
-                       "float32[:], float64[:,:], int32)",
+        "float64[:,:,:]("
+            "float64[:,:,:], int32[:,:], float32[:], float64[:,:], int64)",
         fastmath=True,
         cache=True,
         parallel=True,
