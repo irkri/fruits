@@ -74,8 +74,11 @@ class ISS(Seed):
                 word like ``[21][121][1]`` the calculator
                 returns the iterated sums for ``[21]``,
                 ``[21][121]`` and ``[21][121][1]``.
-        semiring (ISSSemiring): The semi-ring in which the iterated sums
-            are calculated. Defaults to :class:`Reals`.
+        semiring (Semiring, optional): The semiring in which the
+            iterated sums are calculated. Defaults to :class:`Reals`.
+        weighting (Weighting, optional): A specific weighting used for
+            the iterated sums that penalize terms which involve indices
+            in the time series that are further apart.
     """
 
     def __init__(
@@ -158,4 +161,9 @@ class ISS(Seed):
         )
 
     def _copy(self) -> "ISS":
-        return ISS(self.words, mode=self.mode, semiring=self.semiring)
+        return ISS(
+            self.words,
+            mode=self.mode,
+            semiring=self.semiring,
+            weighting=self.weighting,
+        )

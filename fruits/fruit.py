@@ -516,6 +516,10 @@ class FruitSlice:
             summary += f"\n{f'       | words: {len(iss.words)}': <38}"
             semiring = iss.semiring.__class__.__name__
             summary += f"\n{f'       | semiring: {semiring}': <38}"
+            weighting = "None" if iss.weighting is None else (
+                "Index" if iss.weighting._norm is None else iss.weighting._norm
+            )
+            summary += f"\n{f'       | weighting: {weighting}': <38}"
         if len(self._iss) == 0:
             summary += "\n"
         summary += f"\n{f'Sieves ({len(self._sieves)}):': <38}"
