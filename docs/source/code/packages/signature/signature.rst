@@ -13,3 +13,11 @@ Semirings
    :members:
    :undoc-members:
    :show-inheritance:
+
+Weighting
+"""""""""
+
+.. automodule:: fruits.iss.weighting
+   :members:
+   :undoc-members:
+   :show-inheritance:
