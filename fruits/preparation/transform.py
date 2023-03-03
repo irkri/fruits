@@ -67,35 +67,48 @@ class INC(Preparateur):
 class STD(Preparateur):
     """Preparateur: Standardization
 
-    Used for standardization of a given time series dataset. The
-    transformation returns ``(X-mu)/std`` where ``mu`` and ``std`` are
-    the parameters calculated in :meth:`STD.fit`.
+    Used for standardization of a given time series dataset.
+
+    Args:
+        separately (bool, optional): If set to true, each time series
+            in the dataset will be standardized on its own. Otherwise,
+            the transformation returns ``(X-mu)/std`` where ``mu`` and
+            ``std`` are calculated in :meth:`STD.fit`. Defaults to true.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, separately: bool = True) -> None:
+        self._separately = separately
         self._mean = None
         self._std = None
 
     def _fit(self, X: np.ndarray) -> None:
-        self._mean = np.mean(X)
-        self._std = np.std(X)
+        if not self._separately:
+            self._mean = np.mean(X)
+            self._std = np.std(X)
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        if self._mean is None or self._std is None:
-            raise RuntimeError("Missing call of self.fit()")
-        out = (X - self._mean) / self._std
+        if not self._separately:
+            if self._mean is None or self._std is None:
+                raise RuntimeError("Missing call of self.fit()")
+            out = (X - self._mean) / self._std
+        else:
+            mean_ = np.mean(X, axis=2)[:, :, np.newaxis]
+            std_ = np.std(X, axis=2)[:, :, np.newaxis]
+            out = (X - mean_) / std_
         return out
 
     def _copy(self) -> "STD":
-        return STD()
+        return STD(self._separately)
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, STD):
             return False
-        return True
+        if self._separately == other._separately:
+            return True
+        return False
 
     def __str__(self) -> str:
-        return "STD()"
+        return f"STD({self._separately})"
 
 
 class NRM(Preparateur):
