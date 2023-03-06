@@ -37,7 +37,9 @@ def test_one():
 
 
 def test_ffn():
-    ffn = fruits.preparation.FFN(n=3, dim=0, std=0, overwrite=False)
+    ffn = fruits.preparation.FFN(
+        n=3, dim=0, center=False, std=0, overwrite=False,
+    )
 
     ffn._weights1 = np.array([[-1, -2, 1]])
     ffn._biases1 = np.array([6, -5, 0])
