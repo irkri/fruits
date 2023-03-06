@@ -107,17 +107,18 @@ class STD(Preparateur):
         return out
 
     def _copy(self) -> "STD":
-        return STD(self._separately)
+        return STD(self._separately, self._calc_std)
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, STD):
             return False
-        if self._separately == other._separately:
+        if (self._separately == other._separately and
+                self._calc_std == other._calc_std):
             return True
         return False
 
     def __str__(self) -> str:
-        return f"STD({self._separately})"
+        return f"STD({self._separately}, {self._calc_std})"
 
 
 class NRM(Preparateur):
