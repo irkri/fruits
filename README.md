@@ -26,7 +26,7 @@ __FRUITS__ implements the class `fruits.Fruit`. A `Fruit` consists of at least o
 - **Words** ... are used to calculate iterated sums.<br>
   For example:<br>
   `<[11], ISS(X)>=numpy.cumsum([x^2 for x in X])` is the result of <br>
-  `fruits.ISS(X, [fruits.words.SimpleWord("[11]")])`<br>
+  `fruits.ISS([fruits.words.SimpleWord("[11]")]).fit_transform(X)`<br>
   The definition and applications of the *iterated sums signature* ISS can be found in [this paper](https://link.springer.com/article/10.1007/s10440-020-00333-x)
   by Diehl *et al.*.
 - **Sieves** ... extract single numerical values (i.e. the final features) from the arrays calculated in the previous step.
@@ -45,9 +45,12 @@ fruit = fruits.Fruit("My Fruit")
 # add preparateurs (optional)
 fruit.add(fruits.preparation.INC)
 
-# add all words of weight 2 in 3 dimensions
-words = fruits.words.of_weight(2, dim=3)
-fruit.add(*words)
+# configure the type of Iterated Sums Signature being used
+iss = fruits.ISS(
+    fruits.words.of_weight(2, dim=3),
+    mode=fruits.ISSMode.EXTENDED,
+)
+fruit.add(iss)
 
 # choose from a variety of sieves for feature extraction
 fruit.add(fruits.sieving.PPV(quantile=0.5, constant=False))
@@ -55,7 +58,7 @@ fruit.add(fruits.sieving.MAX)
 
 # cut a new fruit slice without the INC preparateur
 fruit.cut()
-fruit.add(*words)
+fruit.add(iss.copy())
 fruit.add(fruits.sieving.PPV(quantile=0, constant=True))
 fruit.add(fruits.sieving.MIN)
 
