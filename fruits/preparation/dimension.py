@@ -77,6 +77,10 @@ class FFN(Preparateur):
             the first layer of this two-step transform. Defaults to 10.
         dim (int, optional): The dimension to use from the input time
             series. Defaults to the first dimension.
+        center (bool, optional): Whether to center the time series
+            before doing the transformation. This will most likely lead
+            to better results because of the involved relu operation.
+            Defaults to true.
         std (float, optional): Standard deviation of the normally
             distributed weights and biases in all linear transformations
             used. Defaults to 1.
@@ -89,11 +93,13 @@ class FFN(Preparateur):
         self,
         n: int = 10,
         dim: int = 0,
+        center: bool = True,
         std: float = 1.0,
         overwrite: bool = False,
     ) -> None:
         self._n = n
         self._dim = dim
+        self._center = center
         self._std = std
         self._overwrite = overwrite
 
@@ -105,7 +111,10 @@ class FFN(Preparateur):
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_weights1"):
             raise RuntimeError("Preparateur FFN was not fitted")
-        new_dim = np.outer(self._weights1, X[:, self._dim, :]).reshape(
+        new_dim = X[:, self._dim, :]
+        if self._center:
+            new_dim = new_dim - (new_dim.mean(axis=1)[:, np.newaxis])
+        new_dim = np.outer(self._weights1, new_dim).reshape(
             self._n, X.shape[0], X.shape[2]
         ) + self._biases1[:, np.newaxis, np.newaxis]
         new_dim = new_dim * (new_dim > 0)
@@ -121,7 +130,14 @@ class FFN(Preparateur):
         return result
 
     def _copy(self) -> "FFN":
-        return FFN(self._n, self._dim, self._std, self._overwrite)
+        return FFN(
+            self._n,
+            self._dim,
+            self._center,
+            self._std,
+            self._overwrite,
+        )
 
     def __str__(self) -> str:
-        return f"FFN({self._n}, {self._dim}, {self._std}, {self._overwrite})"
+        return (f"FFN({self._n}, {self._dim}, {self._center}, {self._std}, "
+                f"{self._overwrite})")
