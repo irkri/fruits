@@ -74,17 +74,24 @@ class STD(Preparateur):
             in the dataset will be standardized on its own. Otherwise,
             the transformation returns ``(X-mu)/std`` where ``mu`` and
             ``std`` are calculated in :meth:`STD.fit`. Defaults to true.
+        std (bool, optional): Whether to standardize the time series. If
+            set to false, the resulting time series will only be
+            centered to zero. Defaults to True.
     """
 
-    def __init__(self, separately: bool = True) -> None:
+    def __init__(self, separately: bool = True, std: bool = True) -> None:
         self._separately = separately
+        self._calc_std = std
         self._mean = None
         self._std = None
 
     def _fit(self, X: np.ndarray) -> None:
         if not self._separately:
             self._mean = np.mean(X)
-            self._std = np.std(X)
+            if self._calc_std:
+                self._std = np.std(X)
+            else:
+                self._std = 1
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not self._separately:
@@ -93,7 +100,9 @@ class STD(Preparateur):
             out = (X - self._mean) / self._std
         else:
             mean_ = np.mean(X, axis=2)[:, :, np.newaxis]
-            std_ = np.std(X, axis=2)[:, :, np.newaxis]
+            std_ = 1
+            if self._calc_std:
+                std_ = np.std(X, axis=2)[:, :, np.newaxis]
             out = (X - mean_) / std_
         return out
 
