@@ -3,9 +3,11 @@ from typing import Generator, Optional, Sequence
 
 import numpy as np
 
+from ..cache import SharedSeedCache
 from ..seed import Seed
 from .cache import CachePlan
-from .semiring import Semiring, Reals
+from .semiring import Reals, Semiring
+from .weighting import Weighting
 from .words.word import Word
 
 
@@ -21,6 +23,7 @@ def _calculate_ISS(
     words: Sequence[Word],
     batch_size: int,
     semiring: Semiring,
+    weighting: Optional[Weighting] = None,
     cache_plan: Optional[CachePlan] = None,
 ) -> Generator[np.ndarray, None, None]:
     i = 0
@@ -42,8 +45,8 @@ def _calculate_ISS(
                 semiring.iterated_sums(
                     X,
                     word,
-                    np.array([0.0] + word.alpha + [0.0], dtype=np.float32),
                     n_itsum_word,
+                    weighting,
                 ),
                 0, 1,
             )
@@ -71,8 +74,11 @@ class ISS(Seed):
                 word like ``[21][121][1]`` the calculator
                 returns the iterated sums for ``[21]``,
                 ``[21][121]`` and ``[21][121][1]``.
-        semiring (ISSSemiring): The semi-ring in which the iterated sums
-            are calculated. Defaults to :class:`Reals`.
+        semiring (Semiring, optional): The semiring in which the
+            iterated sums are calculated. Defaults to :class:`Reals`.
+        weighting (Weighting, optional): A specific weighting used for
+            the iterated sums that penalize terms which involve indices
+            in the time series that are further apart.
     """
 
     def __init__(
@@ -81,6 +87,7 @@ class ISS(Seed):
         /, *,
         mode: ISSMode = ISSMode.SINGLE,
         semiring: Optional[Semiring] = None,
+        weighting: Optional[Weighting] = None,
     ) -> None:
         self.words = words
         self.mode = mode
@@ -88,11 +95,16 @@ class ISS(Seed):
         self._cache_plan = CachePlan(
             self.words if mode == ISSMode.EXTENDED else []
         )
+        self.weighting = weighting
 
     def _fit(self, X: np.ndarray) -> None:
         pass
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
+        if hasattr(self, "_cache") and self.weighting is not None:
+            self.weighting._cache = self._cache
+        elif self.weighting is not None:
+            self.weighting._cache = SharedSeedCache(X)
         result = _calculate_ISS(
             X,
             self.words,
@@ -100,8 +112,8 @@ class ISS(Seed):
                 self._cache_plan if self.mode == ISSMode.EXTENDED else None
             ),
             semiring=self.semiring,
+            weighting=self.weighting,
             batch_size=len(self.words),
-
         )
         return next(iter(result))
 
@@ -133,6 +145,10 @@ class ISS(Seed):
         """
         if batch_size > len(self.words):
             raise ValueError("batch_size too large, has to be < len(words)")
+        if hasattr(self, "_cache") and self.weighting is not None:
+            self.weighting._cache = self._cache
+        elif self.weighting is not None:
+            self.weighting._cache = SharedSeedCache(X)
         yield from _calculate_ISS(
             X,
             self.words,
@@ -140,8 +156,14 @@ class ISS(Seed):
                 self._cache_plan if self.mode == ISSMode.EXTENDED else None
             ),
             semiring=self.semiring,
+            weighting=self.weighting,
             batch_size=batch_size,
         )
 
     def _copy(self) -> "ISS":
-        return ISS(self.words, mode=self.mode, semiring=self.semiring)
+        return ISS(
+            self.words,
+            mode=self.mode,
+            semiring=self.semiring,
+            weighting=self.weighting,
+        )

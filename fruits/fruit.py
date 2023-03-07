@@ -425,6 +425,8 @@ class FruitSlice:
 
         self._sieves_extended = []
 
+        for iss in self._iss:
+            iss._cache = cache
         for itsum in self._iterate_iss(prepared_data):
             sieves_copy = [sieve.copy() for sieve in self._sieves]
             for sieve in sieves_copy:
@@ -467,8 +469,9 @@ class FruitSlice:
         for callback in callbacks:
             callback.on_preparation_end(prepared_data)
 
-        sieved_data = np.zeros((prepared_data.shape[0],
-                                self.nfeatures()))
+        sieved_data = np.zeros((prepared_data.shape[0], self.nfeatures()))
+        for iss in self._iss:
+            iss._cache = cache
         k = 0
         for i, itsum in enumerate(self._iterate_iss(prepared_data)):
             for callback in callbacks:
@@ -513,6 +516,10 @@ class FruitSlice:
             summary += f"\n{f'       | words: {len(iss.words)}': <38}"
             semiring = iss.semiring.__class__.__name__
             summary += f"\n{f'       | semiring: {semiring}': <38}"
+            weighting = "None" if iss.weighting is None else (
+                "Index" if iss.weighting._norm is None else iss.weighting._norm
+            )
+            summary += f"\n{f'       | weighting: {weighting}': <38}"
         if len(self._iss) == 0:
             summary += "\n"
         summary += f"\n{f'Sieves ({len(self._sieves)}):': <38}"

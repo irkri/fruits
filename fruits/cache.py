@@ -24,11 +24,30 @@ def _coquantile(X: np.ndarray, q: float) -> np.ndarray:
     return results
 
 
+@numba.njit("float64[:,:](float64[:,:,:])", parallel=False, cache=True)
+def _L1_sum(X: np.ndarray) -> np.ndarray:
+    Y = _increments(X, 1)[:, 0, :]
+    results = np.zeros((Y.shape[0], Y.shape[1]), dtype=np.float64)
+    for i in numba.prange(Y.shape[0]):
+        results[i, :] = np.cumsum(np.abs(Y[i, :]))
+    return results
+
+
+@numba.njit("float64[:,:](float64[:,:,:])", parallel=False, cache=True)
+def _L2_sum(X: np.ndarray) -> np.ndarray:
+    Y = _increments(X, 1)[:, 0, :]
+    results = np.zeros((Y.shape[0], Y.shape[1]), dtype=np.float64)
+    for i in numba.prange(Y.shape[0]):
+        results[i, :] = np.cumsum(Y[i, :] * Y[i, :])
+    return results
+
+
 class CacheType(Enum):
     """Defines different types of cache that are supplied to all seeds
     in a fruit. The cache is grouped in a :class:`SharedSeedCache`.
     """
     COQUANTILE = auto()
+    ISS = auto()
 
 
 class SharedSeedCache:
@@ -44,7 +63,8 @@ class SharedSeedCache:
 
     def __init__(self, X: Optional[np.ndarray] = None) -> None:
         self._cache: dict[CacheType, dict[str, Union[None, np.ndarray]]] = {
-            CacheType.COQUANTILE: {}
+            CacheType.COQUANTILE: {},
+            CacheType.ISS: {},
         }
         if X is not None:
             if X.ndim == 1:
@@ -77,16 +97,28 @@ class SharedSeedCache:
         if (key not in self._cache[cache_id].keys()
                 or self._cache[cache_id][key] is None):
             if X is None and self._input is not None:
-                self._cache[cache_id][key] = _coquantile(
-                    self._input,
-                    float(key),
-                )
+                if cache_id == CacheType.COQUANTILE:
+                    self._cache[cache_id][key] = _coquantile(
+                        self._input,
+                        float(key),
+                    )
+                elif cache_id == CacheType.ISS:
+                    if key == "L1":
+                        self._cache[cache_id][key] = _L1_sum(self._input)
+                    elif key == "L2":
+                        self._cache[cache_id][key] = _L2_sum(self._input)
             elif X is not None:
                 if X.ndim == 1:
                     X = X[np.newaxis, np.newaxis, :]
                 elif X.ndim == 2:
                     X = X[:, np.newaxis, :]
-                self._cache[cache_id][key] = _coquantile(X, float(key))
+                if cache_id == CacheType.COQUANTILE:
+                    self._cache[cache_id][key] = _coquantile(X, float(key))
+                elif cache_id == CacheType.ISS:
+                    if key == "L1":
+                        self._cache[cache_id][key] = _L1_sum(X)
+                    elif key == "L2":
+                        self._cache[cache_id][key] = _L2_sum(X)
             else:
                 raise RuntimeError("No input for cache given")
         return self._cache[cache_id][key]  # type: ignore

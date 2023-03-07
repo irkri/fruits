@@ -1,6 +1,6 @@
-__all__ = ["INC", "STD", "MAV", "LAG", "JLD"]
+__all__ = ["INC", "STD", "NRM", "MAV", "LAG", "JLD"]
 
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 
@@ -67,35 +67,102 @@ class INC(Preparateur):
 class STD(Preparateur):
     """Preparateur: Standardization
 
-    Used for standardization of a given time series dataset. The
-    transformation returns ``(X-mu)/std`` where ``mu`` and ``std`` are
-    the parameters calculated in :meth:`STD.fit`.
+    Used for standardizing a given time series dataset.
+
+    Args:
+        separately (bool, optional): If set to true, each time series
+            in the dataset will be standardized on its own. Otherwise,
+            the transformation returns ``(X-mu)/std`` where ``mu`` and
+            ``std`` are calculated in :meth:`STD.fit`. Defaults to true.
+        var (bool, optional): Whether to standardize the variance of the
+            time series. If set to false, the resulting time series will
+            only be centered to zero. Defaults to True.
+        dim (int, optional): If an index of a dimension in the input
+            time series is given, only this dimension will be
+            standardized. This only works for ``separately=True``.
+            Defaults to all dimensions being standardized.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        separately: bool = True,
+        var: bool = True,
+        dim: Optional[int] = None,
+    ) -> None:
+        self._separately = separately
+        self._div_std = var
+        self._dim = dim
         self._mean = None
         self._std = None
 
     def _fit(self, X: np.ndarray) -> None:
-        self._mean = np.mean(X)
-        self._std = np.std(X)
+        if not self._separately:
+            self._mean = np.mean(X)
+            if self._div_std:
+                self._std = np.std(X)
+            else:
+                self._std = 1
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        if self._mean is None or self._std is None:
-            raise RuntimeError("Missing call of self.fit()")
-        out = (X - self._mean) / self._std
+        if not self._separately:
+            if self._mean is None or self._std is None:
+                raise RuntimeError("Missing call of self.fit()")
+            out = (X - self._mean) / self._std
+        else:
+            if self._dim is None:
+                mean_ = np.mean(X, axis=2)[:, :, np.newaxis]
+                std_ = 1
+                if self._div_std:
+                    std_ = np.std(X, axis=2)[:, :, np.newaxis]
+                out = (X - mean_) / std_
+            else:
+                mean_ = np.mean(X[:, self._dim, :], axis=1)[:, np.newaxis]
+                std_ = 1
+                if self._div_std:
+                    std_ = np.std(X[:, self._dim, :], axis=1)[:, np.newaxis]
+                out = X.copy()
+                out[:, self._dim, :] = (X[:, self._dim, :] - mean_) / std_
         return out
 
     def _copy(self) -> "STD":
-        return STD()
+        return STD(self._separately, self._div_std, self._dim)
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, STD):
             return False
+        if (self._separately == other._separately and
+                self._div_std == other._div_std and
+                self._dim == other._dim):
+            return True
+        return False
+
+    def __str__(self) -> str:
+        return f"STD({self._separately}, {self._div_std}, {self._dim})"
+
+
+class NRM(Preparateur):
+    """Preparateur: Normalization
+
+    Used for normalization of a given time series dataset. The
+    transformation returns ``(X-min)/(max-min)`` where ``max``, ``min``
+    is the maximum and minimum of single time series dimensions ``X``.
+    """
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        min_ = np.min(X, axis=2)[:, :, np.newaxis]
+        max_ = np.max(X, axis=2)[:, :, np.newaxis]
+        return (X - min_) / (max_ - min_)
+
+    def _copy(self) -> "NRM":
+        return NRM()
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, NRM):
+            return False
         return True
 
     def __str__(self) -> str:
-        return "STD()"
+        return "NRM()"
 
 
 class MAV(Preparateur):
