@@ -114,10 +114,35 @@ def multisine(
     return X_train, y_train, X_test, y_test
 
 
+def replace_nan(X: np.ndarray, value: Optional[float] = None) -> np.ndarray:
+    """Replaces all NaN values in the given time series dataset.
+
+    Args:
+        X (np.ndarray): Three dimensional array containing multivariate
+            time series.
+        value (float, optional): If a value is given, all NaNs are
+            replaced by this value. If nothing is specified, a missing
+            value is replaced by the last observed value in the time
+            series. If a value at time step zero is missing, it will be
+            set to 0.
+    """
+    if value is not None:
+        return np.nan_to_num(X, nan=value)
+    nan_places = np.argwhere(np.isnan(X))
+    out = X.copy()
+    for index in nan_places:
+        if index[2] == 0:
+            out[index[0], index[1], index[2]] = 0
+            continue
+        out[index[0], index[1], index[2]] = out[index[0], index[1], index[2]-1]
+    return out
+
+
 def load(
     path: str,
     univariate: bool = True,
     cache: bool = True,
+    keep_nan: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Returns a time series dataset that is formatted as a .txt file
     and readable with numpy.
@@ -134,6 +159,9 @@ def load(
             (as .npy file) or create it if it doesn't. Setting this
             option to ``False`` always reads the .arff files. Defaults
             to True.
+        keep_nan (bool, optional): If set to ``False``, all NaN values
+            in the time series dataset will be replaced according to the
+            method :meth:`replace_nan`. Defaults to False.
 
     Returns:
         tuple of numpy arrays: A dataset of time series in the order
@@ -156,6 +184,9 @@ def load(
 
         X_train = np.expand_dims(X_train, axis=1)
         X_test = np.expand_dims(X_test, axis=1)
+        if not keep_nan:
+            X_train = replace_nan(X_train)
+            X_test = replace_nan(X_test)
 
         return X_train, y_train, X_test, y_test
 
@@ -219,6 +250,10 @@ def load(
                     X_test)
             np.save(os.path.join(path, name)+"_yTEST",
                     y_test)
+
+    if not keep_nan:
+        X_train = replace_nan(X_train)
+        X_test = replace_nan(X_test)
 
     return X_train, y_train, X_test, y_test
 
