@@ -87,7 +87,7 @@ def fruitify_all(
 
     results: list[tuple[str, float, float]] = []
 
-    for data in load_all(path, univariate, datasets):
+    for data in load_all(path, univariate=univariate, datasets=datasets):
         timing, acc = fruitify(data[1:], fruit, classifier, mean_over_n_runs)
         results.append((data[0], acc, timing))
         pd.DataFrame(
