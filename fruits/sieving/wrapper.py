@@ -25,7 +25,8 @@ class INC(FeatureSieve):
         return self._sieve.nfeatures()
 
     def _fit(self, X: np.ndarray) -> None:
-        self._sieve.fit(X)
+        inc = _increments(X[:, np.newaxis, :], 1)[:, 0, :]
+        self._sieve.fit(inc)
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         inc = _increments(X[:, np.newaxis, :], 1)[:, 0, :]
