@@ -36,10 +36,12 @@ class INC(Preparateur):
     def __init__(
         self,
         shift: Union[int, float] = 1,
-        zero_padding: bool = True
+        zero_padding: bool = True,
+        overwrite: bool = True,
     ) -> None:
         self._shift = shift
         self._zero_padding = zero_padding
+        self._overwrite = overwrite
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         out = _increments(
@@ -50,19 +52,26 @@ class INC(Preparateur):
         )
         if not self._zero_padding:
             out[:, :, :self._shift] = X[:, :, :self._shift]
-        return out
+        if self._overwrite:
+            return out
+        result = np.zeros((X.shape[0], 2*X.shape[1], X.shape[2]))
+        result[:, :X.shape[1], :] = X
+        result[:, X.shape[1]:, :] = out
+        return result
 
     def _copy(self) -> "INC":
-        return INC(self._shift, self._zero_padding)
+        return INC(self._shift, self._zero_padding, self._overwrite)
 
     def __eq__(self, other) -> bool:
         if (isinstance(other, INC)
-                and self._zero_padding == other._zero_padding):
+                and self._zero_padding == other._zero_padding
+                and self._shift == other._shift
+                and self._overwrite == self._overwrite):
             return True
         return False
 
     def __str__(self) -> str:
-        return f"INC({self._shift}, {self._zero_padding})"
+        return f"INC({self._shift}, {self._zero_padding}, {self._overwrite})"
 
 
 class STD(Preparateur):
@@ -313,26 +322,28 @@ class RIN(Preparateur):
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_kernel"):
             raise RuntimeError("RIN preparateur misses a .fit() call")
+        out = RIN._backend(X, self._kernel[np.newaxis, np.newaxis, :])
         if self._overwrite:
-            return RIN._backend(X, self._kernel[np.newaxis, np.newaxis, :])
+            return out
         result = np.zeros((X.shape[0], 2*X.shape[1], X.shape[2]))
-        new_dim = RIN._backend(X, self._kernel[np.newaxis, np.newaxis, :])
         result[:, :X.shape[1], :] = X
-        result[:, X.shape[1]:, :] = new_dim
+        result[:, X.shape[1]:, :] = out
         return result
 
     def _copy(self) -> "RIN":
-        return RIN(self._width)
+        return RIN(self._width, self._force_positive, self._overwrite)
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, RIN):
             return False
-        if self._width == other._width:
+        if (self._width == other._width
+            and self._force_positive == other._force_positive
+            and self._overwrite == other._overwrite):
             return True
         return False
 
     def __str__(self) -> str:
-        return f"RIN({self._width})"
+        return f"RIN({self._width}, {self._force_positive}, {self._overwrite})"
 
 
 class JLD(Preparateur):
