@@ -1,7 +1,8 @@
-__all__ = ["INC", "STD", "NRM", "MAV", "LAG", "JLD"]
+__all__ = ["INC", "STD", "NRM", "MAV", "LAG", "RIN", "JLD"]
 
 from typing import Any, Optional, Union
 
+import numba
 import numpy as np
 
 from ..cache import _increments
@@ -249,6 +250,73 @@ class LAG(Preparateur):
 
     def __str__(self) -> str:
         return "LAG()"
+
+
+class RIN(Preparateur):
+    """Preparateur: Random Increments
+
+    Calculates random increments over multiple time steps. This is a
+    special case of a weighted moving average. For a random kernel
+    ```
+        [k_1, ..., k_w]
+    ```
+    drawn at a :meth:`RIN.fit` call, each dimension of the input time
+    series will be transformed according to
+    ```
+        y_i = x_i - (k_w*x_{i-1} + ... + k_1*x_{i-w}).
+    ```
+    Here, `w` is the width of the window or length of the kernel.
+
+    Args:
+        width (int, optional): Kernel length for the random gaussian
+            distributed weights. Defaults to 1.
+        force_positive (bool, optional): When set to true, forces all
+            kernel weights to be non-negative. Defaults to false.
+    """
+
+    @staticmethod
+    @numba.njit(
+        "float64[:,:,:](float64[:,:,:], float64[:,:,:])",
+        fastmath=True,
+        cache=True,
+    )
+    def _backend(X: np.ndarray, kernel: np.ndarray) -> np.ndarray:
+        w = kernel.size
+        result = np.zeros(X.shape)
+        for i in range(w, X.shape[2]):
+            result[:, :, i] = (
+                X[:, :, i] - np.sum(X[:, :, i-w:i]*kernel, axis=2)
+            )  # type: ignore
+        return result
+
+    def __init__(self, width: int = 1, force_positive: bool = False) -> None:
+        self._width = width
+        self._force_positive = force_positive
+
+    def _fit(self, X: np.ndarray) -> None:
+        self._kernel = np.random.randn(self._width)
+        if self._force_positive:
+            for i in range(self._width):
+                if self._kernel[i] < 0:
+                    self._kernel[i] = -self._kernel[i]
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        if not hasattr(self, "_kernel"):
+            raise RuntimeError("RIN preparateur misses a .fit() call")
+        return RIN._backend(X, self._kernel[np.newaxis, np.newaxis, :])
+
+    def _copy(self) -> "RIN":
+        return RIN(self._width)
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, RIN):
+            return False
+        if self._width == other._width:
+            return True
+        return False
+
+    def __str__(self) -> str:
+        return f"RIN({self._width})"
 
 
 class JLD(Preparateur):

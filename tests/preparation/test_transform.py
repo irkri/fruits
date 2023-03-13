@@ -65,8 +65,24 @@ def test_lag():
     ]), result)
 
 
+def test_rin():
+    X = np.random.random_sample((46, 100, 189))
+    rin = fruits.preparation.RIN(2)
+    rin.fit(X)
+
+    rin._kernel = np.array([4., 1.])
+
+    np.testing.assert_allclose(
+        np.array([
+            [[0., 0., 15.2, 1.8, -8.], [0., 0., -9., -4., -7.]],
+            [[0., 0., -26., -28., -14.], [0., 0., 17., 7.5, 8.5]]
+        ]),
+        rin.transform(X_1)
+    )
+
+
 def test_jld():
     X = np.random.random_sample((46, 100, 189))
     result = fruits.preparation.JLD(25).fit_transform(X)
 
-    assert result.shape[1] == 25
+    assert result.shape == (46, 25, 189)
