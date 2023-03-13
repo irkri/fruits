@@ -190,7 +190,7 @@ def load(
 
         return X_train, y_train, X_test, y_test
 
-    name = path.split("/")[-1]
+    name = os.path.basename(os.path.normpath(path))
 
     if cache and os.path.isfile(os.path.join(path, name)+"_XTRAIN.npy"):
         X_train = np.load(os.path.join(path, name)+"_XTRAIN.npy")
