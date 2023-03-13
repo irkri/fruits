@@ -272,6 +272,10 @@ class RIN(Preparateur):
             distributed weights. Defaults to 1.
         force_positive (bool, optional): When set to true, forces all
             kernel weights to be non-negative. Defaults to false.
+        overwrite (bool, optional): When set to false, the increments
+            will get added as a new dimension to each time series
+            instead of replacing them. This will be done for each
+            dimension of the original series. Defaults to true.
     """
 
     @staticmethod
@@ -289,9 +293,15 @@ class RIN(Preparateur):
             )  # type: ignore
         return result
 
-    def __init__(self, width: int = 1, force_positive: bool = False) -> None:
+    def __init__(
+        self,
+        width: int = 1,
+        force_positive: bool = False,
+        overwrite: bool = True,
+    ) -> None:
         self._width = width
         self._force_positive = force_positive
+        self._overwrite = overwrite
 
     def _fit(self, X: np.ndarray) -> None:
         self._kernel = np.random.randn(self._width)
@@ -303,7 +313,13 @@ class RIN(Preparateur):
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_kernel"):
             raise RuntimeError("RIN preparateur misses a .fit() call")
-        return RIN._backend(X, self._kernel[np.newaxis, np.newaxis, :])
+        if self._overwrite:
+            return RIN._backend(X, self._kernel[np.newaxis, np.newaxis, :])
+        result = np.zeros((X.shape[0], 2*X.shape[1], X.shape[2]))
+        new_dim = RIN._backend(X, self._kernel[np.newaxis, np.newaxis, :])
+        result[:, :X.shape[1], :] = X
+        result[:, X.shape[1]:, :] = new_dim
+        return result
 
     def _copy(self) -> "RIN":
         return RIN(self._width)
