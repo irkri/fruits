@@ -31,6 +31,10 @@ class INC(Preparateur):
             entry in each time series will be set to 0. If False, it
             is set to the first value of the original time series.
             Defaults to True.
+        overwrite (bool, optional): When set to false, the increments
+            will get added as a new dimension to each time series
+            instead of replacing them. This will be done for each
+            dimension of the original series. Defaults to true.
     """
 
     def __init__(
