@@ -1,6 +1,6 @@
 __all__ = ["ONE", "DIM", "FFN"]
 
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import numpy as np
 
@@ -67,16 +67,16 @@ class DIM(Preparateur):
 class FFN(Preparateur):
     """Preparateur: Feed-Forward Two-Layer Neural Network
 
-    Adds a dimension to the given time series dataset which is the
-    linear combination of a transformed existing dimension.
-    The transformation involves computing the pointwise ReLU of the
-    linearly transformed input series.
+    Adds dimensions to the given time series dataset which is the linear
+    combination of a transformed existing dimension. The transformation
+    involves computing the pointwise ReLU of the linearly transformed
+    input series.
 
     Args:
         n (int, optional): Number of linear transformations to use in
             the first layer of this two-step transform. Defaults to 10.
         dim (int, optional): The dimension to use from the input time
-            series. Defaults to the first dimension.
+            series. Defaults to all dimensions.
         center (bool, optional): Whether to center the time series
             before doing the transformation. This will most likely lead
             to better results because of the involved relu operation.
@@ -92,7 +92,7 @@ class FFN(Preparateur):
     def __init__(
         self,
         n: int = 10,
-        dim: int = 0,
+        dim: Optional[int] = None,
         center: bool = True,
         std: float = 1.0,
         overwrite: bool = False,
@@ -111,22 +111,45 @@ class FFN(Preparateur):
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_weights1"):
             raise RuntimeError("Preparateur FFN was not fitted")
-        new_dim = X[:, self._dim, :]
-        if self._center:
-            new_dim = new_dim - (new_dim.mean(axis=1)[:, np.newaxis])
+        self._dim = 0 if (self._dim is None and X.shape[1] == 1) else self._dim
+        if self._dim is None:
+            new_dim = X.copy()
+            if self._center:
+                for d in range(new_dim.shape[1]):
+                    new_dim[:, d, :] = new_dim[:, d, :] - (
+                        new_dim[:, d, :].mean(axis=1)[:, np.newaxis]
+                    )
+            new_dim = new_dim.reshape((X.shape[0], X.shape[1]*X.shape[2]))
+        else:
+            new_dim = X[:, self._dim, :]
+            if self._center:
+                new_dim = new_dim - (new_dim.mean(axis=1)[:, np.newaxis])
+
+        print(new_dim)
         new_dim = np.outer(self._weights1, new_dim).reshape(
-            self._n, X.shape[0], X.shape[2]
+            self._n, X.shape[0], new_dim.shape[1]
         ) + self._biases1[:, np.newaxis, np.newaxis]
         new_dim = new_dim * (new_dim > 0)
         new_dim = np.tensordot(self._weights2, new_dim, axes=1)
+
         if not self._overwrite:
-            result = np.zeros((X.shape[0], X.shape[1]+1, X.shape[2]))
-            result[:, :X.shape[1], :] = X
-            result[:, X.shape[1], :] = new_dim
+            if self._dim is None:
+                new_dim = new_dim.reshape((X.shape[0], X.shape[1], X.shape[2]))
+                result = np.zeros((X.shape[0], 2*X.shape[1], X.shape[2]))
+                result[:, :X.shape[1], :] = X
+                result[:, X.shape[1]:, :] = new_dim
+            else:
+                result = np.zeros((X.shape[0], X.shape[1]+1, X.shape[2]))
+                result[:, :X.shape[1], :] = X
+                result[:, X.shape[1], :] = new_dim
         else:
-            result = np.zeros((X.shape[0], X.shape[1], X.shape[2]))
-            result[:, :, :] = X
-            result[:, self._dim, :] = new_dim
+            if self._dim is None:
+                new_dim = new_dim.reshape((X.shape[0], X.shape[1], X.shape[2]))
+                result = new_dim
+            else:
+                result = np.zeros((X.shape[0], X.shape[1], X.shape[2]))
+                result[:, :, :] = X
+                result[:, self._dim, :] = new_dim
         return result
 
     def _copy(self) -> "FFN":
