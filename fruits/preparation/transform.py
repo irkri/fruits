@@ -282,7 +282,10 @@ class RIN(Preparateur):
 
     Args:
         width (int, optional): Kernel length for the random gaussian
-            distributed weights. Defaults to 1.
+            distributed weights. If the kernel is set to be longer than
+            the time series given in a call of :meth:`fit`, then it will
+            be shortened to ``l-1`` where ``l`` is the length of the
+            time series. Defaults to 1.
         force_positive (bool, optional): When set to true, forces all
             kernel weights to be non-negative. Defaults to false.
         overwrite (bool, optional): When set to false, the increments
@@ -317,7 +320,7 @@ class RIN(Preparateur):
         self._overwrite = overwrite
 
     def _fit(self, X: np.ndarray) -> None:
-        self._kernel = np.random.randn(self._width)
+        self._kernel = np.random.randn(min(self._width, X.shape[2]-1))
         if self._force_positive:
             for i in range(self._width):
                 if self._kernel[i] < 0:
