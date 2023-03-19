@@ -302,7 +302,7 @@ class RIN(Preparateur):
 
     @staticmethod
     @numba.njit(
-        "float64[:,:,:](float64[:,:,:], float64[:,:,:])",
+        "float64[:,:,:](float64[:,:,:], float64[:])",
         fastmath=True,
         cache=True,
         parallel=True,
