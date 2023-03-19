@@ -315,7 +315,7 @@ class RIN(Preparateur):
                 for k in range(w, X.shape[2]):
                     s = 0
                     for l in range(k-w, k):
-                        s += X[i, j, l] * kernel[0, 0, l-k+w]
+                        s += X[i, j, l] * kernel[l-k+w]
                     result[i, j, k] = X[i, j, k] - s
         return result
 
@@ -342,11 +342,11 @@ class RIN(Preparateur):
         if not hasattr(self, "_kernel"):
             raise RuntimeError("RIN preparateur misses a .fit() call")
         if not self._adaptive_width:
-            out = RIN._backend(X, self._kernel[np.newaxis, np.newaxis, :])
+            out = RIN._backend(X, self._kernel)
         else:
             out = RIN._backend(
                 np.pad(X, ((0, 0), (0, 0), (self._kernel.size, 0))),
-                self._kernel[np.newaxis, np.newaxis, :],
+                self._kernel,
             )
             out = out[:, :, self._kernel.size:]
         if self._overwrite:
