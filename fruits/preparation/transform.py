@@ -305,14 +305,18 @@ class RIN(Preparateur):
         "float64[:,:,:](float64[:,:,:], float64[:,:,:])",
         fastmath=True,
         cache=True,
+        parallel=True,
     )
     def _backend(X: np.ndarray, kernel: np.ndarray) -> np.ndarray:
         w = kernel.size
         result = np.zeros(X.shape)
-        for i in range(w, X.shape[2]):
-            result[:, :, i] = (
-                X[:, :, i] - np.sum(X[:, :, i-w:i]*kernel, axis=2)
-            )  # type: ignore
+        for i in numba.prange(X.shape[0]):
+            for j in numba.prange(X.shape[1]):
+                for k in range(w, X.shape[2]):
+                    s = 0
+                    for l in range(k-w, k):
+                        s += X[i, j, l] * kernel[0, 0, l-k+w]
+                    result[i, j, k] = X[i, j, k] - s
         return result
 
     def __init__(
