@@ -286,6 +286,12 @@ class RIN(Preparateur):
             the time series given in a call of :meth:`fit`, then it will
             be shortened to ``l-1`` where ``l`` is the length of the
             time series. Defaults to 1.
+        adaptive_width (bool, optional): When set to true, a truncated
+            version of the kernel is used when the kernel normally would
+            have values outside the range of the input time series. This
+            is equivalent to padding ``width`` zeros at the start of the
+            time series and doing a normal 1d-convolution. Defaults to
+            True.
         force_positive (bool, optional): When set to true, forces all
             kernel weights to be non-negative. Defaults to false.
         overwrite (bool, optional): When set to false, the increments
@@ -312,24 +318,33 @@ class RIN(Preparateur):
     def __init__(
         self,
         width: int = 1,
+        adaptive_width: bool = True,
         force_positive: bool = False,
         overwrite: bool = True,
     ) -> None:
         self._width = width
+        self._adaptive_width = adaptive_width
         self._force_positive = force_positive
         self._overwrite = overwrite
 
     def _fit(self, X: np.ndarray) -> None:
         self._kernel = np.random.randn(min(self._width, X.shape[2]-1))
         if self._force_positive:
-            for i in range(self._width):
+            for i in range(self._kernel.size):
                 if self._kernel[i] < 0:
                     self._kernel[i] = -self._kernel[i]
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_kernel"):
             raise RuntimeError("RIN preparateur misses a .fit() call")
-        out = RIN._backend(X, self._kernel[np.newaxis, np.newaxis, :])
+        if not self._adaptive_width:
+            out = RIN._backend(X, self._kernel[np.newaxis, np.newaxis, :])
+        else:
+            out = RIN._backend(
+                np.pad(X, ((0, 0), (0, 0), (self._kernel.size, 0))),
+                self._kernel[np.newaxis, np.newaxis, :],
+            )
+            out = out[:, :, self._kernel.size:]
         if self._overwrite:
             return out
         result = np.zeros((X.shape[0], 2*X.shape[1], X.shape[2]))
