@@ -1,6 +1,6 @@
 __all__ = ["INC", "STD", "NRM", "MAV", "LAG", "RIN", "JLD"]
 
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import numba
 import numpy as np
@@ -281,11 +281,14 @@ class RIN(Preparateur):
     Here, `w` is the width of the window or length of the kernel.
 
     Args:
-        width (int, optional): Kernel length for the random gaussian
-            distributed weights. If the kernel is set to be longer than
-            the time series given in a call of :meth:`fit`, then it will
-            be shortened to ``l-1`` where ``l`` is the length of the
-            time series. Defaults to 1.
+        width (int or callable, optional): Kernel length for the random
+            gaussian distributed weights. If the kernel is set to be
+            longer than the time series given in a call of :meth:`fit`,
+            then it will be shortened to ``l-1`` where ``l`` is the
+            length of the time series. Also a function can be supplied
+            that takes an integer as input, which will be the length of
+            the time series, and outputs an integer that is used as the
+            kernel width. Defaults to 1.
         adaptive_width (bool, optional): When set to true, a truncated
             version of the kernel is used when the kernel normally would
             have values outside the range of the input time series. This
@@ -321,7 +324,7 @@ class RIN(Preparateur):
 
     def __init__(
         self,
-        width: int = 1,
+        width: Union[int, Callable[[int], int]] = 1,
         adaptive_width: bool = True,
         force_positive: bool = False,
         overwrite: bool = True,
@@ -332,7 +335,10 @@ class RIN(Preparateur):
         self._overwrite = overwrite
 
     def _fit(self, X: np.ndarray) -> None:
-        self._kernel = np.random.randn(min(self._width, X.shape[2]-1))
+        if callable(self._width):
+            self._kernel = np.random.randn(self._width(X.shape[2]))
+        else:
+            self._kernel = np.random.randn(min(self._width, X.shape[2]-1))
         if self._force_positive:
             for i in range(self._kernel.size):
                 if self._kernel[i] < 0:
