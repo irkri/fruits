@@ -125,7 +125,6 @@ class FFN(Preparateur):
             if self._center:
                 new_dim = new_dim - (new_dim.mean(axis=1)[:, np.newaxis])
 
-        print(new_dim)
         new_dim = np.outer(self._weights1, new_dim).reshape(
             self._n, X.shape[0], new_dim.shape[1]
         ) + self._biases1[:, np.newaxis, np.newaxis]

@@ -357,19 +357,28 @@ class RIN(Preparateur):
         return result
 
     def _copy(self) -> "RIN":
-        return RIN(self._width, self._force_positive, self._overwrite)
+        return RIN(
+            self._width,
+            self._adaptive_width,
+            self._force_positive,
+            self._overwrite,
+        )
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, RIN):
             return False
         if (self._width == other._width
+            and self._adaptive_width == other._adaptive_width
             and self._force_positive == other._force_positive
             and self._overwrite == other._overwrite):
             return True
         return False
 
     def __str__(self) -> str:
-        return f"RIN({self._width}, {self._force_positive}, {self._overwrite})"
+        return (
+            f"RIN({self._width}, {self._adaptive_width}, "
+            f"{self._force_positive}, {self._overwrite})"
+        )
 
 
 class JLD(Preparateur):
