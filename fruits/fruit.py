@@ -126,8 +126,9 @@ class Fruit:
                 numpy array of shape
                 ``(n_series, n_dimensions, series_length)``.
         """
+        cache = SharedSeedCache(X)
         for slc in self._slices:
-            slc.fit(X)
+            slc.fit(X, cache=cache)
         self._fitted = True
 
     def transform(
@@ -154,13 +155,14 @@ class Fruit:
             callbacks = []
         if not self._fitted:
             raise RuntimeError("Missing call of self.fit")
+        cache = SharedSeedCache(X)
         result = np.zeros((X.shape[0], self.nfeatures()))
         index = 0
         for slc in self._slices:
             for callback in callbacks:
                 callback.on_next_slice()
             k = slc.nfeatures()
-            result[:, index:index+k] = slc.transform(X, callbacks)
+            result[:, index:index+k] = slc.transform(X, callbacks, cache)
             index += k
         result = np.nan_to_num(result, copy=False, nan=0.0)
         return result
@@ -405,7 +407,11 @@ class FruitSlice:
                         iss_index+1,
                     )
 
-    def fit(self, X: np.ndarray) -> None:
+    def fit(
+        self,
+        X: np.ndarray,
+        cache: Optional[SharedSeedCache] = None,
+    ) -> None:
         """Fits the slice to the given dataset. What this action
         explicitly does depends on its configuration.
 
@@ -416,7 +422,8 @@ class FruitSlice:
         """
         self._compile()
 
-        cache = SharedSeedCache(X)
+        if cache is None:
+            cache = SharedSeedCache(X)
         prepared_data = self._select_fit_sample(X)
         for prep in self._preparateurs:
             prep._cache = cache
@@ -439,6 +446,7 @@ class FruitSlice:
         self,
         X: np.ndarray,
         callbacks: Optional[list[AbstractCallback]] = None,
+        cache: Optional[SharedSeedCache] = None,
     ) -> np.ndarray:
         """Transforms the given time series dataset. The results are
         the calculated features for the different time series.
@@ -459,7 +467,8 @@ class FruitSlice:
         if not self._fitted:
             raise RuntimeError("Missing call of self.fit")
 
-        cache = SharedSeedCache(X)
+        if cache is None:
+            cache = SharedSeedCache(X)
         prepared_data = X
         for prep in self._preparateurs:
             prep._cache = cache
