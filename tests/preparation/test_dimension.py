@@ -41,9 +41,9 @@ def test_ffn():
         n=3, dim=0, center=False, std=0, overwrite=False,
     )
 
-    ffn1._weights1 = np.array([[-1, -2, 1]])
-    ffn1._biases1 = np.array([6, -5, 0])
-    ffn1._weights2 = np.array([1, -1, 2])
+    ffn1._weights1 = np.array([-1, -2, 1], dtype=np.float64)
+    ffn1._biases1 = np.array([6, -5, 0], dtype=np.float64)
+    ffn1._weights2 = np.array([1, -1, 2], dtype=np.float64)
 
     np.testing.assert_allclose(np.array([
         [[-4., .8, 0., 5., -3.], [2., 1., 0., 0., -7.],
@@ -56,9 +56,9 @@ def test_ffn():
         n=3, dim=None, center=False, std=0, overwrite=False,
     )
 
-    ffn2._weights1 = np.array([[-1, -2, 1]])
-    ffn2._biases1 = np.array([6, -5, 0])
-    ffn2._weights2 = np.array([1, -1, 2])
+    ffn2._weights1 = np.array([-1, -2, 1], dtype=np.float64)
+    ffn2._biases1 = np.array([6, -5, 0], dtype=np.float64)
+    ffn2._weights2 = np.array([1, -1, 2], dtype=np.float64)
 
     np.testing.assert_allclose(np.array([
         [[-4., .8, 0., 5., -3.], [2., 1., 0., 0., -7.],

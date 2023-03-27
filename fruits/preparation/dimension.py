@@ -2,6 +2,7 @@ __all__ = ["ONE", "DIM", "FFN"]
 
 from typing import Any, Callable, Optional
 
+import numba
 import numpy as np
 
 from .abstract import Preparateur
@@ -67,27 +68,55 @@ class DIM(Preparateur):
 class FFN(Preparateur):
     """Preparateur: Feed-Forward Two-Layer Neural Network
 
-    Adds dimensions to the given time series dataset which is the linear
-    combination of a transformed existing dimension. The transformation
-    involves computing the pointwise ReLU of the linearly transformed
-    input series.
+    Transforms single values of a time series. A neural network with one
+    hidden layer and a ReLU activation function is used. All weights and
+    biases are gaussian distributed with mean zero.
 
     Args:
-        n (int, optional): Number of linear transformations to use in
-            the first layer of this two-step transform. Defaults to 10.
-        dim (int, optional): The dimension to use from the input time
-            series. Defaults to all dimensions.
+        n (int, optional): Number of nodes in the hidden layer. Defaults
+            to 10.
+        dim (int, optional): Which dimension in the input time series to
+            transform. Defaults to all dimensions.
         center (bool, optional): Whether to center the time series
             before doing the transformation. This will most likely lead
-            to better results because of the involved relu operation.
+            to better results because of the involved ReLU operation.
             Defaults to true.
-        std (float, optional): Standard deviation of the normally
-            distributed weights and biases in all linear transformations
-            used. Defaults to 1.
+        std (float, optional): Standard deviation of the gaussian
+            distributed weights and biases used. Defaults to 1.
         overwrite (bool, optional): If set to true, the preparateur will
             replace the original dimension with the new one. Otherwise a
             new dimensions gets appended. Defaults to false.
     """
+
+    @staticmethod
+    @numba.njit(
+        "float64[:,:,:]("
+            "float64[:,:,:], float64[:], float64[:], float64[:], boolean)",
+        fastmath=True,
+        cache=True,
+        parallel=True,
+    )
+    def _backend(
+        X: np.ndarray,
+        weights1: np.ndarray,
+        biases1: np.ndarray,
+        weights2: np.ndarray,
+        center: bool,
+    ) -> np.ndarray:
+        result = X.copy()
+        if center:
+            for i in numba.prange(X.shape[0]):
+                for j in numba.prange(X.shape[1]):
+                    c = np.mean(X[i, j])
+                    for k in numba.prange(X.shape[2]):
+                        result[i, j, k] -= c
+        for i in numba.prange(X.shape[0]):
+            for j in numba.prange(X.shape[1]):
+                for k in numba.prange(X.shape[2]):
+                    layer1 = weights1 * X[i, j, k] + biases1
+                    layer1 = (layer1 * (layer1 > 0))
+                    result[i, j, k] = np.sum(weights2 * layer1)
+        return result
 
     def __init__(
         self,
@@ -111,44 +140,32 @@ class FFN(Preparateur):
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_weights1"):
             raise RuntimeError("Preparateur FFN was not fitted")
-        self._dim = 0 if (self._dim is None and X.shape[1] == 1) else self._dim
-        if self._dim is None:
-            new_dim = X.copy()
-            if self._center:
-                for d in range(new_dim.shape[1]):
-                    new_dim[:, d, :] = new_dim[:, d, :] - (
-                        new_dim[:, d, :].mean(axis=1)[:, np.newaxis]
-                    )
-            new_dim = new_dim.reshape((X.shape[0], X.shape[1]*X.shape[2]))
-        else:
-            new_dim = X[:, self._dim, :]
-            if self._center:
-                new_dim = new_dim - (new_dim.mean(axis=1)[:, np.newaxis])
 
-        new_dim = np.outer(self._weights1, new_dim).reshape(
-            self._n, X.shape[0], new_dim.shape[1]
-        ) + self._biases1[:, np.newaxis, np.newaxis]
-        new_dim = new_dim * (new_dim > 0)
-        new_dim = np.tensordot(self._weights2, new_dim, axes=1)
+        new_dim = X if self._dim is None else X[:, self._dim:self._dim+1, :]
 
-        if not self._overwrite:
+        new_dim = FFN._backend(
+            new_dim,
+            self._weights1,
+            self._biases1,
+            self._weights2,
+            self._center,
+        )
+
+        if self._overwrite:
             if self._dim is None:
-                new_dim = new_dim.reshape((X.shape[0], X.shape[1], X.shape[2]))
+                result = new_dim
+            else:
+                result = X.copy()
+                result[:, self._dim, :] = new_dim[:, 0, :]
+        else:
+            if self._dim is None:
                 result = np.zeros((X.shape[0], 2*X.shape[1], X.shape[2]))
-                result[:, :X.shape[1], :] = X
+                result[:, :X.shape[1], :] = X.copy()
                 result[:, X.shape[1]:, :] = new_dim
             else:
                 result = np.zeros((X.shape[0], X.shape[1]+1, X.shape[2]))
-                result[:, :X.shape[1], :] = X
-                result[:, X.shape[1], :] = new_dim
-        else:
-            if self._dim is None:
-                new_dim = new_dim.reshape((X.shape[0], X.shape[1], X.shape[2]))
-                result = new_dim
-            else:
-                result = np.zeros((X.shape[0], X.shape[1], X.shape[2]))
-                result[:, :, :] = X
-                result[:, self._dim, :] = new_dim
+                result[:, :X.shape[1], :] = X.copy()
+                result[:, X.shape[1], :] = new_dim[:, 0, :]
         return result
 
     def _copy(self) -> "FFN":
