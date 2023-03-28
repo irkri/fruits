@@ -6,7 +6,7 @@ import numpy as np
 from ..cache import SharedSeedCache
 from ..seed import Seed
 from .cache import CachePlan
-from .semiring import Reals, Semiring
+from .semiring import Reals, Arctic, Semiring
 from .weighting import Weighting
 from .words.word import Word
 
@@ -34,6 +34,8 @@ def _calculate_ISS(
         n_itsum = batch_size
         if cache_plan is not None:
             n_itsum = cache_plan.n_iterated_sums(range(i, i+batch_size))
+        if isinstance(semiring, Arctic) and semiring._argmax:
+            n_itsum *= 2
         results = np.zeros((n_itsum, X.shape[0], X.shape[2]))
 
         index = 0
@@ -41,11 +43,13 @@ def _calculate_ISS(
             n_itsum_word = 1 if cache_plan is None else (
                 cache_plan.unique_el_depth(i)
             )
+            if isinstance(semiring, Arctic) and semiring._argmax:
+                n_itsum_word *= 2
             results[index:index+n_itsum_word, :, :] = np.swapaxes(
                 semiring.iterated_sums(
                     X,
                     word,
-                    n_itsum_word,
+                    1 if cache_plan is None else cache_plan.unique_el_depth(i),
                     weighting,
                 ),
                 0, 1,
@@ -122,7 +126,11 @@ class ISS(Seed):
         with a :meth:`~ISS.transform`` call.
         """
         if self.mode == ISSMode.EXTENDED:
+            if isinstance(self.semiring, Arctic) and self.semiring._argmax:
+                return self._cache_plan.n_iterated_sums() * 2
             return self._cache_plan.n_iterated_sums()
+        if isinstance(self.semiring, Arctic) and self.semiring._argmax:
+            return len(self.words) * 2
         return len(self.words)
 
     def batch_transform(
