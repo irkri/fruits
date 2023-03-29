@@ -131,6 +131,24 @@ def test_pia():
                                pia_cut_group_2_copy.fit_transform(X_1[0]))
 
 
+def test_mia():
+    mia = fruits.sieving.MIA()
+
+    np.testing.assert_allclose(
+        np.array([[4.9], [0]]), mia.fit_transform(X_1[0]))
+    np.testing.assert_allclose(
+        np.array([[3.5], [3.75]]), mia.fit_transform(X_1[1]))
+
+
+def test_iia():
+    iia = fruits.sieving.IIA()
+
+    np.testing.assert_allclose(
+        np.array([[2], [0]]), iia.fit_transform(X_1[0]))
+    np.testing.assert_allclose(
+        np.array([[2], [2]]), iia.fit_transform(X_1[1]))
+
+
 def test_lcs():
     lcs = fruits.sieving.LCS()
 

@@ -1,4 +1,4 @@
-__all__ = ["MAX", "MIN", "END", "PIA", "LCS", "CUR"]
+__all__ = ["MAX", "MIN", "END", "PIA", "MIA", "IIA", "LCS", "CUR"]
 
 from abc import ABC
 from typing import Union
@@ -28,7 +28,7 @@ class ExplicitSieve(FeatureSieve, ABC):
             the maximum in each interval will be sieved. The left
             interval border is reduced by 1 before slicing. This means
             that an input of ``cut=[1,5,10]`` results in two features
-            ``max(X[0:5])`` and ``max(X[4:10])``.
+            ``sieve(X[0:5])`` and ``sieve(X[4:10])``.
             If set to ``False``, then the left interval border is always
             0. Defaults to ``False``.
     """
@@ -195,7 +195,7 @@ class END(ExplicitSieve):
 
 
 class PIA(ExplicitSieve):
-    """FeatureSieve: Proportion of incremental alteration
+    """FeatureSieve: Proportion of Incremental Alteration
 
     Counts the number of positive changes in the given time series. This
     is equal to the number of values greater than zero in the increments
@@ -218,7 +218,8 @@ class PIA(ExplicitSieve):
         X_inc = _increments(np.expand_dims(X, axis=1), 1)[:, 0, :]
         for i in numba.prange(X.shape[0]):  # pylint: disable=not-an-iterable
             for j in range(cuts.shape[1]):
-                result[i, j] = np.sum(X_inc[i, :cuts[i, j]] > 0)
+                part = X_inc[i, :cuts[i, j]]
+                result[i, j] = np.sum(part > 0)
         result[:, :] /= X.shape[1]
         return result
 
@@ -240,6 +241,102 @@ class PIA(ExplicitSieve):
 
     def __str__(self) -> str:
         return f"PIA(cut={self._cut})"
+
+
+class MIA(ExplicitSieve):
+    """FeatureSieve: Mean of Incremental Alteration
+
+    Returns the mean of the increasing part of the given time series.
+    This is equal to the mean of values greater than zero in the
+    increments of the time series. For more information on the available
+    arguments, have a look at the definition of
+    :class:`~fruits.sieving.explicit.ExplicitSieve`.
+    """
+
+    def __init__(self, cut: Union[list[float], float] = -1) -> None:
+        super().__init__(cut, False)
+
+    @staticmethod
+    @numba.njit("float64[:,:](float64[:,:], int64[:,:])",
+                parallel=True, cache=True)
+    def _backend(X: np.ndarray, cuts: np.ndarray) -> np.ndarray:
+        result = np.zeros((X.shape[0], cuts.shape[1]))
+        X_inc = _increments(np.expand_dims(X, axis=1), 1)[:, 0, :]
+        for i in numba.prange(X.shape[0]):
+            for j in range(cuts.shape[1]):
+                part = X_inc[i, :cuts[i, j]]
+                part = part[part > 0]
+                if part.size == 0:
+                    result[i, j] = 0
+                else:
+                    result[i, j] = np.mean(part)
+        return result
+
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        cuts = self._get_transformed_cuts(X, **kwargs)
+        return MIA._backend(X, cuts)
+
+    def _summary(self) -> str:
+        string = "MIA"
+        if self._segments:
+            string += " [segments]"
+        string += f" -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
+
+    def _copy(self) -> "MIA":
+        return MIA(self._cut)
+
+    def __str__(self) -> str:
+        return f"MIA(cut={self._cut})"
+
+
+class IIA(ExplicitSieve):
+    """FeatureSieve: Mean of Indices of Incremental Alteration
+
+    Returns the mean of the indices where the given time series is
+    increasing. For more information on the available arguments, have a
+    look at the definition of
+    :class:`~fruits.sieving.explicit.ExplicitSieve`.
+    """
+
+    def __init__(self, cut: Union[list[float], float] = -1) -> None:
+        super().__init__(cut, False)
+
+    @staticmethod
+    @numba.njit("float64[:,:](float64[:,:], int64[:,:])",
+                parallel=True, cache=True)
+    def _backend(X: np.ndarray, cuts: np.ndarray) -> np.ndarray:
+        result = np.zeros((X.shape[0], cuts.shape[1]))
+        X_inc = _increments(np.expand_dims(X, axis=1), 1)[:, 0, :]
+        for i in numba.prange(X.shape[0]):
+            for j in range(cuts.shape[1]):
+                indices = np.where(X_inc[i, :cuts[i, j]] > 0)[0]
+                if indices.size == 0:
+                    result[i, j] = 0
+                else:
+                    result[i, j] = np.mean(indices)
+        return result
+
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        cuts = self._get_transformed_cuts(X, **kwargs)
+        return IIA._backend(X, cuts)
+
+    def _summary(self) -> str:
+        string = "IIA"
+        if self._segments:
+            string += " [segments]"
+        string += f" -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
+
+    def _copy(self) -> "IIA":
+        return IIA(self._cut)
+
+    def __str__(self) -> str:
+        return f"IIA(cut={self._cut})"
 
 
 class LCS(ExplicitSieve):
