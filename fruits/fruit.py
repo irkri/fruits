@@ -430,6 +430,10 @@ class FruitSlice:
             prep.fit(prepared_data)
             prepared_data = prep.transform(prepared_data)
 
+        if not any(sieve.requires_fitting for sieve in self._sieves):
+            self._fitted = True
+            return
+
         self._sieves_extended = []
 
         for iss in self._iss:
@@ -485,7 +489,10 @@ class FruitSlice:
         for i, itsum in enumerate(self._iterate_iss(prepared_data)):
             for callback in callbacks:
                 callback.on_iterated_sum(itsum)
-            for sieve in self._sieves_extended[i]:
+            sieves = self._sieves_extended[i] if self._sieves_extended else (
+                self._sieves
+            )
+            for sieve in sieves:
                 sieve._cache = cache
                 nf = sieve.nfeatures()
                 sieved_data[:, k:k+nf] = sieve.transform(itsum)

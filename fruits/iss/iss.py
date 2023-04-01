@@ -101,6 +101,10 @@ class ISS(Seed):
         )
         self.weighting = weighting
 
+    @property
+    def requires_fitting(self) -> bool:
+        return False
+
     def _fit(self, X: np.ndarray) -> None:
         pass
 

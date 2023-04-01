@@ -43,6 +43,10 @@ class ExplicitSieve(FeatureSieve, ABC):
             self._cut = [1, self._cut[0]]
         self._segments = segments
 
+    @property
+    def requires_fitting(self) -> bool:
+        return False
+
     def _get_transformed_cuts(self, X: np.ndarray) -> np.ndarray:
         # mix cuts got from coquantile cache with given integer cuts
         new_cuts = np.zeros((X.shape[0], len(self._cut)))

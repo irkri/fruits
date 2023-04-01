@@ -47,6 +47,10 @@ class INC(Preparateur):
         self._zero_padding = zero_padding
         self._overwrite = overwrite
 
+    @property
+    def requires_fitting(self) -> bool:
+        return False
+
     def _transform(self, X: np.ndarray) -> np.ndarray:
         out = _increments(
             X,
@@ -162,6 +166,10 @@ class NRM(Preparateur):
     is the maximum and minimum of single time series dimensions ``X``.
     """
 
+    @property
+    def requires_fitting(self) -> bool:
+        return False
+
     def _transform(self, X: np.ndarray) -> np.ndarray:
         min_ = np.min(X, axis=2)[:, :, np.newaxis]
         max_ = np.max(X, axis=2)[:, :, np.newaxis]
@@ -243,6 +251,10 @@ class LAG(Preparateur):
     of two-dimensional vectors
     ``[(x_1,x_1), (x_2,x_1), (x_2,x_2), (x_3,x_2), ..., (x_n,x_n)]``.
     """
+
+    @property
+    def requires_fitting(self) -> bool:
+        return False
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         X_new = np.zeros((X.shape[0], 2 * X.shape[1], 2 * X.shape[2] - 1))

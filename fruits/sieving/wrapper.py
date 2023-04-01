@@ -21,6 +21,10 @@ class INC(FeatureSieve):
     ) -> None:
         self._sieve = sieve
 
+    @property
+    def requires_fitting(self) -> bool:
+        return self._sieve.requires_fitting
+
     def _nfeatures(self) -> int:
         return self._sieve.nfeatures()
 
