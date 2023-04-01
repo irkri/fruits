@@ -298,7 +298,7 @@ class Tropical(Semiring):
 
 
 @numba.njit(
-    "float64[:,:](float64[:,:], int32[:,:], float32[:], float64[:], int64)",
+    "float64[:,:](float64[:,:], int32[:,:], float32[:], float64[:])",
     fastmath=True,
     cache=True,
 )
@@ -307,9 +307,8 @@ def _arctic_argmax_single_iterated_sum_fast(
     word: np.ndarray,
     scalar: np.ndarray,
     weights: np.ndarray,
-    extended: int,
 ) -> np.ndarray:
-    result = np.zeros((2*extended, Z.shape[1]), dtype=np.float64)
+    result = np.zeros((2*word.shape[0], Z.shape[1]), dtype=np.float64)
     tmp = np.zeros((Z.shape[1], ), dtype=np.float64)
     for k, ext_letter in enumerate(word):
         if not np.any(ext_letter):
@@ -321,21 +320,30 @@ def _arctic_argmax_single_iterated_sum_fast(
         tmp = tmp + C
         if k > 0 and len(word) > 1:
             tmp = tmp - weights * scalar[k-1]
-        if len(word) - k <= extended:
-            index = extended - (len(word) - k)
-            result[2*index, 0] = tmp[0]
-            for i in range(1, Z.shape[1]):
-                if result[2*index, i-1] >= tmp[i]:
-                    result[2*index, i] = result[2*index, i-1]
-                    result[2*index+1, i] = result[2*index+1, i-1]
-                else:
-                    result[2*index, i] = tmp[i]
-                    result[2*index+1, i] = i
+        result[2*k, 0] = tmp[0]
+        for i in range(1, Z.shape[1]):
+            if result[2*k, i-1] >= tmp[i]:
+                result[2*k, i] = result[2*k, i-1]
+                result[2*k+1, i] = result[2*k+1, i-1]
+            else:
+                result[2*k, i] = tmp[i]
+                result[2*k+1, i] = i
         if k < len(word) - 1 and len(word) > 1:
             tmp = tmp + weights * scalar[k]
             for i in range(1, Z.shape[1]):
                 tmp[i] = max(tmp[i-1], tmp[i])
-    return result
+    # translate indices back to their actual position
+    n = int(word.shape[0] + (word.shape[0] * (word.shape[0]+1) / 2))
+    translated_results = np.zeros((n, Z.shape[1]), dtype=np.float64)
+    for k in range(word.shape[0]-1, -1, -1):
+        index = int(k + (k * (k+1) / 2))
+        translated_results[index] = result[2*k]
+        translated_results[index+k+1] = result[2*k+1]
+        for s in range(k, 0, -1):
+            c = int(translated_results[index+s+1, -1])+1
+            translated_results[index+s, :c] = result[2*(s-1)+1, :c]
+            translated_results[index+s, c:] = result[2*(s-1)+1, c-1]
+    return translated_results
 
 
 @numba.njit(
@@ -425,10 +433,8 @@ class Arctic(Semiring):
         argmax: bool,
     ) -> np.ndarray:
         if argmax:
-            result = np.zeros(
-                (Z.shape[0], 2*extended, Z.shape[2]),
-                dtype=np.float64,
-            )
+            n = int(word.shape[0] + (word.shape[0] * (word.shape[0]+1) / 2))
+            result = np.zeros((Z.shape[0], n, Z.shape[2]), dtype=np.float64)
         else:
             result = np.zeros(
                 (Z.shape[0], extended, Z.shape[2]),
@@ -441,7 +447,6 @@ class Arctic(Semiring):
                     word,
                     scalar,
                     lookup[j],
-                    extended,
                 )
             else:
                 result[j, :, :] = _arctic_single_iterated_sum_fast(

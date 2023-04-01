@@ -34,8 +34,15 @@ def _calculate_ISS(
         n_itsum = batch_size
         if cache_plan is not None:
             n_itsum = cache_plan.n_iterated_sums(range(i, i+batch_size))
+        elif isinstance(semiring, Arctic) and semiring._argmax:
+            raise NotImplementedError(
+                "Arctic argmax is not implemented when using ISSMode.SINGLE"
+            )
         if isinstance(semiring, Arctic) and semiring._argmax:
-            n_itsum *= 2
+            n_itsum = sum(
+                len(word) + int(len(word) * (len(word)+1) / 2)
+                for word in words[i:i+batch_size]
+            )
         results = np.zeros((n_itsum, X.shape[0], X.shape[2]))
 
         index = 0
@@ -44,7 +51,7 @@ def _calculate_ISS(
                 cache_plan.unique_el_depth(i)
             )
             if isinstance(semiring, Arctic) and semiring._argmax:
-                n_itsum_word *= 2
+                n_itsum_word = len(word) + int(len(word) * (len(word)+1) / 2)
             results[index:index+n_itsum_word, :, :] = np.swapaxes(
                 semiring.iterated_sums(
                     X,
@@ -131,10 +138,15 @@ class ISS(Seed):
         """
         if self.mode == ISSMode.EXTENDED:
             if isinstance(self.semiring, Arctic) and self.semiring._argmax:
-                return self._cache_plan.n_iterated_sums() * 2
+                return sum(
+                    len(word) + int(len(word) * (len(word)+1) / 2)
+                    for word in self.words
+                )
             return self._cache_plan.n_iterated_sums()
-        if isinstance(self.semiring, Arctic) and self.semiring._argmax:
-            return len(self.words) * 2
+        elif isinstance(self.semiring, Arctic) and self.semiring._argmax:
+            raise NotImplementedError(
+                "Arctic argmax is not implemented when using ISSMode.SINGLE"
+            )
         return len(self.words)
 
     def batch_transform(
