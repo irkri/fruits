@@ -1,4 +1,4 @@
-__all__ = ["MAX", "MIN", "END", "PIA", "MIA", "IIA", "LCS", "CUR"]
+__all__ = ["MAX", "MIN", "END", "PIA", "MIA", "IIA", "LIA", "LCS", "CUR"]
 
 from abc import ABC
 from typing import Union
@@ -341,6 +341,59 @@ class IIA(ExplicitSieve):
 
     def __str__(self) -> str:
         return f"IIA(cut={self._cut})"
+
+
+class LIA(ExplicitSieve):
+    """FeatureSieve: Longest streak of Incremental Alteration
+
+    Returns the relative length of the longest time span where the time
+    series is increasing. For more information on the available
+    arguments, have a look at the definition of
+    :class:`~fruits.sieving.explicit.ExplicitSieve`.
+    """
+
+    def __init__(self, cut: Union[list[float], float] = -1) -> None:
+        super().__init__(cut, False)
+
+    @staticmethod
+    @numba.njit("float64[:,:](float64[:,:], int64[:,:])",
+                parallel=True, cache=True)
+    def _backend(X: np.ndarray, cuts: np.ndarray) -> np.ndarray:
+        result = np.zeros((X.shape[0], cuts.shape[1]), dtype=np.float64)
+        X_inc = _increments(np.expand_dims(X, axis=1), 1)[:, 0, :]
+        for i in numba.prange(X.shape[0]):
+            for j in range(cuts.shape[1]):
+                ia = X_inc[i, :cuts[i, j]] > 0
+                longest = 0
+                current = 0
+                for k in range(ia.shape[0]):
+                    if ia[k]:
+                        current += 1
+                        if current > longest:
+                            longest = current
+                    else:
+                        current = 0
+                result[i, j] = longest / X.shape[1]
+        return result
+
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        cuts = self._get_transformed_cuts(X, **kwargs)
+        return LIA._backend(X, cuts)
+
+    def _summary(self) -> str:
+        string = "LIA"
+        if self._segments:
+            string += " [segments]"
+        string += f" -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
+
+    def _copy(self) -> "LIA":
+        return LIA(self._cut)
+
+    def __str__(self) -> str:
+        return f"LIA(cut={self._cut})"
 
 
 class LCS(ExplicitSieve):
