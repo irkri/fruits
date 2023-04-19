@@ -114,6 +114,10 @@ def decide_which_fruit(
     to choose for a dataset based on a number of experiments with
     validation training data.
 
+    If there is a class in the training data that has only one sample, a
+    proper classification cannot be done and the method will return the
+    first fruit given in ``choices``.
+
     Args:
         choices (sequence of Fruit or of 2-tuples of Fruit): A sequence
             of fruits to choose from. If a tuple of two fruits is given,
@@ -137,6 +141,12 @@ def decide_which_fruit(
             times. Defaults to 1.
     """
     def choose(X: np.ndarray, y: np.ndarray) -> fruits.Fruit:
+        if np.sum(np.unique(y, return_counts=True)[1] == 1) >= 1:
+            fruit = choices[0]
+            if isinstance(fruit, tuple):
+                return fruit[1].deepcopy()
+            return fruit.deepcopy()
+
         choice_accuracies = []
         for choice in choices:
             accs = []
@@ -157,4 +167,5 @@ def decide_which_fruit(
         if isinstance(fruit, tuple):
             return fruit[1].deepcopy()
         return fruit.deepcopy()
+
     return choose
