@@ -199,6 +199,21 @@ class MAV(Preparateur):
             ``5``.
     """
 
+    @staticmethod
+    @numba.njit(
+        "float64[:,:,:](float64[:,:,:], int32)",
+        fastmath=True,
+        cache=True,
+        parallel=True,
+    )
+    def _backend(X: np.ndarray, width: int) -> np.ndarray:
+        result = np.zeros_like(X)
+        for i in numba.prange(X.shape[0]):
+            for j in numba.prange(X.shape[1]):
+                for k in range(width, X.shape[2]+1):
+                    result[i, j, k-1] = np.sum(X[i, j, k-width:k]) / width
+        return result
+
     def __init__(self, width: Union[int, float] = 5) -> None:
         if isinstance(width, float):
             if not 0.0 < width < 1.0:
@@ -222,13 +237,7 @@ class MAV(Preparateur):
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_w"):
             raise RuntimeError("Missing call of self.fit()")
-        out = np.cumsum(X, axis=2)
-        out[:, :, self._w:] = (
-            out[:, :, self._w:] - out[:, :, :-self._w]  # type: ignore
-        )
-        out[:, :, (self._w-1):] = out[:, :, (self._w-1):] / self._w
-        out[:, :, :(self._w-1)] = X[:, :, :(self._w-1)]
-        return out
+        return MAV._backend(X, self._w)
 
     def _copy(self) -> "MAV":
         return MAV(self._w_given)
