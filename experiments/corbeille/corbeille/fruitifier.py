@@ -1,15 +1,15 @@
 import os
 import time
-from collections import Sequence
+from collections.abc import Sequence
 from timeit import default_timer as Timer
 from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import RidgeClassifierCV
+from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
-from sklearn.model_selection import train_test_split
 
 import fruits
 
