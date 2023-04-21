@@ -1,4 +1,4 @@
-__all__ = ["INC", "STD", "NRM", "MAV", "LAG", "RIN", "JLD"]
+__all__ = ["INC", "STD", "NRM", "MAV", "LAG", "RIN", "RDW", "JLD"]
 
 from typing import Any, Callable, Optional, Union
 
@@ -406,6 +406,36 @@ class RIN(Preparateur):
             f"RIN({self._width}, {self._adaptive_width}, "
             f"{self._force_positive}, {self._overwrite})"
         )
+
+
+class RDW(Preparateur):
+    """Preparatuer: Random Dimension Weights
+
+    This preparateur scales dimensions in the time series by a random
+    factor uniformly over all time steps. The weights are drawn from a
+    dirichlet distribution.
+    """
+    def __init__(self) -> None:
+        pass
+
+    def _fit(self, X: np.ndarray) -> None:
+        alphas = np.max(np.mean(np.abs(X), axis=0), axis=1)
+        alphas = np.max(alphas) / alphas
+        self._weights = np.random.dirichlet(alphas)
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        return X * self._weights[np.newaxis, :, np.newaxis]
+
+    def _copy(self) -> "RDW":
+        return RDW()
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, RDW):
+            return True
+        return False
+
+    def __str__(self) -> str:
+        return f"RDW()"
 
 
 class JLD(Preparateur):
