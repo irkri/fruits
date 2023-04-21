@@ -130,8 +130,11 @@ def decide_which_fruit(
             perform. Accuracies from these splits will be averaged
             afterwards. Defaults to 1.
         validation_size (float, optional): Size of the validation set.
-            This set will be randomized ``n_splits`` times. Defaults to
-            0.2.
+            This set will be randomized ``n_splits`` times. If there are
+            not enough samples for a certain class in the given data,
+            the validation size will be automatically updated to
+            guarantee a stratified train-test split with representatives
+            of each class in train and test batch. Defaults to 0.2.
         classifier (FitScoreClassifier): A classifier with a ``fit`` and
             ``score`` method. Defaults to a RidgeClassifierCV from the
             package sklearn with a prior standardization of the input
@@ -141,18 +144,19 @@ def decide_which_fruit(
             times. Defaults to 1.
     """
     def choose(X: np.ndarray, y: np.ndarray) -> fruits.Fruit:
-        if np.sum(np.unique(y, return_counts=True)[1] == 1) >= 1:
+        class_representatives = np.unique(y, return_counts=True)[1]
+        if np.sum(class_representatives == 1) >= 1:
             fruit = choices[0]
             if isinstance(fruit, tuple):
                 return fruit[1].deepcopy()
             return fruit.deepcopy()
-
+        vs = max(validation_size, len(class_representatives)/X.shape[0])
         choice_accuracies = []
         for choice in choices:
             accs = []
             for _ in range(n_splits):
                 x_train, x_test, y_train, y_test = train_test_split(
-                    X, y, test_size=validation_size, stratify=y,
+                    X, y, test_size=vs, stratify=y,
                 )
                 choice_ = choice[0] if isinstance(choice, tuple) else choice
                 acc, _ = fruitify(
