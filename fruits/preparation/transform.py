@@ -1,6 +1,6 @@
 __all__ = ["INC", "STD", "NRM", "MAV", "LAG", "RIN", "RDW", "JLD"]
 
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Literal, Optional, Union
 
 import numba
 import numpy as np
@@ -412,30 +412,42 @@ class RDW(Preparateur):
     """Preparatuer: Random Dimension Weights
 
     This preparateur scales dimensions in the time series by a random
-    factor uniformly over all time steps. The weights are drawn from a
-    dirichlet distribution.
+    factor uniformly over all time steps.
+
+    Args:
+        dist ('dirichlet' or 'uniform'): Type of distribution used for
+            drawing the weights. The parameters for a dirichlet
+            distribution are chosen according to the inverse maximal
+            absolute value of each dimension in the training set.
+            Defaults to 'dirichlet'.
     """
-    def __init__(self) -> None:
-        pass
+    def __init__(
+        self,
+        dist: Literal["dirichlet", "uniform"] = "dirichlet",
+    ) -> None:
+        self._dist: Literal["dirichlet", "uniform"] = dist
 
     def _fit(self, X: np.ndarray) -> None:
-        alphas = np.max(np.mean(np.abs(X), axis=0), axis=1)
-        alphas = np.max(alphas) / alphas
-        self._weights = np.random.dirichlet(alphas)
+        if self._dist == "dirichlet":
+            alphas = np.max(np.mean(np.abs(X), axis=0), axis=1)
+            alphas = np.max(alphas) / alphas
+            self._weights = np.random.dirichlet(alphas)
+        else:
+            self._weights = np.random.random(X.shape[1])
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         return X * self._weights[np.newaxis, :, np.newaxis]
 
     def _copy(self) -> "RDW":
-        return RDW()
+        return RDW(self._dist)
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, RDW):
+        if isinstance(other, RDW) and other._dist == self._dist:
             return True
         return False
 
     def __str__(self) -> str:
-        return f"RDW()"
+        return f"RDW({self._dist!r})"
 
 
 class JLD(Preparateur):
