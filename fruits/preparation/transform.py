@@ -430,10 +430,13 @@ class RDW(Preparateur):
     def _fit(self, X: np.ndarray) -> None:
         if self._dist == "dirichlet":
             alphas = np.max(np.mean(np.abs(X), axis=0), axis=1)
-            alphas = np.max(alphas) / alphas
+            alphas[alphas!=0] = np.max(alphas[alphas!=0]) / alphas[alphas!=0]
+            if np.sum(alphas == 0) >= 1:
+                alphas += 1e-5
             self._weights = np.random.dirichlet(alphas)
         else:
             self._weights = np.random.random(X.shape[1])
+            self._weights = self._weights / np.sum(self._weights)
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         return X * self._weights[np.newaxis, :, np.newaxis]
