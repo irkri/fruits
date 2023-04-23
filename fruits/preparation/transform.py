@@ -318,6 +318,10 @@ class RIN(Preparateur):
             True.
         force_positive (bool, optional): When set to true, forces all
             kernel weights to be non-negative. Defaults to false.
+        merge_dimensions (bool, optional): If set to true, a standard 2D
+            convolution is performed over the time range `width` and all
+            dimensions. The resulting time series is one dimensional.
+            Defaults to False.
         overwrite (bool, optional): When set to false, the increments
             will get added as a new dimension to each time series
             instead of replacing them. This will be done for each
@@ -343,40 +347,78 @@ class RIN(Preparateur):
                     result[i, j, k] = X[i, j, k] - s
         return result
 
+    @staticmethod
+    @numba.njit(
+        "float64[:,:,:](float64[:,:,:], float64[:,:])",
+        fastmath=True,
+        cache=True,
+        parallel=True,
+    )
+    def _backend_merge(X: np.ndarray, kernel: np.ndarray) -> np.ndarray:
+        w = kernel.shape[1]
+        result = np.zeros((X.shape[0], 1, X.shape[2]))
+        for i in numba.prange(X.shape[0]):
+            for k in range(w-1, X.shape[2]):
+                s = 0
+                for j in numba.prange(X.shape[1]):
+                    for l in range(k-w+1, k+1):
+                        s += X[i, j, l] * kernel[j, l-k+w-1]
+                result[i, 0, k] = s
+        return result
+
     def __init__(
         self,
         width: Union[int, Callable[[int], int]] = 1,
         adaptive_width: bool = True,
         force_positive: bool = False,
+        merge_dimensions: bool = False,
         overwrite: bool = True,
     ) -> None:
         self._width = width
         self._adaptive_width = adaptive_width
         self._force_positive = force_positive
+        self._merge_dimensions = merge_dimensions
         self._overwrite = overwrite
 
     def _fit(self, X: np.ndarray) -> None:
-        if callable(self._width):
-            self._kernel = np.random.randn(self._width(X.shape[2]))
+        if not self._merge_dimensions:
+            if callable(self._width):
+                self._kernel = np.random.randn(self._width(X.shape[2]))
+            else:
+                self._kernel = np.random.randn(min(self._width, X.shape[2]-1))
         else:
-            self._kernel = np.random.randn(min(self._width, X.shape[2]-1))
+            if callable(self._width):
+                self._kernel = np.random.randn(
+                    X.shape[1], self._width(X.shape[2])
+                )
+            else:
+                self._kernel = np.random.randn(
+                    X.shape[1], min(self._width, X.shape[2]-1)
+                )
         if self._force_positive:
-            for i in range(self._kernel.size):
-                if self._kernel[i] < 0:
-                    self._kernel[i] = -self._kernel[i]
+            self._kernel[self._kernel < 0] = -self._kernel[self._kernel < 0]
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_kernel"):
             raise RuntimeError("RIN preparateur misses a .fit() call")
         if not self._adaptive_width:
-            out = RIN._backend(X, self._kernel)
+            if self._merge_dimensions:
+                out = RIN._backend_merge(X, self._kernel)
+            else:
+                out = RIN._backend(X, self._kernel)
         else:
-            out = RIN._backend(
-                np.pad(X, ((0, 0), (0, 0), (self._kernel.size, 0))),
-                self._kernel,
-            )
+            if self._merge_dimensions:
+                out = RIN._backend_merge(
+                    np.pad(X, ((0, 0), (0, 0), (self._kernel.size, 0))),
+                    self._kernel,
+                )
+            else:
+                out = RIN._backend(
+                    np.pad(X, ((0, 0), (0, 0), (self._kernel.size, 0))),
+                    self._kernel,
+                )
             out = out[:, :, self._kernel.size:]
-        if self._overwrite:
+        if self._overwrite or self._merge_dimensions:
             return out
         result = np.zeros((X.shape[0], 2*X.shape[1], X.shape[2]))
         result[:, :X.shape[1], :] = X
@@ -388,6 +430,7 @@ class RIN(Preparateur):
             self._width,
             self._adaptive_width,
             self._force_positive,
+            self._merge_dimensions,
             self._overwrite,
         )
 
@@ -397,6 +440,7 @@ class RIN(Preparateur):
         if (self._width == other._width
             and self._adaptive_width == other._adaptive_width
             and self._force_positive == other._force_positive
+            and self._merge_dimensions == other._merge_dimensions
             and self._overwrite == other._overwrite):
             return True
         return False
@@ -404,7 +448,8 @@ class RIN(Preparateur):
     def __str__(self) -> str:
         return (
             f"RIN({self._width}, {self._adaptive_width}, "
-            f"{self._force_positive}, {self._overwrite})"
+            f"{self._force_positive}, {self._merge_dimensions}, "
+            f"{self._overwrite})"
         )
 
 

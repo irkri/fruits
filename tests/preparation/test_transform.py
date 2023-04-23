@@ -80,6 +80,24 @@ def test_rin():
         rin.transform(X_1)
     )
 
+    X = np.random.random_sample((46, 2, 189))
+    rin = fruits.preparation.RIN(
+        width=2,
+        adaptive_width=False,
+        merge_dimensions=True,
+    )
+    rin.fit(X)
+
+    assert rin._kernel.shape == (2, 2)
+    rin._kernel = np.array([[4., 1.], [2., 3.]])
+
+    np.testing.assert_allclose(
+        np.array([
+            [[0., -8.2, 5.2, 5., -4.]],
+            [[0., 15., 20., 4.5, -1.]]
+        ]),
+        rin.transform(X_1)
+    )
 
 def test_jld():
     X = np.random.random_sample((46, 100, 189))
