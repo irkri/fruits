@@ -449,15 +449,16 @@ class RIN(Preparateur):
 class RDW(Preparateur):
     """Preparatuer: Random Dimension Weights
 
-    This preparateur scales dimensions in the time series by a random
-    factor uniformly over all time steps.
+    This preparateur exponentially scales dimensions (normalized to
+    [0,1]) in the time series by a random exponent uniformly for all
+    time steps.
 
     Args:
         dist ('dirichlet' or 'uniform'): Type of distribution used for
-            drawing the weights. The parameters for a dirichlet
-            distribution are chosen according to the inverse maximal
-            absolute value of each dimension in the training set.
-            Defaults to 'dirichlet'.
+            drawing the exponents. The parameters for a dirichlet
+            distribution are chosen proportional to the maximal absolute
+            value of each dimension in the training set. Defaults to
+            'dirichlet'.
     """
     def __init__(
         self,
@@ -468,7 +469,7 @@ class RDW(Preparateur):
     def _fit(self, X: np.ndarray) -> None:
         if self._dist == "dirichlet":
             alphas = np.max(np.mean(np.abs(X), axis=0), axis=1)
-            alphas[alphas!=0] = np.max(alphas[alphas!=0]) / alphas[alphas!=0]
+            alphas[alphas!=0] = alphas[alphas!=0] / np.max(alphas[alphas!=0])
             if np.sum(alphas == 0) >= 1:
                 alphas += 1e-5
             self._weights = np.random.dirichlet(alphas)
@@ -477,7 +478,7 @@ class RDW(Preparateur):
             self._weights = self._weights / np.sum(self._weights)
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        return X * self._weights[np.newaxis, :, np.newaxis]
+        return NRM().transform(X) ** self._weights[np.newaxis, :, np.newaxis]
 
     def _copy(self) -> "RDW":
         return RDW(self._dist)
