@@ -34,6 +34,19 @@ def test_standardization():
     np.testing.assert_almost_equal(1, np.std(X_1_1.flatten()))
 
 
+def test_nrm():
+    np.testing.assert_allclose(np.array([
+        [[0., 4.8/9, 4/9, 1., 1/9], [1., 8/9, 7/9, 7/9, 0.]],
+        [[5/8, 1., 2/8, 6/8, 0.], [3/7.5, 7/7.5, 4/7.5, 1., 0.]],
+    ]), fruits.preparation.NRM().fit_transform(X_1))
+
+
+    np.testing.assert_allclose(np.array([
+        [[3/12, 7.8/12, 7/12, 1., 4/12], [9/12, 8/12, 7/12, 7/12, 0.]],
+        [[13/16, 1., 10/16, 14/16, 8/16], [3/16, 7/16, 4/16, 7.5/16, 0.]],
+    ]), fruits.preparation.NRM(scale_dim=True).fit_transform(X_1))
+
+
 def test_mav():
     result = fruits.preparation.MAV(2).fit_transform(X_1)
 

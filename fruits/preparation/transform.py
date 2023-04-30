@@ -164,27 +164,49 @@ class NRM(Preparateur):
     Used for normalization of a given time series dataset. The
     transformation returns ``(X-min)/(max-min)`` where ``max``, ``min``
     is the maximum and minimum of single time series dimensions ``X``.
+
+    Args:
+        scale_dim (bool, optional): If set to false, each dimensions is
+            scaled independently from all other dimensions to [0,1] in
+            each time series. If set to true, ``max`` and ``min`` are
+            evaluated over all dimensions and all time steps. This way,
+            the difference in magnitudes of dimensions is preserved.
+            Defaults to false.
     """
+
+    def __init__(self, scale_dim: bool = False) -> None:
+        self._scale_dim = scale_dim
 
     @property
     def requires_fitting(self) -> bool:
         return False
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        min_ = np.min(X, axis=2)[:, :, np.newaxis]
-        max_ = np.max(X, axis=2)[:, :, np.newaxis]
-        return (X - min_) / (max_ - min_)
+        min_ = np.min(X, axis=2)
+        max_ = np.max(X, axis=2)
+        if self._scale_dim:
+            min_ = np.min(min_, axis=1)[:, np.newaxis]
+            max_ = np.max(max_, axis=1)[:, np.newaxis]
+        mask = (min_ != max_)
+        if self._scale_dim:
+            mask = mask[:, 0]
+        min_ = min_[mask][:, np.newaxis]
+        max_ = max_[mask][:, np.newaxis]
+        out = np.zeros_like(X)
+        out[mask] = (X[mask] - min_) / (max_ - min_)
+        out[~mask] = 0
+        return out
 
     def _copy(self) -> "NRM":
-        return NRM()
+        return NRM(scale_dim=self._scale_dim)
 
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, NRM):
-            return False
-        return True
+        if isinstance(other, NRM) and self._scale_dim == other._scale_dim:
+            return True
+        return False
 
     def __str__(self) -> str:
-        return "NRM()"
+        return f"NRM({self._scale_dim})"
 
 
 class MAV(Preparateur):
