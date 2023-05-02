@@ -36,6 +36,8 @@ All features of each _fruit slice_ will be concatenated at the end of the pipeli
 ## Example
 A simple example could look like this:
 ```python
+import numpy
+import fruits
 # 3 dimensional time series dataset of 200 time series of length 100
 X_train = numpy.random.sample((200, 3, 100))
 
