@@ -471,9 +471,8 @@ class RIN(Preparateur):
 class RDW(Preparateur):
     """Preparatuer: Random Dimension Weights
 
-    This preparateur exponentially scales dimensions (normalized to
-    [0,1]) in the time series by a random exponent uniformly for all
-    time steps.
+    This preparateur exponentially scales dimensions in the time series
+    by a random exponent uniformly for all time steps.
 
     Args:
         dist ('dirichlet' or 'uniform'): Type of distribution used for
@@ -500,7 +499,7 @@ class RDW(Preparateur):
             self._weights = self._weights / np.sum(self._weights)
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        return NRM().transform(X) ** self._weights[np.newaxis, :, np.newaxis]
+        return X ** self._weights[np.newaxis, :, np.newaxis]
 
     def _copy(self) -> "RDW":
         return RDW(self._dist)
