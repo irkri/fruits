@@ -112,8 +112,21 @@ def test_rin():
         rin.transform(X_1)
     )
 
+
 def test_jld():
     X = np.random.random_sample((46, 100, 189))
     result = fruits.preparation.JLD(25).fit_transform(X)
 
     assert result.shape == (46, 25, 189)
+
+
+def test_ffn():
+    ffn2 = fruits.preparation.FFN(d_hidden=3, center=False, std=0)
+
+    ffn2._weights1 = np.array([-1, -2, 1], dtype=np.float64)
+    ffn2._weights2 = np.array([1, -1, 2], dtype=np.float64)
+
+    np.testing.assert_allclose(np.array([
+        [[-4., 1.6, 0., 10., -3.], [4., 2., 0., 0., -7.]],
+        [[10., 16., 4., 12., 0.], [-5., -1, -4., -.5, -8.]]
+    ]), ffn2.transform(X_1))

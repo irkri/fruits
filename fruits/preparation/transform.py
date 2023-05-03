@@ -1,4 +1,4 @@
-__all__ = ["INC", "STD", "NRM", "MAV", "LAG", "RIN", "RDW", "JLD"]
+__all__ = ["INC", "STD", "NRM", "MAV", "LAG", "FFN", "RIN", "RDW", "JLD"]
 
 from typing import Any, Callable, Literal, Optional, Union
 
@@ -31,21 +31,15 @@ class INC(Preparateur):
             entry in each time series will be set to 0. If False, it
             is set to the first value of the original time series.
             Defaults to True.
-        overwrite (bool, optional): When set to false, the increments
-            will get added as a new dimension to each time series
-            instead of replacing them. This will be done for each
-            dimension of the original series. Defaults to true.
     """
 
     def __init__(
         self,
         shift: Union[int, float] = 1,
         zero_padding: bool = True,
-        overwrite: bool = True,
     ) -> None:
         self._shift = shift
         self._zero_padding = zero_padding
-        self._overwrite = overwrite
 
     @property
     def requires_fitting(self) -> bool:
@@ -60,26 +54,20 @@ class INC(Preparateur):
         )
         if not self._zero_padding:
             out[:, :, :self._shift] = X[:, :, :self._shift]
-        if self._overwrite:
-            return out
-        result = np.zeros((X.shape[0], 2*X.shape[1], X.shape[2]))
-        result[:, :X.shape[1], :] = X
-        result[:, X.shape[1]:, :] = out
-        return result
+        return out
 
     def _copy(self) -> "INC":
-        return INC(self._shift, self._zero_padding, self._overwrite)
+        return INC(self._shift, self._zero_padding)
 
     def __eq__(self, other) -> bool:
         if (isinstance(other, INC)
                 and self._zero_padding == other._zero_padding
-                and self._shift == other._shift
-                and self._overwrite == self._overwrite):
+                and self._shift == other._shift):
             return True
         return False
 
     def __str__(self) -> str:
-        return f"INC({self._shift}, {self._zero_padding}, {self._overwrite})"
+        return f"INC({self._shift}, {self._zero_padding})"
 
 
 class STD(Preparateur):
@@ -95,21 +83,15 @@ class STD(Preparateur):
         var (bool, optional): Whether to standardize the variance of the
             time series. If set to false, the resulting time series will
             only be centered to zero. Defaults to True.
-        dim (int, optional): If an index of a dimension in the input
-            time series is given, only this dimension will be
-            standardized. This only works for ``separately=True``.
-            Defaults to all dimensions being standardized.
     """
 
     def __init__(
         self,
         separately: bool = True,
         var: bool = True,
-        dim: Optional[int] = None,
     ) -> None:
         self._separately = separately
         self._div_std = var
-        self._dim = dim
         self._mean = None
         self._std = None
 
@@ -127,35 +109,26 @@ class STD(Preparateur):
                 raise RuntimeError("Missing call of self.fit()")
             out = (X - self._mean) / self._std
         else:
-            if self._dim is None:
-                mean_ = np.mean(X, axis=2)[:, :, np.newaxis]
-                std_ = 1
-                if self._div_std:
-                    std_ = np.std(X, axis=2)[:, :, np.newaxis]
-                out = (X - mean_) / std_
-            else:
-                mean_ = np.mean(X[:, self._dim, :], axis=1)[:, np.newaxis]
-                std_ = 1
-                if self._div_std:
-                    std_ = np.std(X[:, self._dim, :], axis=1)[:, np.newaxis]
-                out = X.copy()
-                out[:, self._dim, :] = (X[:, self._dim, :] - mean_) / std_
+            mean_ = np.mean(X, axis=2)[:, :, np.newaxis]
+            std_ = 1
+            if self._div_std:
+                std_ = np.std(X, axis=2)[:, :, np.newaxis]
+            out = (X - mean_) / std_
         return out
 
     def _copy(self) -> "STD":
-        return STD(self._separately, self._div_std, self._dim)
+        return STD(self._separately, self._div_std)
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, STD):
             return False
         if (self._separately == other._separately and
-                self._div_std == other._div_std and
-                self._dim == other._dim):
+                self._div_std == other._div_std):
             return True
         return False
 
     def __str__(self) -> str:
-        return f"STD({self._separately}, {self._div_std}, {self._dim})"
+        return f"STD({self._separately}, {self._div_std})"
 
 
 class NRM(Preparateur):
@@ -308,6 +281,102 @@ class LAG(Preparateur):
         return "LAG()"
 
 
+class FFN(Preparateur):
+    """Preparateur: Feed-Forward Two-Layer Neural Network
+
+    Transforms single values of a time series. A neural network with one
+    hidden layer and a ReLU activation function is used. All weights and
+    biases are gaussian distributed with mean zero.
+
+    Args:
+        d_hidden (int, optional): Number of nodes in the hidden layer.
+            Defaults to 10.
+        center (bool, optional): Whether to center the time series
+            before doing the transformation. This will most likely lead
+            to better results because of the involved ReLU operation.
+            Defaults to true.
+        relu_out (bool, optional): Whether to use a ReLU activation on
+            the output too. Defaults to false.
+        std (float, optional): Standard deviation of the gaussian
+            distributed weights and biases used. Defaults to 1.0 in the
+            first layer and ``(2/d_hidden)**0.5`` in the second layer,
+            i.e. He weight initialization, if a second ReLU is used
+            (1.0 otherwise).
+    """
+
+    @staticmethod
+    @numba.njit(
+        "float64[:,:,:](float64[:,:,:], float64[:], float64[:], boolean)",
+        fastmath=True,
+        cache=True,
+        parallel=True,
+    )
+    def _backend(
+        X: np.ndarray,
+        weights1: np.ndarray,
+        weights2: np.ndarray,
+        relu_out: bool,
+    ) -> np.ndarray:
+        result = np.zeros(X.shape)
+        for i in numba.prange(X.shape[0]):
+            for j in numba.prange(X.shape[1]):
+                for k in numba.prange(X.shape[2]):
+                    layer1 = weights1 * X[i, j, k]
+                    layer1 = (layer1 * (layer1 > 0))
+                    layer2 = np.sum(weights2 * layer1)
+                    if relu_out:
+                        layer2 = (layer2 * (layer2 > 0))
+                    result[i, j, k] = layer2
+        return result
+
+    def __init__(
+        self,
+        d_hidden: int = 10,
+        center: bool = True,
+        relu_out: bool = False,
+        std: Optional[float] = None,
+    ) -> None:
+        self._d_hidden = d_hidden
+        self._center = center
+        self._relu_out = relu_out
+        self._std = std
+
+    def _fit(self, X: np.ndarray) -> None:
+        self._weights1 = np.random.normal(
+            scale=1 if self._std is None else self._std,
+            size=self._d_hidden,
+        )
+        self._weights2 = np.random.normal(
+            scale=(2/self._d_hidden)**0.5 if self._std is None else self._std,
+            size=self._d_hidden,
+        )
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        if not hasattr(self, "_weights1"):
+            raise RuntimeError("FFN was not fitted")
+        X_in = X
+        if self._center:
+            X_in = X - np.mean(X, axis=2)[:, :, np.newaxis]
+        return FFN._backend(
+            X_in,
+            self._weights1,
+            self._weights2,
+            self._relu_out,
+        )
+
+    def _copy(self) -> "FFN":
+        return FFN(
+            d_hidden=self._d_hidden,
+            center=self._center,
+            relu_out=self._relu_out,
+            std=self._std,
+        )
+
+    def __str__(self) -> str:
+        return (f"FFN({self._d_hidden}, {self._center}, "
+                f"{self._relu_out}, {self._std})")
+
+
 class RIN(Preparateur):
     """Preparateur: Random Increments
 
@@ -346,10 +415,6 @@ class RIN(Preparateur):
             ``out_dim=in_dim``.
         force_positive (bool, optional): When set to true, forces all
             kernel weights to be non-negative. Defaults to false.
-        overwrite (bool, optional): When set to false, the increments
-            will get added as a new dimension to each time series
-            instead of replacing them. This will be done for each
-            dimension of the original series. Defaults to true.
     """
 
     @staticmethod
@@ -387,13 +452,11 @@ class RIN(Preparateur):
         adaptive_width: bool = False,
         out_dim: int = -1,
         force_positive: bool = False,
-        overwrite: bool = True,
     ) -> None:
         self._width = width
         self._adaptive_width = adaptive_width
         self._out_dim = out_dim
         self._force_positive = force_positive
-        self._overwrite = overwrite
 
     def _fit(self, X: np.ndarray) -> None:
         width = self._width(X.shape[2]) if callable(self._width) else (
@@ -431,14 +494,7 @@ class RIN(Preparateur):
                 self._dim_indices,
             )
             out = out[:, :, self._kernel.shape[1]:]
-
-        if self._overwrite:
-            return out
-
-        result = np.zeros((X.shape[0], X.shape[1]+out.shape[1], X.shape[2]))
-        result[:, :X.shape[1], :] = X
-        result[:, X.shape[1]:, :] = out
-        return result
+        return out
 
     def _copy(self) -> "RIN":
         return RIN(
@@ -446,7 +502,6 @@ class RIN(Preparateur):
             adaptive_width=self._adaptive_width,
             out_dim=self._out_dim,
             force_positive=self._force_positive,
-            overwrite=self._overwrite,
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -455,16 +510,14 @@ class RIN(Preparateur):
         if (self._width == other._width
             and self._adaptive_width == other._adaptive_width
             and self._out_dim == other._out_dim
-            and self._force_positive == other._force_positive
-            and self._overwrite == other._overwrite):
+            and self._force_positive == other._force_positive):
             return True
         return False
 
     def __str__(self) -> str:
         return (
             f"RIN({self._width}, {self._adaptive_width}, "
-            f"{self._out_dim}, {self._force_positive}, "
-            f"{self._overwrite})"
+            f"{self._out_dim}, {self._force_positive})"
         )
 
 

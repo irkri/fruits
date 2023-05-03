@@ -224,7 +224,7 @@ class PIA(ExplicitSieve):
             for j in range(cuts.shape[1]):
                 part = X_inc[i, :cuts[i, j]]
                 result[i, j] = np.sum(part > 0)
-        result[:, :] /= X.shape[1]
+        result[:, :] /= X.shape[1]  # TODO drop normaliza
         return result
 
     def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
