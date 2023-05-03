@@ -121,12 +121,23 @@ def test_jld():
 
 
 def test_ffn():
-    ffn2 = fruits.preparation.FFN(d_hidden=3, center=False, std=0)
+    ffn1 = fruits.preparation.FFN(d_hidden=3, center=False, std=0)
+
+    ffn1._weights1 = np.array([-1, -2, 1], dtype=np.float64)
+    ffn1._weights2 = np.array([1, -1, 2], dtype=np.float64)
+
+    np.testing.assert_allclose(np.array([
+        [[-4., 1.6, 0., 10., -3.], [4., 2., 0., 0., -7.]],
+        [[10., 16., 4., 12., 0.], [-5., -1, -4., -.5, -8.]]
+    ]), ffn1.transform(X_1))
+
+    ffn2 = fruits.preparation.FFN(d_hidden=3, center=False, std=0,
+                                  relu_out=True)
 
     ffn2._weights1 = np.array([-1, -2, 1], dtype=np.float64)
     ffn2._weights2 = np.array([1, -1, 2], dtype=np.float64)
 
     np.testing.assert_allclose(np.array([
-        [[-4., 1.6, 0., 10., -3.], [4., 2., 0., 0., -7.]],
-        [[10., 16., 4., 12., 0.], [-5., -1, -4., -.5, -8.]]
+        [[0., 1.6, 0., 10., 0.], [4., 2., 0., 0., 0.]],
+        [[10., 16., 4., 12., 0.], [0., 0., 0., 0., 0.]]
     ]), ffn2.transform(X_1))
