@@ -34,19 +34,32 @@ def test_standardization():
     np.testing.assert_almost_equal(1, np.std(X_1_1.flatten()))
 
 
+def test_nrm():
+    np.testing.assert_allclose(np.array([
+        [[0., 4.8/9, 4/9, 1., 1/9], [1., 8/9, 7/9, 7/9, 0.]],
+        [[5/8, 1., 2/8, 6/8, 0.], [3/7.5, 7/7.5, 4/7.5, 1., 0.]],
+    ]), fruits.preparation.NRM().fit_transform(X_1))
+
+
+    np.testing.assert_allclose(np.array([
+        [[3/12, 7.8/12, 7/12, 1., 4/12], [9/12, 8/12, 7/12, 7/12, 0.]],
+        [[13/16, 1., 10/16, 14/16, 8/16], [3/16, 7/16, 4/16, 7.5/16, 0.]],
+    ]), fruits.preparation.NRM(scale_dim=True).fit_transform(X_1))
+
+
 def test_mav():
     result = fruits.preparation.MAV(2).fit_transform(X_1)
 
     np.testing.assert_allclose(np.array([
-        [[-4, -1.6, 0.4, 2.5, 1], [2, 1.5, 0.5, 0, -3.5]],
-        [[5, 6.5, 5, 4, 3], [-5, -3, -2.5, -2.25, -4.25]]
+        [[0, -1.6, 0.4, 2.5, 1], [0, 1.5, 0.5, 0, -3.5]],
+        [[0, 6.5, 5, 4, 3], [0, -3, -2.5, -2.25, -4.25]]
     ]), result)
 
     result = fruits.preparation.MAV(0.6).fit_transform(X_1)
 
     np.testing.assert_allclose(np.array([
-        [[-12., 2.4, -3.2, 5.8, 2.], [6., 3., 3., 1., -7.]],
-        [[15., 24., 15., 16., 8.], [-15., -3., -10., -5.5, -12.5]]
+        [[0, 0, -3.2, 5.8, 2.], [0, 0, 3., 1., -7.]],
+        [[0, 0, 15., 16., 8.], [0, 0, -10., -5.5, -12.5]]
     ]) / 3, result)
 
 
@@ -65,8 +78,42 @@ def test_lag():
     ]), result)
 
 
+def test_rin():
+    X = np.random.random_sample((46, 2, 189))
+    rin = fruits.preparation.RIN(2, adaptive_width=True)
+    rin.fit(X)
+
+    rin._kernel = np.array([[4., 1.], [4., 1.]])
+
+    np.testing.assert_allclose(
+        np.array([
+            [[-4., 4.8, 15.2, 1.8, -8.], [2., -1., -9., -4., -7.]],
+            [[5., 3., -26., -28., -14.], [-5., 4., 17., 7.5, 8.5]]
+        ]),
+        rin.transform(X_1)
+    )
+
+    X = np.random.random_sample((46, 2, 189))
+    rin = fruits.preparation.RIN(
+        width=2,
+        adaptive_width=False,
+        out_dim=1,
+    )
+    rin.fit(X)
+
+    assert rin._kernel.shape == (2, 2)
+    rin._kernel = np.array([[4., 1.], [2., 3.]])
+
+    np.testing.assert_allclose(
+        np.array([
+            [[0., 0, 8.2, -.2, -15.]],
+            [[0., 0., -17., -14.5, -12.5]]
+        ]),
+        rin.transform(X_1)
+    )
+
 def test_jld():
     X = np.random.random_sample((46, 100, 189))
     result = fruits.preparation.JLD(25).fit_transform(X)
 
-    assert result.shape[1] == 25
+    assert result.shape == (46, 25, 189)

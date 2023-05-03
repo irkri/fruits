@@ -86,6 +86,10 @@ class WIN(Preparateur):
         self._start = start
         self._end = end
 
+    @property
+    def requires_fitting(self) -> bool:
+        return False
+
     def _transform(self, X: np.ndarray) -> np.ndarray:
         coq_start = self._cache.get(
             CacheType.COQUANTILE,

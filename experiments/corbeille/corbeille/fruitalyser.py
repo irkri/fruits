@@ -508,7 +508,7 @@ class Fruitalyser:
         index1: int,
         index2: int,
         source: Optional[Literal["train", "test", "all"]] = ...,
-        axes: tuple[Axes, Axes, Axes] = ...,
+        axes: Axes = ...,
         nbins: int = ...,
     ) -> None:
         ...
@@ -519,8 +519,9 @@ class Fruitalyser:
         index1: int,
         index2: int,
         source: Optional[Literal["train", "test", "all"]] = "all",
-        axes: Optional[tuple[Axes, Axes, Axes]] = None,
+        axes: Optional[Axes] = None,
         nbins: int = 50,
+        **kwargs,
     ) -> Optional[tuple[Figure, Axes, Axes, Axes]]:
         if axes is None:
             fig = plt.figure()
@@ -542,9 +543,7 @@ class Fruitalyser:
             ax_histy.axis("off")
         else:
             fig = None
-            ax = axes[0]
-            ax_histx = axes[1]
-            ax_histy = axes[2]
+            ax = axes
 
         feat = self.features((index1, index2), source=source)
         label1, label2 = str(feat.columns[0]), str(feat.columns[1])
@@ -570,24 +569,26 @@ class Fruitalyser:
                 group.y,
                 label=label,
                 fc=color + (0.5, ),
+                **kwargs,
             )
-            lastx, _, _ = ax_histx.hist(
-                group.x,
-                bins=xbins,
-                bottom=lastx,
-                lw=1.2,
-                edgecolor="black",
-                fc=color + (0.5, ),
-            )
-            lasty, _, _ = ax_histy.hist(
-                group.y,
-                bins=ybins,
-                bottom=lasty,
-                lw=1.2,
-                edgecolor="black",
-                fc=color + (0.5, ),
-                orientation="horizontal",
-            )
+            if axes is None:
+                lastx, _, _ = ax_histx.hist(
+                    group.x,
+                    bins=xbins,
+                    bottom=lastx,
+                    lw=1.2,
+                    edgecolor="black",
+                    fc=color + (0.5, ),
+                )
+                lasty, _, _ = ax_histy.hist(
+                    group.y,
+                    bins=ybins,
+                    bottom=lasty,
+                    lw=1.2,
+                    edgecolor="black",
+                    fc=color + (0.5, ),
+                    orientation="horizontal",
+                )
 
         if fig is not None:
             fig.legend(title="Target", bbox_to_anchor=(1, 1, 0, -0.2))

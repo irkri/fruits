@@ -15,6 +15,10 @@ class Seed(ABC):
 
     _cache: SharedSeedCache
 
+    @property
+    def requires_fitting(self) -> bool:
+        return True
+
     @abstractmethod
     def _fit(self, X: np.ndarray) -> None:
         ...

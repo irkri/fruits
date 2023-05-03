@@ -190,7 +190,7 @@ def load(
 
         return X_train, y_train, X_test, y_test
 
-    name = path.split("/")[-1]
+    name = os.path.basename(os.path.normpath(path))
 
     if cache and os.path.isfile(os.path.join(path, name)+"_XTRAIN.npy"):
         X_train = np.load(os.path.join(path, name)+"_XTRAIN.npy")
@@ -261,6 +261,8 @@ def load(
 def load_all(
     path: str,
     univariate: bool = True,
+    cache: bool = True,
+    keep_nan: bool = False,
     datasets: Optional[Sequence[str]] = None,
 ) -> Generator[
     tuple[str, np.ndarray, np.ndarray, np.ndarray, np.ndarray], None, None
@@ -276,6 +278,12 @@ def load_all(
         names (sequence of str): List of dataset names. Only
             the datasets in this list will be collected. Defaults to
             all datasets in the given path.
+        cache (bool, optional): If set to ``True``, use cache if exists
+            (as .npy file) or create it if it doesn't. This argument is
+            directly passed to :meth:`load`. Defaults to True.
+        keep_nan (bool, optional): If set to ``False``, all NaN values
+            in the time series datasets will be replaced. This argument
+            is directly passed to :meth:`load`. Defaults to False.
         univariate (bool, optional): Whether the data in ``path`` is
             assumed to be univariate or multivariate. Defaults to
             univariate data.
@@ -283,10 +291,12 @@ def load_all(
     for folder in sorted(os.listdir(path)):
         if os.path.isdir(os.path.join(path, folder)):
             if datasets is None or folder in datasets:
-                yield (
-                    (folder, )
-                    + load(os.path.join(path, folder), univariate=univariate)
-                )
+                yield (folder, ) + load(
+                        os.path.join(path, folder),
+                        cache=cache,
+                        keep_nan=keep_nan,
+                        univariate=univariate,
+                    )
 
 
 def implant_stuttering(

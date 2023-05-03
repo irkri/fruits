@@ -6,7 +6,7 @@ import numpy as np
 from ..cache import SharedSeedCache
 from ..seed import Seed
 from .cache import CachePlan
-from .semiring import Reals, Semiring
+from .semiring import Reals, Arctic, Semiring
 from .weighting import Weighting
 from .words.word import Word
 
@@ -34,6 +34,15 @@ def _calculate_ISS(
         n_itsum = batch_size
         if cache_plan is not None:
             n_itsum = cache_plan.n_iterated_sums(range(i, i+batch_size))
+        elif isinstance(semiring, Arctic) and semiring._argmax:
+            raise NotImplementedError(
+                "Arctic argmax is not implemented when using ISSMode.SINGLE"
+            )
+        if isinstance(semiring, Arctic) and semiring._argmax:
+            n_itsum = sum(
+                len(word) + int(len(word) * (len(word)+1) / 2)
+                for word in words[i:i+batch_size]
+            )
         results = np.zeros((n_itsum, X.shape[0], X.shape[2]))
 
         index = 0
@@ -41,11 +50,13 @@ def _calculate_ISS(
             n_itsum_word = 1 if cache_plan is None else (
                 cache_plan.unique_el_depth(i)
             )
+            if isinstance(semiring, Arctic) and semiring._argmax:
+                n_itsum_word = len(word) + int(len(word) * (len(word)+1) / 2)
             results[index:index+n_itsum_word, :, :] = np.swapaxes(
                 semiring.iterated_sums(
                     X,
                     word,
-                    n_itsum_word,
+                    1 if cache_plan is None else cache_plan.unique_el_depth(i),
                     weighting,
                 ),
                 0, 1,
@@ -97,6 +108,10 @@ class ISS(Seed):
         )
         self.weighting = weighting
 
+    @property
+    def requires_fitting(self) -> bool:
+        return False
+
     def _fit(self, X: np.ndarray) -> None:
         pass
 
@@ -122,7 +137,16 @@ class ISS(Seed):
         with a :meth:`~ISS.transform`` call.
         """
         if self.mode == ISSMode.EXTENDED:
+            if isinstance(self.semiring, Arctic) and self.semiring._argmax:
+                return sum(
+                    len(word) + int(len(word) * (len(word)+1) / 2)
+                    for word in self.words
+                )
             return self._cache_plan.n_iterated_sums()
+        elif isinstance(self.semiring, Arctic) and self.semiring._argmax:
+            raise NotImplementedError(
+                "Arctic argmax is not implemented when using ISSMode.SINGLE"
+            )
         return len(self.words)
 
     def batch_transform(

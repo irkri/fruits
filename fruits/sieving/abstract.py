@@ -19,6 +19,7 @@ class FeatureSieve(Seed, ABC):
         ...
 
     def nfeatures(self) -> int:
+        """Returns the number of features this sieve produces."""
         return self._nfeatures()
 
     def _fit(self, X: np.ndarray) -> None:
