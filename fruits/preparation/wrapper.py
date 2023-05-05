@@ -1,7 +1,7 @@
 __all__ = ["DIM", "NEW"]
 
 from collections.abc import Sequence
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 
@@ -54,31 +54,47 @@ class NEW(Preparateur):
     series.
 
     Args:
-        preparateur (Preparateur): A preparateur which results will be
-            appended to the input dimensions.
+        preparateur (Preparateur, optional): A preparateur of which
+            results will be appended to the input dimensions. Defaults
+            to None, in which case all current dimensions will be copied
+            and appended to the input time series.
     """
 
-    def __init__(self, preparateur: Preparateur) -> None:
+    def __init__(self, preparateur: Optional[Preparateur] = None) -> None:
         self._preparateur = preparateur
 
     @property
     def requires_fitting(self) -> bool:
+        if self._preparateur is None:
+            return False
         return self._preparateur.requires_fitting
 
     def _fit(self, X: np.ndarray) -> None:
-        self._preparateur.fit(X)
+        if self._preparateur is not None:
+            self._preparateur.fit(X)
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
+        if self._preparateur is None:
+            result = np.zeros(
+                (X.shape[0], 2*X.shape[1], X.shape[2]),
+                dtype=np.float32,
+            )
+            result[:, :X.shape[1], :] = X[:, :, :]
+            result[:, X.shape[1]:, :] = X[:, :, :]
+            return result
+
         transformed = self._preparateur.transform(X)
         result = np.zeros(
             (X.shape[0], X.shape[1]+transformed.shape[1], X.shape[2]),
             dtype=np.float32,
         )
-        result[:, :X.shape[1], :] = X.copy()
+        result[:, :X.shape[1], :] = X[:, :, :]
         result[:, X.shape[1]:, :] = transformed
         return result
 
     def _copy(self) -> "NEW":
+        if self._preparateur is None:
+            return NEW()
         return NEW(self._preparateur.copy())
 
     def __str__(self) -> str:
