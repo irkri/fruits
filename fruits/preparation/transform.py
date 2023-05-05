@@ -291,22 +291,20 @@ class FFN(Preparateur):
     Args:
         d_hidden (int, optional): Number of nodes in the hidden layer.
             Defaults to 10.
-        center (bool, optional): Whether to center the time series
-            before doing the transformation. This will most likely lead
-            to better results because of the involved ReLU operation.
-            Defaults to true.
+        center (bool, optional): If set to true, each time series will
+            be explicitly centered before transforming with a bias drawn
+            from a normal distribution with mean 0. If set to false, all
+            time series are transformed without prior centering and the
+            bias will be drawn from a normal distribution with a mean
+            equal to the estimated mean of the training data calculated
+            in ``FFN.fit(X_train)``. Defaults to false.
         relu_out (bool, optional): Whether to use a ReLU activation on
             the output too. Defaults to false.
-        std (float, optional): Standard deviation of the gaussian
-            distributed weights and biases used. Defaults to 1.0 in the
-            first layer and ``(2/d_hidden)**0.5`` in the second layer,
-            i.e. He weight initialization, if a second ReLU is used
-            (1.0 otherwise).
     """
 
     @staticmethod
     @numba.njit(
-        "float64[:,:,:](float64[:,:,:], float64[:], float64[:], boolean)",
+        "f8[:,:,:](f8[:,:,:], f8[:], f8[:], f8[:], b1)",
         fastmath=True,
         cache=True,
         parallel=True,
@@ -314,6 +312,7 @@ class FFN(Preparateur):
     def _backend(
         X: np.ndarray,
         weights1: np.ndarray,
+        biases: np.ndarray,
         weights2: np.ndarray,
         relu_out: bool,
     ) -> np.ndarray:
@@ -321,7 +320,7 @@ class FFN(Preparateur):
         for i in numba.prange(X.shape[0]):
             for j in numba.prange(X.shape[1]):
                 for k in numba.prange(X.shape[2]):
-                    layer1 = weights1 * X[i, j, k]
+                    layer1 = weights1 * (X[i, j, k] - biases)
                     layer1 = (layer1 * (layer1 > 0))
                     layer2 = np.sum(weights2 * layer1)
                     if relu_out:
@@ -332,24 +331,21 @@ class FFN(Preparateur):
     def __init__(
         self,
         d_hidden: int = 10,
-        center: bool = True,
+        center: bool = False,
         relu_out: bool = False,
-        std: Optional[float] = None,
     ) -> None:
         self._d_hidden = d_hidden
         self._center = center
         self._relu_out = relu_out
-        self._std = std
 
     def _fit(self, X: np.ndarray) -> None:
-        self._weights1 = np.random.normal(
-            scale=1 if self._std is None else self._std,
+        self._weights1 = np.random.normal(scale=1.0, size=self._d_hidden)
+        self._biases = np.random.normal(
+            loc=0 if self._center else np.mean(X),
+            scale=np.std(X),
             size=self._d_hidden,
         )
-        self._weights2 = np.random.normal(
-            scale=(2/self._d_hidden)**0.5 if self._std is None else self._std,
-            size=self._d_hidden,
-        )
+        self._weights2 = np.random.normal(scale=1.0, size=self._d_hidden)
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_weights1"):
@@ -360,6 +356,7 @@ class FFN(Preparateur):
         return FFN._backend(
             X_in,
             self._weights1,
+            self._biases,
             self._weights2,
             self._relu_out,
         )
@@ -369,12 +366,10 @@ class FFN(Preparateur):
             d_hidden=self._d_hidden,
             center=self._center,
             relu_out=self._relu_out,
-            std=self._std,
         )
 
     def __str__(self) -> str:
-        return (f"FFN({self._d_hidden}, {self._center}, "
-                f"{self._relu_out}, {self._std})")
+        return f"FFN({self._d_hidden}, {self._center}, {self._relu_out})"
 
 
 class RIN(Preparateur):
