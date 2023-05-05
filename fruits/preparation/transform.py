@@ -477,7 +477,7 @@ class RIN(Preparateur):
         )
         self._dims_per_kernel = np.random.choice(
             X.shape[1], size=X.shape[1], replace=False,
-        )
+        ).astype(np.int32)
         if self._force_sum_one:
             while True:
                 self._kernel = np.random.uniform(
