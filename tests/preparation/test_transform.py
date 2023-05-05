@@ -84,6 +84,8 @@ def test_rin():
     rin.fit(X)
 
     rin._kernel = np.array([[4., 1.], [4., 1.]])
+    rin._ndim_per_kernel = np.array([1, 1], dtype=np.int32)
+    rin._dims_per_kernel = np.array([0, 1], dtype=np.int32)
 
     np.testing.assert_allclose(
         np.array([
@@ -103,6 +105,8 @@ def test_rin():
 
     assert rin._kernel.shape == (2, 2)
     rin._kernel = np.array([[4., 1.], [2., 3.]])
+    rin._ndim_per_kernel = np.array([2], dtype=np.int32)
+    rin._dims_per_kernel = np.array([0, 1], dtype=np.int32)
 
     np.testing.assert_allclose(
         np.array([

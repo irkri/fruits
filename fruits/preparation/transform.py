@@ -408,13 +408,19 @@ class RIN(Preparateur):
             equal number of input dimensions are convolved with a random
             2D kernel. Defaults to -1, which corresponds to
             ``out_dim=in_dim``.
-        force_positive (bool, optional): When set to true, forces all
-            kernel weights to be non-negative. Defaults to false.
+        force_sum_one (bool, optional): When set to true, a uniform
+            distribution on ``[-1, 1]`` is used to sample kernel
+            weights. After sampling, the values will be forced to sum up
+            to one while keeping interval borders. Sampled values close
+            to zero will therefore be changed a lot more then values
+            close to -1 or 1. If set to false, the kernel weights are
+            sampled from a standard normal distribution and centered
+            again after sampling to ensure mean zero. Defaults to false.
     """
 
     @staticmethod
     @numba.njit(
-        "float64[:,:,:](float64[:,:,:], float64[:,:], int32[:])",
+        "f8[:,:,:](f8[:,:,:], f8[:,:], i4[:], i4[:])",
         fastmath=True,
         cache=True,
         parallel=True,
@@ -422,23 +428,24 @@ class RIN(Preparateur):
     def _backend(
         X: np.ndarray,
         kernel: np.ndarray,
-        dim: np.ndarray,
+        ndim: np.ndarray,
+        dims: np.ndarray,
     ) -> np.ndarray:
         w = kernel.shape[1]
-        result = np.zeros((X.shape[0], dim.size, X.shape[2]))
+        result = np.zeros((X.shape[0], ndim.size, X.shape[2]))
         for i in numba.prange(X.shape[0]):
             start_dim = 0
             end_dim = 0
-            for new_dim in range(dim.size):
-                end_dim += dim[new_dim]
+            for new_dim in range(ndim.size):
+                end_dim += ndim[new_dim]
                 for k in range(w, X.shape[2]):
                     s = 0
                     for j in range(start_dim, end_dim):
                         for l in range(k-w, k):
-                            s += - X[i, j, l] * kernel[j, l-k+w]
+                            s += - X[i, dims[j], l] * kernel[j, l-k+w]
                         s += X[i, j, k]
                     result[i, new_dim, k] = s
-                start_dim += dim[new_dim]
+                start_dim += ndim[new_dim]
         return result
 
     def __init__(
@@ -446,12 +453,12 @@ class RIN(Preparateur):
         width: Union[int, Callable[[int], int]] = 1,
         adaptive_width: bool = False,
         out_dim: int = -1,
-        force_positive: bool = False,
+        force_sum_one: bool = False,
     ) -> None:
         self._width = width
         self._adaptive_width = adaptive_width
         self._out_dim = out_dim
-        self._force_positive = force_positive
+        self._force_sum_one = force_sum_one
 
     def _fit(self, X: np.ndarray) -> None:
         width = self._width(X.shape[2]) if callable(self._width) else (
@@ -464,29 +471,47 @@ class RIN(Preparateur):
                 f"<= input dimensions ({X.shape[1]})"
             )
         quotient, remainder = divmod(X.shape[1], out_dim)
-        self._dim_indices = np.array(
+        self._ndim_per_kernel = np.array(
             [quotient + 1] * remainder + [quotient] * (out_dim - remainder),
             dtype=np.int32,
         )
-        self._kernel = np.random.normal(
-            loc=0.,
-            scale=1.,
-            size=(X.shape[1], width),
+        self._dims_per_kernel = np.random.choice(
+            X.shape[1], size=X.shape[1], replace=False,
         )
-        if self._force_positive:
-            self._kernel[self._kernel < 0] = -self._kernel[self._kernel < 0]
+        if self._force_sum_one:
+            while True:
+                self._kernel = np.random.uniform(
+                    -1., 1.,
+                    size=(X.shape[1], width),
+                )
+                change = 1.0 - np.sum(self._kernel, axis=1)
+                diff = 1.0 - np.abs(self._kernel)
+                diffsum = np.sum(diff, axis=1)
+                if np.sum(diffsum < 1e-5) > 0:
+                    continue
+                self._kernel += diff * (change / diffsum)[:, np.newaxis]
+                break
+        else:
+            self._kernel = np.random.normal(size=(X.shape[1], width))
+            self._kernel -= np.mean(self._kernel, axis=1)[:, np.newaxis]
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_kernel"):
             raise RuntimeError("RIN preparateur misses a .fit() call")
 
         if not self._adaptive_width:
-            out = RIN._backend(X, self._kernel, self._dim_indices)
+            out = RIN._backend(
+                X,
+                self._kernel,
+                self._ndim_per_kernel,
+                self._dims_per_kernel,
+            )
         else:
             out = RIN._backend(
                 np.pad(X, ((0, 0), (0, 0), (self._kernel.shape[1], 0))),
                 self._kernel,
-                self._dim_indices,
+                self._ndim_per_kernel,
+                self._dims_per_kernel,
             )
             out = out[:, :, self._kernel.shape[1]:]
         return out
@@ -496,23 +521,21 @@ class RIN(Preparateur):
             width=self._width,
             adaptive_width=self._adaptive_width,
             out_dim=self._out_dim,
-            force_positive=self._force_positive,
+            force_sum_one=self._force_sum_one,
         )
 
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, RIN):
-            return False
-        if (self._width == other._width
-            and self._adaptive_width == other._adaptive_width
-            and self._out_dim == other._out_dim
-            and self._force_positive == other._force_positive):
+        if isinstance(other, RIN) and (self._width == other._width
+                and self._adaptive_width == other._adaptive_width
+                and self._out_dim == other._out_dim
+                and self._force_sum_one == other._force_sum_one):
             return True
         return False
 
     def __str__(self) -> str:
         return (
             f"RIN({self._width}, {self._adaptive_width}, "
-            f"{self._out_dim}, {self._force_positive})"
+            f"{self._out_dim}, {self._force_sum_one})"
         )
 
 
