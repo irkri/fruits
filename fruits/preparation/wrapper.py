@@ -33,7 +33,7 @@ class DIM(Preparateur):
         return self._preparateur.requires_fitting
 
     def _fit(self, X: np.ndarray) -> None:
-        self._preparateur.fit(X)
+        self._preparateur.fit(X[:, self._dim, :])
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         result = X.copy()
@@ -77,7 +77,7 @@ class NEW(Preparateur):
         if self._preparateur is None:
             result = np.zeros(
                 (X.shape[0], 2*X.shape[1], X.shape[2]),
-                dtype=np.float32,
+                dtype=X.dtype,
             )
             result[:, :X.shape[1], :] = X[:, :, :]
             result[:, X.shape[1]:, :] = X[:, :, :]
@@ -86,7 +86,7 @@ class NEW(Preparateur):
         transformed = self._preparateur.transform(X)
         result = np.zeros(
             (X.shape[0], X.shape[1]+transformed.shape[1], X.shape[2]),
-            dtype=np.float32,
+            dtype=X.dtype,
         )
         result[:, :X.shape[1], :] = X[:, :, :]
         result[:, X.shape[1]:, :] = transformed
