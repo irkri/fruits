@@ -9,7 +9,7 @@ X_1 = np.array([
 
 
 def test_increments():
-    X_1_1 = fruits.preparation.INC(True).fit_transform(X_1)
+    X_1_1 = fruits.preparation.INC().fit_transform(X_1)
     increments = fruits.preparation.INC(zero_padding=False)
     X_1_2 = increments.fit_transform(X_1)
 
