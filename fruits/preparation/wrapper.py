@@ -11,7 +11,9 @@ from .abstract import Preparateur
 class DIM(Preparateur):
     """Wrapper for another preparateur. DIM will evaluate the given
     preparateur only on the specified dimension(s) of the input time
-    series and only replaces these dimensions by the transformed ones.
+    series. The results are appended to the original time series without
+    the given original dimensions removed. This way, the time series
+    might get reordered!
 
     Args:
         preparateur (Preparateur): A preparateur that is used for the
@@ -36,9 +38,9 @@ class DIM(Preparateur):
         self._preparateur.fit(X[:, self._dim, :])
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        result = X.copy()
         transformed = self._preparateur.transform(X[:, self._dim, :])
-        result[:, self._dim, :] = transformed
+        result = np.delete(X, self._dim, axis=1)
+        result = np.concatenate((X[:, self._dim, :], transformed), axis=1)
         return result
 
     def _copy(self) -> "DIM":
