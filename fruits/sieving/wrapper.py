@@ -1,4 +1,4 @@
-__all__ = ["INC"]
+__all__ = ["INC", "INT"]
 
 import numpy as np
 
@@ -59,3 +59,40 @@ class INC(FeatureSieve):
 
     def __str__(self) -> str:
         return f"INC({str(self._sieve)}, {self._depth}, {self._shift})"
+
+
+class INT(FeatureSieve):
+    """Wrapper for another feature sieve. INT will evaluate the given
+    sieve on the cumulative sum (discrete integration) of the input, not
+    the input itself. It is therefore the inverse of :class:`INC`,
+    except for the first entry in each time series.
+
+    Args:
+        sieve (FeatureSieve): A feature sieve that will be used
+            for the transformation.
+    """
+
+    def __init__(self, sieve: FeatureSieve) -> None:
+        self._sieve = sieve
+
+    @property
+    def requires_fitting(self) -> bool:
+        return self._sieve.requires_fitting
+
+    def _nfeatures(self) -> int:
+        return self._sieve.nfeatures()
+
+    def _fit(self, X: np.ndarray) -> None:
+        self._sieve.fit(np.cumsum(X, axis=1))
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        return self._sieve.transform(np.cumsum(X, axis=1))
+
+    def _copy(self) -> "INT":
+        return INT(self._sieve.copy())
+
+    def _summary(self) -> str:
+        return f"INT>{self._sieve.summary()}"
+
+    def __str__(self) -> str:
+        return f"INT({str(self._sieve)})"
