@@ -40,7 +40,7 @@ class DIM(Preparateur):
     def _transform(self, X: np.ndarray) -> np.ndarray:
         transformed = self._preparateur.transform(X[:, self._dim, :])
         result = np.delete(X, self._dim, axis=1)
-        result = np.concatenate((X[:, self._dim, :], transformed), axis=1)
+        result = np.concatenate((result, transformed), axis=1)
         return result
 
     def _copy(self) -> "DIM":
