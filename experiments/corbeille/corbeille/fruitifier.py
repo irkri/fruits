@@ -159,7 +159,7 @@ def decide_which_fruit(
                     X, y, test_size=vs, stratify=y,
                 )
                 choice_ = choice[0] if isinstance(choice, tuple) else choice
-                acc, _ = fruitify(
+                _, acc = fruitify(
                     (x_train, y_train, x_test, y_test),
                     choice_,
                     classifier=classifier,
