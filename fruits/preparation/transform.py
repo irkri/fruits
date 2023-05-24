@@ -1,6 +1,8 @@
-__all__ = ["INC", "STD", "NRM", "MAV", "LAG", "FFN", "RIN", "RDW", "JLD"]
+__all__ = [
+    "INC", "STD", "NRM", "MAV", "LAG", "FFN", "RIN", "RDW", "JLD", "FUN",
+]
 
-from typing import Any, Callable, Literal, Optional, Union
+from typing import Any, Callable, Literal, Union
 
 import numba
 import numpy as np
@@ -624,7 +626,7 @@ class JLD(Preparateur):
         return np.matmul(self._operator, X)
 
     def _copy(self) -> "JLD":
-        return JLD()
+        return JLD(dim=self._d)
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, JLD):
@@ -635,3 +637,36 @@ class JLD(Preparateur):
 
     def __str__(self) -> str:
         return f"JLD({self._d})"
+
+
+class FUN(Preparateur):
+    """Preparatuer: Function Transform
+
+    This preparateur transforms the input time series dataset by
+    applying the given function.
+
+    Args:
+        f (callable): A function that takes in a three dimensional numpy
+            array containing a time series dataset with shape
+            ``(n_samples, n_dimensions, length)`` and returns a
+            transformed dataset of the same type.
+    """
+
+    def __init__(self, f: Callable[[np.ndarray], np.ndarray]) -> None:
+        self._function = f
+
+    @property
+    def requires_fitting(self) -> bool:
+        return False
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        return self._function(X)
+
+    def _copy(self) -> "FUN":
+        return FUN(self._function)
+
+    def __eq__(self, other: Any) -> bool:
+        return False
+
+    def __str__(self) -> str:
+        return f"FUN({self._function})"

@@ -11,7 +11,7 @@ from .abstract import Preparateur
 class DIM(Preparateur):
     """Wrapper for another preparateur. DIM will evaluate the given
     preparateur only on the specified dimension(s) of the input time
-    series. The results are appended to the original time series without
+    series. The results are appended to the original time series with
     the given original dimensions removed. This way, the time series
     might get reordered!
 
