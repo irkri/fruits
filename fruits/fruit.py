@@ -167,12 +167,16 @@ class Fruit:
         result = np.nan_to_num(result, copy=False, nan=0.0)
         return result
 
-    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+    def fit_transform(
+        self,
+        X: np.ndarray,
+        callbacks: Optional[list[AbstractCallback]] = None,
+    ) -> np.ndarray:
         """Fits all slices to the given dataset and returns the
         transformed results of X from all slices.
         """
         self.fit(X)
-        return self.transform(X)
+        return self.transform(X, callbacks=callbacks)
 
     def summary(self) -> str:
         """Returns a summary of this object. The summary contains a
