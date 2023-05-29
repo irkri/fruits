@@ -120,32 +120,6 @@ def test_L2_weighting():
     np.testing.assert_allclose(the_result, result, rtol=1e-06)
 
 
-def test_tropical_weighting():
-    X = np.random.random_sample((10, 3, 50))
-    Y = np.zeros_like(X)
-    Y[:, :, 1:] = X[:, :, 1:] - X[:, :, :-1]
-    Y = np.cumsum(np.abs(Y[:, 0, :]), axis=1)
-    word = fruits.words.SimpleWord("[12][-3][2213]")
-    result = fruits.ISS(
-        [word],
-        semiring=fruits.semiring.Tropical(),
-        weighting=fruits.iss.Weighting([.5, .2], use_sum="L1")
-    ).fit_transform(X)[0, :, -1]
-    the_result = np.zeros((X.shape[0])) + np.inf
-    for m in range(X.shape[0]):
-        for k in range(X.shape[2]):
-            for j in range(k+1):
-                for i in range(j+1):
-                    the_result[m] = min(the_result[m],
-                        X[m, 0, i] + X[m, 1, i]
-                        - X[m, 2, j]
-                        + 2*X[m, 1, k] + X[m, 0, k] + X[m, 2, k]
-                        + .2 * (Y[m, j] - Y[m, k]) + .5 * (Y[m, i] - Y[m, j])
-                    )
-
-    np.testing.assert_allclose(the_result, result, rtol=1e-06)
-
-
 def test_arctic_weighting():
     X = np.random.random_sample((10, 3, 50))
     Y = np.zeros_like(X)
