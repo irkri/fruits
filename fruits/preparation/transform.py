@@ -112,10 +112,11 @@ class STD(Preparateur):
             out = (X - self._mean) / self._std
         else:
             mean_ = np.mean(X, axis=2)[:, :, np.newaxis]
-            std_ = 1
+            std_ = np.ones((X.shape[0], X.shape[1], 1))
             if self._div_std:
                 std_ = np.std(X, axis=2)[:, :, np.newaxis]
-            out = (X - mean_) / std_
+            out = X - mean_
+            out = np.where(std_ == 0, out, out / std_)
         return out
 
     def _copy(self) -> "STD":
