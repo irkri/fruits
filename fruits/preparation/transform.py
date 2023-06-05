@@ -2,7 +2,7 @@ __all__ = [
     "INC", "STD", "NRM", "MAV", "LAG", "FFN", "RIN", "RDW", "JLD", "FUN",
 ]
 
-from typing import Any, Callable, Literal, Union
+from typing import Any, Callable, Literal, Optional, Union
 
 import numba
 import numpy as np
@@ -116,7 +116,7 @@ class STD(Preparateur):
             if self._div_std:
                 std_ = np.std(X, axis=2)[:, :, np.newaxis]
             out = X - mean_
-            out = np.where(std_ == 0, out, out / std_)
+            out = np.where(np.abs(std_) < 1e-10, out, out / std_)
         return out
 
     def _copy(self) -> "STD":
@@ -419,6 +419,9 @@ class RIN(Preparateur):
             close to -1 or 1. If set to false, the kernel weights are
             sampled from a standard normal distribution and centered
             again after sampling to ensure mean zero. Defaults to false.
+        constant (float, optional): If set to a float, the kernel is
+            initialized with each value set to this number. Defaults to
+            randomly drawn values.
     """
 
     @staticmethod
@@ -457,11 +460,13 @@ class RIN(Preparateur):
         adaptive_width: bool = False,
         out_dim: int = -1,
         force_sum_one: bool = False,
+        constant: Optional[float] = None,
     ) -> None:
         self._width = width
         self._adaptive_width = adaptive_width
         self._out_dim = out_dim
         self._force_sum_one = force_sum_one
+        self._constant = constant
 
     def _fit(self, X: np.ndarray) -> None:
         width = self._width(X.shape[2]) if callable(self._width) else (
@@ -481,7 +486,10 @@ class RIN(Preparateur):
         self._dims_per_kernel = np.random.choice(
             X.shape[1], size=X.shape[1], replace=False,
         ).astype(np.int32)
-        if self._force_sum_one:
+        if self._constant is not None:
+            self._kernel = np.ones((X.shape[1], width), dtype=np.float64)
+            self._kernel = self._kernel * self._constant
+        elif self._force_sum_one:
             while True:
                 self._kernel = np.random.uniform(
                     -1., 1.,
@@ -525,20 +533,22 @@ class RIN(Preparateur):
             adaptive_width=self._adaptive_width,
             out_dim=self._out_dim,
             force_sum_one=self._force_sum_one,
+            constant=self._constant,
         )
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, RIN) and (self._width == other._width
                 and self._adaptive_width == other._adaptive_width
                 and self._out_dim == other._out_dim
-                and self._force_sum_one == other._force_sum_one):
+                and self._force_sum_one == other._force_sum_one
+                and self._constant == other._constant):
             return True
         return False
 
     def __str__(self) -> str:
         return (
             f"RIN({self._width}, {self._adaptive_width}, "
-            f"{self._out_dim}, {self._force_sum_one})"
+            f"{self._out_dim}, {self._force_sum_one}, {self._constant})"
         )
 
 
