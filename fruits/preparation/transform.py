@@ -23,24 +23,33 @@ class INC(Preparateur):
         X_inc = [0, x_2-x_1, x_3-x_2, ..., x_n-x_{n-1}].
 
     Args:
-        shift (int or float, optional): If an integer is given, the time
-            series is shifted this number of indices bevor subtracting
-            it from the unshifted version. In the example above, this
-            shift is one. A float value will be multiplied with the
-            length of the time series to get the actual shift, rounded
-            up.
+        shift (int, float or callable, optional): If an integer is
+            given, the time series is shifted this number of indices
+            bevor subtracting it from the unshifted version. In the
+            example above, this shift is one. A float value will be
+            multiplied with the length of the time series to get the
+            actual shift, rounded up. A callable must take an integer,
+            the time series length, as input and return a corresponding
+            integer shift. Defaults to 1.
+        depth (int, optional): The number of times this transform is
+            applied, e.g. ``depth=2`` corresponds to the second order
+            increments. Defaults to 1.
         zero_padding (bool, optional): If set to True, then the first
-            entry in each time series will be set to 0. If False, it
-            is set to the first value of the original time series.
-            Defaults to True.
+            entry in each time series will be set to 0. If False, it is
+            set to the first value of the original time series. Defaults
+            to True.
     """
 
     def __init__(
         self,
-        shift: Union[int, float] = 1,
+        shift: Union[int, float, Callable[[int], int]] = 1,
+        depth: int = 1,
         zero_padding: bool = True,
     ) -> None:
         self._shift = shift
+        if depth < 1:
+            raise ValueError("depth has to be a positive integer > 0")
+        self._depth = depth
         self._zero_padding = zero_padding
 
     @property
@@ -48,28 +57,31 @@ class INC(Preparateur):
         return False
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        out = _increments(
-            X,
-            self._shift if isinstance(self._shift, int) else (
-                np.ceil(self._shift * X.shape[2])
-            )
-        )
-        if not self._zero_padding:
-            out[:, :, :self._shift] = X[:, :, :self._shift]
+        shift = self._shift
+        if isinstance(self._shift, float):
+            shift = np.ceil(self._shift * X.shape[2])
+        elif callable(self._shift):
+            shift = self._shift(X.shape[2])
+        out = X
+        for _ in range(self._depth):
+            out = _increments(out, shift)
+            if not self._zero_padding:
+                out[:, :, :self._shift] = X[:, :, :self._shift]
         return out
 
     def _copy(self) -> "INC":
-        return INC(self._shift, self._zero_padding)
+        return INC(self._shift, self._depth, self._zero_padding)
 
     def __eq__(self, other) -> bool:
         if (isinstance(other, INC)
-                and self._zero_padding == other._zero_padding
-                and self._shift == other._shift):
+                and self._shift == other._shift
+                and self._depth == other._depth
+                and self._zero_padding == other._zero_padding):
             return True
         return False
 
     def __str__(self) -> str:
-        return f"INC({self._shift}, {self._zero_padding})"
+        return f"INC({self._shift}, {self._depth}, {self._zero_padding})"
 
 
 class STD(Preparateur):
