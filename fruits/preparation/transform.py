@@ -85,17 +85,24 @@ class STD(Preparateur):
         var (bool, optional): Whether to standardize the variance of the
             time series. If set to false, the resulting time series will
             only be centered to zero. Defaults to True.
+        std_eps (float, optional): Consider standard deviations smaller
+            then this number to be equal to zero. This will reduce the
+            number of large values after this transform, which might
+            explode in further calculations of iterated sums. Defaults
+            to ``1e-5``.
     """
 
     def __init__(
         self,
         separately: bool = True,
         var: bool = True,
+        std_eps: float = 1e-5,
     ) -> None:
         self._separately = separately
         self._div_std = var
         self._mean = None
         self._std = None
+        self._eps = std_eps
 
     def _fit(self, X: np.ndarray) -> None:
         if not self._separately:
@@ -116,7 +123,7 @@ class STD(Preparateur):
             if self._div_std:
                 std_ = np.std(X, axis=2)[:, :, np.newaxis]
             out = X - mean_
-            out = np.where(np.abs(std_) < 1e-10, out, out / std_)
+            out = np.where(np.abs(std_) < self._eps, out, out / std_)
         return out
 
     def _copy(self) -> "STD":
