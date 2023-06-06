@@ -494,7 +494,10 @@ class RIN(Preparateur):
     def _fit(self, X: np.ndarray) -> None:
         if self._const_kernel is not None:
             self._kernel = self._const_kernel.copy()
+            self._ndim_per_kernel = np.ones((X.shape[1],))
+            self._dims_per_kernel = np.arange(X.shape[1])
             return
+
         width = self._width(X.shape[2]) if callable(self._width) else (
             min(self._width, X.shape[2]-1)
         )
