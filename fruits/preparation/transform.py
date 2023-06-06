@@ -57,11 +57,15 @@ class INC(Preparateur):
         return False
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        shift = self._shift
-        if isinstance(self._shift, float):
+        if isinstance(self._shift, int):
+            shift = self._shift
+        elif isinstance(self._shift, float):
             shift = np.ceil(self._shift * X.shape[2])
         elif callable(self._shift):
             shift = self._shift(X.shape[2])
+        else:
+            raise TypeError(f"Type {type(self._shift)} "
+                            f"not supported for argument shift")
         out = X
         for _ in range(self._depth):
             out = _increments(out, shift)
@@ -97,11 +101,12 @@ class STD(Preparateur):
         var (bool, optional): Whether to standardize the variance of the
             time series. If set to false, the resulting time series will
             only be centered to zero. Defaults to True.
-        std_eps (float, optional): Consider standard deviations smaller
-            then this number to be equal to zero. This will reduce the
-            number of large values after this transform, which might
-            explode in further calculations of iterated sums. Defaults
-            to ``1e-5``.
+        std_eps (float, optional): Error to add to the standard
+            deviation before dividing the (centered) time series by it.
+            This avoids 'division by zero' errors and will reduce the
+            number of large values after this transform, which otherwise
+            might explode in further calculations of iterated sums.
+            Defaults to ``1e-5``.
     """
 
     def __init__(
@@ -128,14 +133,13 @@ class STD(Preparateur):
         if not self._separately:
             if self._mean is None or self._std is None:
                 raise RuntimeError("Missing call of self.fit()")
-            out = (X - self._mean) / self._std
+            out = (X - self._mean) / (self._std + self._eps)
         else:
             mean_ = np.mean(X, axis=2)[:, :, np.newaxis]
             std_ = np.ones((X.shape[0], X.shape[1], 1))
             if self._div_std:
                 std_ = np.std(X, axis=2)[:, :, np.newaxis]
-            out = X - mean_
-            out = np.where(np.abs(std_) < self._eps, out, out / std_)
+            out = (X - mean_) / (std_ + self._eps)
         return out
 
     def _copy(self) -> "STD":
@@ -438,9 +442,9 @@ class RIN(Preparateur):
             close to -1 or 1. If set to false, the kernel weights are
             sampled from a standard normal distribution and centered
             again after sampling to ensure mean zero. Defaults to false.
-        constant (float, optional): If set to a float, the kernel is
-            initialized with each value set to this number. Defaults to
-            randomly drawn values.
+        kernel (np.ndarray, optional): If set to a numpy array, the
+            kernel is taken as given. This will ignore all other
+            arguments of the class except ``adaptive_width``.
     """
 
     @staticmethod
@@ -479,15 +483,18 @@ class RIN(Preparateur):
         adaptive_width: bool = False,
         out_dim: int = -1,
         force_sum_one: bool = False,
-        constant: Optional[float] = None,
+        kernel: Optional[np.ndarray] = None,
     ) -> None:
         self._width = width
         self._adaptive_width = adaptive_width
         self._out_dim = out_dim
         self._force_sum_one = force_sum_one
-        self._constant = constant
+        self._const_kernel = kernel
 
     def _fit(self, X: np.ndarray) -> None:
+        if self._const_kernel is not None:
+            self._kernel = self._const_kernel.copy()
+            return
         width = self._width(X.shape[2]) if callable(self._width) else (
             min(self._width, X.shape[2]-1)
         )
@@ -505,10 +512,7 @@ class RIN(Preparateur):
         self._dims_per_kernel = np.random.choice(
             X.shape[1], size=X.shape[1], replace=False,
         ).astype(np.int32)
-        if self._constant is not None:
-            self._kernel = np.ones((X.shape[1], width), dtype=np.float64)
-            self._kernel = self._kernel * self._constant
-        elif self._force_sum_one:
+        if self._force_sum_one:
             while True:
                 self._kernel = np.random.uniform(
                     -1., 1.,
@@ -552,7 +556,7 @@ class RIN(Preparateur):
             adaptive_width=self._adaptive_width,
             out_dim=self._out_dim,
             force_sum_one=self._force_sum_one,
-            constant=self._constant,
+            kernel=self._const_kernel,
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -560,14 +564,14 @@ class RIN(Preparateur):
                 and self._adaptive_width == other._adaptive_width
                 and self._out_dim == other._out_dim
                 and self._force_sum_one == other._force_sum_one
-                and self._constant == other._constant):
+                and self._const_kernel == other._const_kernel):
             return True
         return False
 
     def __str__(self) -> str:
         return (
             f"RIN({self._width}, {self._adaptive_width}, "
-            f"{self._out_dim}, {self._force_sum_one}, {self._constant})"
+            f"{self._out_dim}, {self._force_sum_one}, {self._const_kernel})"
         )
 
 
