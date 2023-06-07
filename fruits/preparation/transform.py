@@ -1,5 +1,5 @@
 __all__ = [
-    "INC", "STD", "NRM", "MAV", "LAG", "FFN", "RIN", "RDW", "JLD", "FUN",
+    "INC", "STD", "NRM", "MAV", "LAG", "FFN", "RIN", "RDW", "JLD", "SPE", "FUN"
 ]
 
 from typing import Any, Callable, Literal, Optional, Union
@@ -579,7 +579,7 @@ class RIN(Preparateur):
 
 
 class RDW(Preparateur):
-    """Preparatuer: Random Dimension Weights
+    """Preparateur: Random Dimension Weights
 
     This preparateur exponentially scales dimensions in the time series
     by a random exponent uniformly for all time steps.
@@ -624,7 +624,7 @@ class RDW(Preparateur):
 
 
 class JLD(Preparateur):
-    """Preparatuer: Johnson-Lindenstrauss Dimensionality Reduction
+    """Preparateur: Johnson-Lindenstrauss Dimensionality Reduction
 
     This preparateur transforms the input dimensions of one time series
     by multiplying each time step with a vector having random gaussian
@@ -676,8 +676,53 @@ class JLD(Preparateur):
         return f"JLD({self._d})"
 
 
+class SPE(Preparateur):
+    """Preparateur: Sinusoidal Positional Embedding
+
+    Transforms a time series by multiplying it with a sine wave function
+    of a certain frequency.
+
+    Args:
+        freq (float): Frequency parameter of the sine wave. This should
+            be a value between 0 and 1.
+        operation (str, optional): Type of the operation used for the
+            embedding. Has to be either 'additive' or 'multiplicative'.
+            Defaults to 'multiplicative'.
+    """
+
+    def __init__(
+        self,
+        freq: float,
+        operation: Literal["additive", "multiplicative"] = "multiplicative",
+    ) -> None:
+        self._freq = freq
+        self._operation: Literal["additive", "multiplicative"] = operation
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        wave = np.sin(np.arange(X.shape[2]) / (X.shape[2]**self._freq))
+        if self._operation == "multiplicative":
+            return X * wave[np.newaxis, np.newaxis, :]
+        elif self._operation == "additive":
+            return X + wave[np.newaxis, np.newaxis, :]
+        else:
+            raise ValueError(f"Unknown operation given: {self._operation}")
+
+    def _copy(self) -> "SPE":
+        return SPE(self._freq, operation=self._operation)
+
+    def __eq__(self, other: Any) -> bool:
+        if (isinstance(other, SPE)
+                and self._freq == other._freq
+                and self._operation == other._operation):
+            return True
+        return False
+
+    def __str__(self) -> str:
+        return f"SPE({self._freq}, {self._operation})"
+
+
 class FUN(Preparateur):
-    """Preparatuer: Function Transform
+    """Preparateur: Function Transform
 
     This preparateur transforms the input time series dataset by
     applying the given function.
