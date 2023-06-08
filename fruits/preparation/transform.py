@@ -688,18 +688,28 @@ class SPE(Preparateur):
         operation (str, optional): Type of the operation used for the
             embedding. Has to be either 'additive' or 'multiplicative'.
             Defaults to 'multiplicative'.
+        function (callable, optional): A callable that is used to
+            transform time steps. The results of this callable are then
+            added or multiplied to the input time series. Defaults to a
+            sine function.
     """
 
     def __init__(
         self,
         freq: float,
         operation: Literal["additive", "multiplicative"] = "multiplicative",
+        function: Optional[Callable[[np.ndarray], np.ndarray]] = None,
     ) -> None:
         self._freq = freq
         self._operation: Literal["additive", "multiplicative"] = operation
+        self._function = function
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        wave = np.sin(np.arange(X.shape[2]) / (X.shape[2]**self._freq))
+        range_ = np.arange(X.shape[2]) / (X.shape[2]**self._freq)
+        if self._function is None:
+            wave = np.sin(range_)
+        else:
+            wave = self._function(range_)
         if self._operation == "multiplicative":
             return X * wave[np.newaxis, np.newaxis, :]
         elif self._operation == "additive":
@@ -708,17 +718,22 @@ class SPE(Preparateur):
             raise ValueError(f"Unknown operation given: {self._operation}")
 
     def _copy(self) -> "SPE":
-        return SPE(self._freq, operation=self._operation)
+        return SPE(
+            freq=self._freq,
+            operation=self._operation,
+            function=self._function,
+        )
 
     def __eq__(self, other: Any) -> bool:
         if (isinstance(other, SPE)
                 and self._freq == other._freq
-                and self._operation == other._operation):
+                and self._operation == other._operation
+                and self._function == other._function):
             return True
         return False
 
     def __str__(self) -> str:
-        return f"SPE({self._freq}, {self._operation})"
+        return f"SPE({self._freq}, {self._operation}, {self._function})"
 
 
 class FUN(Preparateur):
