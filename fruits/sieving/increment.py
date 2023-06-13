@@ -2,7 +2,7 @@ __all__ = ["NPI", "MPI", "XPI", "LPI"]
 
 from abc import abstractmethod
 from collections.abc import Sequence
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 import numba
 import numpy as np
@@ -51,8 +51,13 @@ class IncrementSieve(SegmentSieve):
         cut: Union[Sequence[float], float] = -1,
         q: Optional[Sequence[float]] = None,
         inc: int = 1,
+        coquantile_norm: Literal["L1", "L2"] = "L2",
     ) -> None:
-        super().__init__(cut, q if q is not None else (0.0, 1.0))
+        super().__init__(
+            cut,
+            q if q is not None else (0.0, 1.0),
+            coquantile_norm,
+        )
         self._inc = inc
 
     def _pre_transform(self, X: np.ndarray) -> np.ndarray:

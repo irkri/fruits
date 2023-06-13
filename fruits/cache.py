@@ -5,7 +5,7 @@ import numba
 import numpy as np
 
 
-@numba.njit("float64[:,:,:](float64[:,:,:], int32)", cache=True)
+@numba.njit("f8[:,:,:](f8[:,:,:], i4)", fastmath=True, cache=True)
 def _increments(X: np.ndarray, k: int) -> np.ndarray:
     # calculates the increments of each time series in X
     result = np.zeros(X.shape)
@@ -13,18 +13,16 @@ def _increments(X: np.ndarray, k: int) -> np.ndarray:
     return result
 
 
-@numba.njit("int64[:](float64[:,:,:], float64)", parallel=False, cache=True)
+@numba.njit("i8[:](f8[:,:], f8)", parallel=True, fastmath=True, cache=True)
 def _coquantile(X: np.ndarray, q: float) -> np.ndarray:
     # calculates the coquantiles of each time series in X for given q
-    Y = _increments(X, 1)[:, 0, :]
-    results = np.zeros(Y.shape[0], dtype=np.int64)
-    for i in numba.prange(Y.shape[0]):
-        Y[i, :] = np.cumsum(Y[i, :] * Y[i, :])
-        results[i] = np.sum(Y[i, :] <= q * Y[i, -1])
+    results = np.zeros(X.shape[0], dtype=np.int64)
+    for i in numba.prange(X.shape[0]):
+        results[i] = np.sum(X[i, :] <= q * X[i, -1])
     return results
 
 
-@numba.njit("float64[:,:](float64[:,:,:])", parallel=False, cache=True)
+@numba.njit("f8[:,:](f8[:,:,:])", parallel=True, fastmath=True, cache=True)
 def _L1_sum(X: np.ndarray) -> np.ndarray:
     Y = _increments(X, 1)[:, 0, :]
     results = np.zeros((Y.shape[0], Y.shape[1]), dtype=np.float64)
@@ -33,7 +31,7 @@ def _L1_sum(X: np.ndarray) -> np.ndarray:
     return results
 
 
-@numba.njit("float64[:,:](float64[:,:,:])", parallel=False, cache=True)
+@numba.njit("f8[:,:](f8[:,:,:])", parallel=True, fastmath=True, cache=True)
 def _L2_sum(X: np.ndarray) -> np.ndarray:
     Y = _increments(X, 1)[:, 0, :]
     results = np.zeros((Y.shape[0], Y.shape[1]), dtype=np.float64)
@@ -63,8 +61,8 @@ class SharedSeedCache:
 
     def __init__(self, X: Optional[np.ndarray] = None) -> None:
         self._cache: dict[CacheType, dict[str, Union[None, np.ndarray]]] = {
-            CacheType.COQUANTILE: {},
-            CacheType.ISS: {},
+            CacheType.COQUANTILE: dict(),
+            CacheType.ISS: dict(),
         }
         if X is not None:
             if X.ndim == 1:
@@ -98,10 +96,15 @@ class SharedSeedCache:
                 or self._cache[cache_id][key] is None):
             if X is None and self._input is not None:
                 if cache_id == CacheType.COQUANTILE:
-                    self._cache[cache_id][key] = _coquantile(
-                        self._input,
-                        float(key),
-                    )
+                    c, norm = key.split(":")
+                    if norm == "L1":
+                        self._cache[cache_id][key] = _coquantile(
+                            _L1_sum(self._input), float(c),
+                        )
+                    elif norm == "L2":
+                        self._cache[cache_id][key] = _coquantile(
+                            _L2_sum(self._input), float(c),
+                        )
                 elif cache_id == CacheType.ISS:
                     if key == "L1":
                         self._cache[cache_id][key] = _L1_sum(self._input)
@@ -113,7 +116,15 @@ class SharedSeedCache:
                 elif X.ndim == 2:
                     X = X[:, np.newaxis, :]
                 if cache_id == CacheType.COQUANTILE:
-                    self._cache[cache_id][key] = _coquantile(X, float(key))
+                    c, norm = key.split(":")
+                    if norm == "L1":
+                        self._cache[cache_id][key] = _coquantile(
+                            _L1_sum(X), float(c),
+                        )
+                    elif norm == "L2":
+                        self._cache[cache_id][key] = _coquantile(
+                            _L2_sum(X), float(c),
+                        )
                 elif cache_id == CacheType.ISS:
                     if key == "L1":
                         self._cache[cache_id][key] = _L1_sum(X)

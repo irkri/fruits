@@ -123,7 +123,7 @@ def test_npi():
     for key in ["0.2", "0.7", "0.5"]:
         cache.get(
             fruits.cache.CacheType.COQUANTILE,
-            key,
+            key+":L2",
             np.array([[[5, 8, 2, 6, 0]], [[-5, -1, -4, -0.5, -8]]]),
         )
 

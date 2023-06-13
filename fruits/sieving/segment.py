@@ -2,7 +2,7 @@ __all__ = ["MAX", "MIN", "END", "CUR"]
 
 from abc import ABC
 from collections.abc import Sequence
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 import numba
 import numpy as np
@@ -35,9 +35,11 @@ class SegmentSieve(FeatureSieve, ABC):
         self,
         cut: Union[Sequence[float], float] = -1,
         q: Optional[Sequence[float]] = None,
+        coquantile_norm: Literal["L1", "L2"] = "L2",
     ) -> None:
         self._cut = cut if isinstance(cut, Sequence) else (cut, )
         self._q = q if isinstance(q, Sequence) else (-1.0, 1.0)
+        self._coquantile_norm = coquantile_norm
 
     @property
     def requires_fitting(self) -> bool:
@@ -52,7 +54,7 @@ class SegmentSieve(FeatureSieve, ABC):
             if isinstance(cut, float):
                 new_cuts[:, i+1] = self._cache.get(
                     CacheType.COQUANTILE,
-                    str(cut),
+                    str(cut)+":"+self._coquantile_norm,
                 )
             else:
                 new_cuts[:, i+1] = self._cut[i] if self._cut[i] >= 0 else (

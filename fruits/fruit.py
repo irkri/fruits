@@ -118,7 +118,11 @@ class Fruit:
         """Returns the total sum of features in all slices."""
         return sum(slc.nfeatures() for slc in self._slices)
 
-    def fit(self, X: np.ndarray) -> None:
+    def fit(
+        self,
+        X: np.ndarray,
+        cache: Optional[SharedSeedCache] = None,
+    ) -> None:
         """Fits all slices to the given data.
 
         Args:
@@ -126,15 +130,16 @@ class Fruit:
                 numpy array of shape
                 ``(n_series, n_dimensions, series_length)``.
         """
-        cache = SharedSeedCache(X)
+        cache_ = SharedSeedCache(X) if cache is None else cache
         for slc in self._slices:
-            slc.fit(X, cache=cache)
+            slc.fit(X, cache=cache_)
         self._fitted = True
 
     def transform(
         self,
         X: np.ndarray,
         callbacks: Optional[list[AbstractCallback]] = None,
+        cache: Optional[SharedSeedCache] = None,
     ) -> np.ndarray:
         """Returns a two dimensional array of all features from all
         slices this Fruit object contains.
@@ -155,14 +160,14 @@ class Fruit:
             callbacks = []
         if not self._fitted:
             raise RuntimeError("Missing call of self.fit")
-        cache = SharedSeedCache(X)
+        cache_ = SharedSeedCache(X) if cache is None else cache
         result = np.zeros((X.shape[0], self.nfeatures()))
         index = 0
         for slc in self._slices:
             for callback in callbacks:
                 callback.on_next_slice()
             k = slc.nfeatures()
-            result[:, index:index+k] = slc.transform(X, callbacks, cache)
+            result[:, index:index+k] = slc.transform(X, callbacks, cache_)
             index += k
         result = np.nan_to_num(result, copy=False, nan=0.0)
         return result

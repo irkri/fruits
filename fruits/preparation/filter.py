@@ -93,11 +93,11 @@ class WIN(Preparateur):
     def _transform(self, X: np.ndarray) -> np.ndarray:
         coq_start = self._cache.get(
             CacheType.COQUANTILE,
-            str(self._start),
+            str(self._start)+":L2",
         )
         coq_end = self._cache.get(
             CacheType.COQUANTILE,
-            str(self._end),
+            str(self._end)+":L2",
         )
         result = np.zeros_like(X)
         for i in range(X.shape[0]):

@@ -28,7 +28,7 @@ def test_increments():
 
 
 def test_standardization():
-    X_1_1 = fruits.preparation.STD().fit_transform(X_1)
+    X_1_1 = fruits.preparation.STD(std_eps=1e-10).fit_transform(X_1)
 
     np.testing.assert_almost_equal(0, np.mean(X_1_1.flatten()))
     np.testing.assert_almost_equal(1, np.std(X_1_1.flatten()))
