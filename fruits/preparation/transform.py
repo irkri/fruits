@@ -7,7 +7,7 @@ from typing import Any, Callable, Literal, Optional, Union
 import numba
 import numpy as np
 
-from ..cache import _increments
+from ..cache import CacheType, _increments
 from .abstract import Preparateur
 
 
@@ -680,11 +680,13 @@ class SPE(Preparateur):
     """Preparateur: Sinusoidal Positional Embedding
 
     Transforms a time series by multiplying it with a sine wave function
-    of a certain frequency.
+    of a certain frequency.::
+
+        y_t = x_t * sin(t / T**f), t = 1, ..., T
 
     Args:
-        freq (float): Frequency parameter of the sine wave. This should
-            be a value between 0 and 1.
+        freq (float): Frequency parameter ``f`` of the sine wave. This
+            should be a value between 0 and 1.
         operation (str, optional): Type of the operation used for the
             embedding. Has to be either 'additive' or 'multiplicative'.
             Defaults to 'multiplicative'.
@@ -692,6 +694,12 @@ class SPE(Preparateur):
             transform time steps. The results of this callable are then
             added or multiplied to the input time series. Defaults to a
             sine function.
+        step_transform (str, optional): If set to 'L1' or 'L2', the
+            cumulative sum of the normed increments is used in the sine
+            function instead of ``t``.
+        max_length (int, optional): The parameter ``T`` in the
+            denominator controlling the strength of frequency changes of
+            the sine function. Defaults to the time series length.
     """
 
     def __init__(
@@ -699,21 +707,37 @@ class SPE(Preparateur):
         freq: float,
         operation: Literal["additive", "multiplicative"] = "multiplicative",
         function: Optional[Callable[[np.ndarray], np.ndarray]] = None,
+        step_transform: Optional[Literal["L1", "L2"]] = None,
+        max_length: Optional[int] = None,
     ) -> None:
         self._freq = freq
         self._operation: Literal["additive", "multiplicative"] = operation
         self._function = function
+        self._step_transform: Optional[Literal["L1", "L2"]] = step_transform
+        self._max_length = max_length
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        range_ = np.arange(X.shape[2]) / (X.shape[2]**self._freq)
+        if self._step_transform is None:
+            T = X.shape[2] if self._max_length is None else self._max_length
+            range_ = np.arange(X.shape[2]) / (T**self._freq)
+        else:
+            range_ = self._cache.get(CacheType.ISS, self._step_transform, X)
+            T = range_[:, -1:] if self._max_length is None else (
+                self._max_length
+            )
+            range_ = (range_ / (T**self._freq))
         if self._function is None:
             wave = np.sin(range_)
         else:
             wave = self._function(range_)
+        wave = (
+            wave[np.newaxis, np.newaxis, :]
+            if self._step_transform is None else wave[:, np.newaxis, :]
+        )
         if self._operation == "multiplicative":
-            return X * wave[np.newaxis, np.newaxis, :]
+            return X * wave
         elif self._operation == "additive":
-            return X + wave[np.newaxis, np.newaxis, :]
+            return X + wave
         else:
             raise ValueError(f"Unknown operation given: {self._operation}")
 
@@ -722,18 +746,23 @@ class SPE(Preparateur):
             freq=self._freq,
             operation=self._operation,
             function=self._function,
+            step_transform=self._step_transform,
+            max_length=self._max_length,
         )
 
     def __eq__(self, other: Any) -> bool:
         if (isinstance(other, SPE)
                 and self._freq == other._freq
                 and self._operation == other._operation
-                and self._function == other._function):
+                and self._function == other._function
+                and self._step_transform == other._step_transform
+                and self._max_length == other._max_length):
             return True
         return False
 
     def __str__(self) -> str:
-        return f"SPE({self._freq}, {self._operation}, {self._function})"
+        return (f"SPE({self._freq}, {self._operation}, {self._function}, "
+                f"{self._step_transform}, {self._max_length})")
 
 
 class FUN(Preparateur):
