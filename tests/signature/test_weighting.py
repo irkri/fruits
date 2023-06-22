@@ -8,7 +8,7 @@ def test_index_weighting():
     word = fruits.words.SimpleWord("[12][2][33]")
     result = fruits.ISS(
         [word],
-        weighting=fruits.iss.Weighting([.6, .2]),
+        weighting=fruits.iss.weighting.Indices(scalars=[.6, .2]),
     ).fit_transform(X)[0, :, -1]
     the_result = np.zeros((X.shape[0]))
     for m in range(X.shape[0]):
@@ -18,8 +18,8 @@ def test_index_weighting():
                     the_result[m] += X[m, 0, i] * X[m, 1, i] \
                         * X[m, 1, j] \
                         * X[m, 2, k]**2 \
-                        * np.exp(.6 * (i-50 - j+50)) \
-                        * np.exp(.2 * (j-50 - k+50))
+                        * np.exp(.6 * (i/X.shape[2] - j/X.shape[2])) \
+                        * np.exp(.2 * (j/X.shape[2] - k/X.shape[2]))
 
     np.testing.assert_allclose(the_result, result, rtol=1e-05)
 
@@ -27,7 +27,7 @@ def test_index_weighting():
     word = fruits.words.SimpleWord("[(10)12345][9][23]")
     result = fruits.ISS(
         [word],
-        weighting=fruits.iss.Weighting([.45, 3.14]),
+        weighting=fruits.iss.weighting.Indices(scalars=[.45, 3.14]),
     ).fit_transform(X)[0, :, -1]
     the_result = np.zeros((X.shape[0]))
     for m in range(X.shape[0]):
@@ -39,8 +39,8 @@ def test_index_weighting():
                         * X[m, 3, i] * X[m, 4, i] \
                         * X[m, 8, j] \
                         * X[m, 1, k] * X[m, 2, k] \
-                        * np.exp(.45 * (i-50 - j+50)) \
-                        * np.exp(3.14 * (j-50 - k+50))
+                        * np.exp(.45 * (i/X.shape[2] - j/X.shape[2])) \
+                        * np.exp(3.14 * (j/X.shape[2] - k/X.shape[2]))
 
     np.testing.assert_allclose(the_result, result, rtol=1e-05)
 
@@ -55,7 +55,7 @@ def test_L1_weighting():
     word = fruits.words.SimpleWord("[12][2][33]")
     result = fruits.ISS(
         [word],
-        weighting=fruits.iss.Weighting([.6, .2], use_sum="L1"),
+        weighting=fruits.iss.weighting.L1([.6, .2]),
     ).fit_transform(X)[0, :, -1]
     the_result = np.zeros((X.shape[0]))
     for m in range(X.shape[0]):
@@ -81,7 +81,7 @@ def test_L2_weighting():
     word = fruits.words.SimpleWord("[12][2][33]")
     result = fruits.ISS(
         [word],
-        weighting=fruits.iss.Weighting([.6, .2], use_sum="L2"),
+        weighting=fruits.iss.weighting.L2([.6, .2]),
     ).fit_transform(X)[0, :, -1]
     the_result = np.zeros((X.shape[0]))
     for m in range(X.shape[0]):
@@ -105,7 +105,7 @@ def test_L2_weighting():
     word = fruits.words.SimpleWord("[12][3][2213]")
     result = fruits.ISS(
         [word],
-        weighting=fruits.iss.Weighting(use_sum="L2"),
+        weighting=fruits.iss.weighting.L2(),
     ).fit_transform(X)[0, :, -1]
     the_result = np.zeros((X.shape[0]))
     for m in range(X.shape[0]):
@@ -129,7 +129,7 @@ def test_arctic_weighting():
     result = fruits.ISS(
         [word],
         semiring=fruits.semiring.Arctic(),
-        weighting=fruits.iss.Weighting([.5, .2], use_sum="L1"),
+        weighting=fruits.iss.weighting.L1([.5, .2]),
     ).fit_transform(X)[0, :, -1]
     the_result = np.zeros((X.shape[0])) - np.inf
     for m in range(X.shape[0]):
@@ -157,7 +157,7 @@ def test_bayesian_weighting():
     result = fruits.ISS(
         [word],
         semiring=fruits.semiring.Bayesian(),
-        weighting=fruits.iss.Weighting([.6, .2], use_sum="L2")
+        weighting=fruits.iss.weighting.L2([.6, .2]),
     ).fit_transform(X)[0, :, -1]
     the_result = np.zeros((X.shape[0])) - np.inf
     for m in range(X.shape[0]):
