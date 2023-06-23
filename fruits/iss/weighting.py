@@ -108,21 +108,27 @@ class Plateaus(Weighting):
     Args:
         n (int): Number of plateaus. This results in a function
             comprised of ``n-1`` steps. Has to be ``> 1``.
+        reverse (bool, optional): Whether to reverse the step function
+            being descending instead of ascending (default).
     """
 
     def __init__(
         self,
         n: int,
+        reverse: bool = False,
         scalars: Optional[Sequence[float]] = None,
     ) -> None:
         super().__init__(scalars=scalars)
         if n <= 1:
             raise ValueError(f"Number of plateaus ({n}) has to be > 1")
         self._nplateaus = n
+        self._reverse = reverse
 
     def _get_lookup(self, n: int, l: int) -> np.ndarray:
         range_ = np.ones(l)
         step = int(l/(self._nplateaus))
         for i in range(self._nplateaus):
             range_[i*step:(i+1)*step] = i / (self._nplateaus-1)
+        if self._reverse:
+            range_ = range_[::-1]
         return np.ones((n, l)) * range_
