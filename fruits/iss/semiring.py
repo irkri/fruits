@@ -21,9 +21,7 @@ class Semiring(ABC):
         if isinstance(word, SimpleWord):
             try:
                 if weighting is not None:
-                    scalars, lookup = weighting.get_fast_args(
-                        Z.shape[0], Z.shape[2]
-                    )
+                    scalars, lookup = weighting.get_fast_args(Z)
                     if scalars is None:
                         scalars = np.ones((len(word)-1, ), dtype=np.float32)
                 else:

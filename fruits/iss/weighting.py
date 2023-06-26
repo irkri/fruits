@@ -44,13 +44,12 @@ class Weighting(ABC):
 
     def get_fast_args(
         self,
-        n: int,
-        l: int,
+        X: np.ndarray
     ) -> tuple[Optional[np.ndarray], np.ndarray]:
-        return self._scalars, self._get_lookup(n, l)
+        return self._scalars, self._get_lookup(X)
 
     @abstractmethod
-    def _get_lookup(self, n: int, l: int) -> np.ndarray:
+    def _get_lookup(self, X: np.ndarray) -> np.ndarray:
         ...
 
 
@@ -73,7 +72,8 @@ class Indices(Weighting):
         super().__init__(scalars=scalars)
         self._relative = relative
 
-    def _get_lookup(self, n: int, l: int) -> np.ndarray:
+    def _get_lookup(self, X: np.ndarray) -> np.ndarray:
+        n, _, l = X.shape
         range_ = np.arange(l)
         if self._relative:
             range_ = range_ / l
@@ -86,8 +86,8 @@ class L1(Weighting):
     :class:`Weighting` for more information.
     """
 
-    def _get_lookup(self, n: int, l: int) -> np.ndarray:
-        return self._cache.get(CacheType.ISS, "L1")
+    def _get_lookup(self, X: np.ndarray) -> np.ndarray:
+        return self._cache.get(CacheType.ISS, "L1", X)
 
 
 class L2(Weighting):
@@ -96,8 +96,8 @@ class L2(Weighting):
     :class:`Weighting` for more information.
     """
 
-    def _get_lookup(self, n: int, l: int) -> np.ndarray:
-        return self._cache.get(CacheType.ISS, "L2")
+    def _get_lookup(self, X: np.ndarray) -> np.ndarray:
+        return self._cache.get(CacheType.ISS, "L2", X)
 
 
 class Plateaus(Weighting):
@@ -124,7 +124,8 @@ class Plateaus(Weighting):
         self._nplateaus = n
         self._reverse = reverse
 
-    def _get_lookup(self, n: int, l: int) -> np.ndarray:
+    def _get_lookup(self, X: np.ndarray) -> np.ndarray:
+        n, _, l = X.shape
         range_ = np.ones(l)
         step = int(l/(self._nplateaus))
         for i in range(self._nplateaus):
