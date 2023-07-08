@@ -1,5 +1,6 @@
 __all__ = [
-    "INC", "STD", "NRM", "MAV", "LAG", "FFN", "RIN", "RDW", "JLD", "SPE", "FUN"
+    "INC", "STD", "NRM", "MAV", "LAG", "FFN", "RIN", "RDW", "JLD", "SPE",
+    "RPE", "FUN",
 ]
 
 from typing import Any, Callable, Literal, Optional, Union
@@ -763,6 +764,81 @@ class SPE(Preparateur):
     def __str__(self) -> str:
         return (f"SPE({self._freq}, {self._operation}, {self._function}, "
                 f"{self._step_transform}, {self._max_length})")
+
+
+class RPE(Preparateur):
+    """Preparateur: Rotational Positional Embedding
+
+    Transforms a two dimensional time series by multiplying it with a
+    rotation matrix ``R_t``.
+
+    Args:
+        freq (float): Frequency parameter ``f`` of the rotation. This
+            should be a value between 0 and 1.
+        step_transform (str, optional): If set to 'L1' or 'L2', the
+            cumulative sum of the normed increments is used in the sine
+            function instead of ``t``.
+        max_length (int, optional): The parameter ``T`` in the
+            denominator controlling the strength of frequency changes of
+            the sine function. Defaults to the time series length.
+    """
+
+    @staticmethod
+    @numba.njit(
+        "f8[:,:,:](f8[:,:,:], i4, f8)",
+        fastmath=True,
+        cache=True,
+        parallel=True,
+    )
+    def _backend(
+        X: np.ndarray,
+        T: int,
+        freq: float,
+    ) -> np.ndarray:
+        result = np.zeros((X.shape[0], 2, X.shape[2]))
+        for i in numba.prange(X.shape[0]):
+            for k in numba.prange(X.shape[2]):
+                result[i, 0, k] = (
+                    np.cos(k / T**freq) * X[i, 0, k] -
+                    np.sin(k / T**freq) * X[i, 1, k]
+                )
+                result[i, 1, k] = (
+                    np.sin(k / T**freq) * X[i, 0, k] +
+                    np.cos(k / T**freq) * X[i, 1, k]
+                )
+        return result
+
+    def __init__(
+        self,
+        freq: float,
+        max_length: Optional[int] = None,
+    ) -> None:
+        self._freq = freq
+        self._max_length = max_length
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        if X.shape[1] != 2:
+            raise ValueError(
+                f"RPE input has to have 2 dimensions, got {X.shape[1]}"
+            )
+        return RPE._backend(
+            X,
+            X.shape[2] if self._max_length is None else self._max_length,
+            self._freq,
+        )
+
+    def _copy(self) -> "RPE":
+        return RPE(freq=self._freq, max_length=self._max_length)
+
+    def __eq__(self, other: Any) -> bool:
+        if (isinstance(other, RPE)
+                and self._freq == other._freq
+                and self._max_length == other._max_length):
+            return True
+        return False
+
+    def __str__(self) -> str:
+        return f"RPE({self._freq}, {self._max_length})"
 
 
 class FUN(Preparateur):

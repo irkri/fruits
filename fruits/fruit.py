@@ -542,7 +542,7 @@ class FruitSlice:
             semiring = iss.semiring.__class__.__name__
             summary += f"\n{f'       | semiring: {semiring}': <38}"
             weighting = "None" if iss.weighting is None else (
-                "Index" if iss.weighting._norm is None else iss.weighting._norm
+                iss.weighting.__class__.__name__
             )
             summary += f"\n{f'       | weighting: {weighting}': <38}"
         if len(self._iss) == 0:
