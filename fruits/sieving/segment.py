@@ -1,4 +1,4 @@
-__all__ = ["MAX", "MIN", "END", "CUR"]
+__all__ = ["MAX", "MIN", "END", "CUR", "AVG", "STD"]
 
 from abc import ABC
 from collections.abc import Sequence
@@ -263,6 +263,92 @@ class CUR(SegmentSieve):
 
     def _summary(self) -> str:
         string = f"CUR -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
+
+
+class AVG(SegmentSieve):
+    """FeatureSieve: Average
+
+    Calculates the mean of the time series.
+    """
+
+    @staticmethod
+    @numba.njit(
+        "float64[:,:](float64[:,:], int64[:,:], float64[:])",
+        fastmath=True,
+        parallel=True,
+        cache=True,
+    )
+    def _backend(
+        X: np.ndarray,
+        cuts: np.ndarray,
+        quantiles: np.ndarray,
+    ) -> np.ndarray:
+        nfeatures = (cuts.shape[1] - 1) * (quantiles.shape[0] - 1)
+        result = np.zeros((X.shape[0], nfeatures))
+        for i in numba.prange(X.shape[0]):
+            for j in range(cuts.shape[1] - 1):
+                for k in range(quantiles.shape[0] - 1):
+                    arr = X[i, cuts[i, j]:cuts[i, j+1]]
+                    arr = arr[np.logical_and(
+                        quantiles[k] < arr, arr <= quantiles[k+1]
+                    )]
+                    result[i, j*(quantiles.shape[0]-1)+k] = np.mean(arr)
+        return result
+
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        if not self.requires_fitting:
+            self._get_unfitted_quantiles()
+        cuts = self._get_transformed_cuts(X, **kwargs)
+        return CUR._backend(X, cuts, self._quantiles)
+
+    def _summary(self) -> str:
+        string = f"AVG -> {self.nfeatures()}:"
+        for x in self._cut:
+            string += f"\n   > {x}"
+        return string
+
+
+class STD(SegmentSieve):
+    """FeatureSieve: Standard Deviation
+
+    Calculates the standard deviation of the time series.
+    """
+
+    @staticmethod
+    @numba.njit(
+        "float64[:,:](float64[:,:], int64[:,:], float64[:])",
+        fastmath=True,
+        parallel=True,
+        cache=True,
+    )
+    def _backend(
+        X: np.ndarray,
+        cuts: np.ndarray,
+        quantiles: np.ndarray,
+    ) -> np.ndarray:
+        nfeatures = (cuts.shape[1] - 1) * (quantiles.shape[0] - 1)
+        result = np.zeros((X.shape[0], nfeatures))
+        for i in numba.prange(X.shape[0]):
+            for j in range(cuts.shape[1] - 1):
+                for k in range(quantiles.shape[0] - 1):
+                    arr = X[i, cuts[i, j]:cuts[i, j+1]]
+                    arr = arr[np.logical_and(
+                        quantiles[k] < arr, arr <= quantiles[k+1]
+                    )]
+                    result[i, j*(quantiles.shape[0]-1)+k] = np.std(arr)
+        return result
+
+    def _transform(self, X: np.ndarray, **kwargs) -> np.ndarray:
+        if not self.requires_fitting:
+            self._get_unfitted_quantiles()
+        cuts = self._get_transformed_cuts(X, **kwargs)
+        return CUR._backend(X, cuts, self._quantiles)
+
+    def _summary(self) -> str:
+        string = f"STD -> {self.nfeatures()}:"
         for x in self._cut:
             string += f"\n   > {x}"
         return string
