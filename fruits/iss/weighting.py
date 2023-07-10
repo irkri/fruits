@@ -5,7 +5,7 @@ from typing import Optional, Sequence
 
 import numpy as np
 
-from ..cache import CacheType, SharedSeedCache
+from ..cache import CacheType, SharedSeedCache, _L1_sum, _L2_sum
 
 
 class Weighting(ABC):
@@ -84,20 +84,62 @@ class L1(Weighting):
     """Weighting for iterated sums where ``g(i)`` is the sum of absolute
     increments of the input time series up to time step ``i``. See class
     :class:`Weighting` for more information.
+
+    Args:
+        on_prepared (bool, optional): Whether to use the raw or prepared
+            input for the calculation of the transformed time series.
+            Defaults to the raw series.
+        relative (bool, optional): Whether to scale the output into the
+            interval ``[0,1]``. Defaults to False.
     """
 
+    def __init__(
+        self,
+        on_prepared: bool = False,
+        relative: bool = False,
+        scalars: Optional[Sequence[float]] = None,
+    ) -> None:
+        super().__init__(scalars=scalars)
+        self._on_prepared = on_prepared
+        self._relative = relative
+
     def _get_lookup(self, X: np.ndarray) -> np.ndarray:
-        return self._cache.get(CacheType.ISS, "L1", X)
+        if not self._on_prepared:
+            out = self._cache.get(CacheType.ISS, "L1", X)
+        else:
+            out = _L1_sum(X)
+        return out if not self._relative else out / out[:, -1]
 
 
 class L2(Weighting):
     """Weighting for iterated sums where ``g(i)`` is the sum of squared
     increments of the input time series up to time step ``i``. See class
     :class:`Weighting` for more information.
+
+    Args:
+        on_prepared (bool, optional): Whether to use the raw or prepared
+            input for the calculation of the transformed time series.
+            Defaults to the raw series.
+        relative (bool, optional): Whether to scale the output into the
+            interval ``[0,1]``. Defaults to False.
     """
 
+    def __init__(
+        self,
+        on_prepared: bool = False,
+        relative: bool = False,
+        scalars: Optional[Sequence[float]] = None,
+    ) -> None:
+        super().__init__(scalars=scalars)
+        self._on_prepared = on_prepared
+        self._relative = relative
+
     def _get_lookup(self, X: np.ndarray) -> np.ndarray:
-        return self._cache.get(CacheType.ISS, "L2", X)
+        if not self._on_prepared:
+            out = self._cache.get(CacheType.ISS, "L2", X)
+        else:
+            out = _L2_sum(X)
+        return out if not self._relative else out / out[:, -1]
 
 
 class Plateaus(Weighting):
