@@ -108,7 +108,7 @@ class L1(Weighting):
             out = self._cache.get(CacheType.ISS, "L1", X)
         else:
             out = _L1_sum(X)
-        return out if not self._relative else out / out[:, -1]
+        return out if not self._relative else out / out[:, -1:]
 
 
 class L2(Weighting):
@@ -139,7 +139,7 @@ class L2(Weighting):
             out = self._cache.get(CacheType.ISS, "L2", X)
         else:
             out = _L2_sum(X)
-        return out if not self._relative else out / out[:, -1]
+        return out if not self._relative else out / out[:, -1:]
 
 
 class Plateaus(Weighting):
