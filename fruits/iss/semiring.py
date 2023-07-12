@@ -167,11 +167,6 @@ class Reals(Semiring):
         lookup: np.ndarray,
         extended: int,
     ) -> np.ndarray:
-        if np.max(lookup[:, -1]) > 50:
-            indices = np.where(lookup[:, -1] > 50)
-            lookup[indices[0]] = lookup[indices[0]] * np.expand_dims(
-                50 / lookup[indices[0], -1], 1
-            )
         return self._iterated_sum_fast(
             Z,
             word,
@@ -465,11 +460,6 @@ class Bayesian(Semiring):
         lookup: np.ndarray,
         extended: int,
     ) -> np.ndarray:
-        if np.max(lookup[:, -1]) > 50:
-            indices = np.where(lookup[:, -1] > 50)
-            lookup[indices[0]] = lookup[indices[0]] * np.expand_dims(
-                50 / lookup[indices[0], -1], 1
-            )
         return self._iterated_sum_fast(
             Z,
             word,
