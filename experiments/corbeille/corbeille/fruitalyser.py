@@ -506,6 +506,7 @@ class Fruitalyser:
         source: Optional[Literal["train", "test", "all"]] = ...,
         axes: None = ...,
         nbins: int = ...,
+        **kwargs,
     ) -> tuple[Figure, Axes, Axes, Axes]:
         ...
 
@@ -518,6 +519,7 @@ class Fruitalyser:
         source: Optional[Literal["train", "test", "all"]] = ...,
         axes: Axes = ...,
         nbins: int = ...,
+        **kwargs,
     ) -> None:
         ...
 

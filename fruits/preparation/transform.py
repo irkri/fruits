@@ -629,9 +629,9 @@ class JLD(Preparateur):
 
     This preparateur transforms the input dimensions of one time series
     by multiplying each time step with a vector having random gaussian
-    distributed entries.
-    According to the Johnson-Lindenstrauss lemma, the distance between
-    vectors in the lower dimensional space are nearly preserved.
+    distributed entries. According to the Johnson-Lindenstrauss lemma,
+    there exists such a map, for which the distances between vectors in
+    the lower dimensional space are nearly preserved.
 
     Args:
         dim (int or float, optional): The number of output dimensions.
@@ -642,39 +642,107 @@ class JLD(Preparateur):
             dealing with high dimensional time series (``d>500``). It is
             designed so that the Johnson-Lindenstrauss lemma is
             applicable.
+        distribute (bool, optional): If set to true, each output
+            dimension is a linear combination of only some input
+            dimensions. The number of input dimensions is chosen to be
+            nearly the same for every output dimension. This requires
+            ``input_dim >= output_dim``. Defaults to false.
     """
 
-    def __init__(self, dim: Union[int, float] = 0.99) -> None:
+    @staticmethod
+    @numba.njit(
+        "f8[:,:,:](f8[:,:,:], f8[:], i4[:], i4[:])",
+        fastmath=True,
+        cache=True,
+        parallel=True,
+    )
+    def _backend(
+        X: np.ndarray,
+        kernel: np.ndarray,
+        ndim: np.ndarray,
+        dims: np.ndarray,
+    ) -> np.ndarray:
+        result = np.zeros((X.shape[0], ndim.size, X.shape[2]))
+        for i in numba.prange(X.shape[0]):
+            for k in numba.prange(X.shape[2]):
+                start_dim = 0
+                end_dim = 0
+                for new_dim in range(ndim.size):
+                    end_dim += ndim[new_dim]
+                    for j in range(start_dim, end_dim):
+                        result[i, new_dim, k] += (
+                            X[i, dims[j], k] * kernel[j]
+                        )
+                    start_dim += ndim[new_dim]
+        return result
+
+    def __init__(
+        self,
+        dim: Union[int, float] = 0.99,
+        distribute: bool = False,
+    ) -> None:
         if isinstance(dim, float) and not (0 < dim < 1):
             raise ValueError(
                 "'dim' has to be an integer or a float in (0, 1)"
             )
         self._d = dim
-        self._operator: np.ndarray
+        self._distribute = distribute
+        self._kernel: np.ndarray
 
     def _fit(self, X: np.ndarray) -> None:
         if isinstance(self._d, float):
             div_ = 3*self._d**2 - 2*self._d**3
-            d = int(24 * np.log(X.shape[1]) / div_) + 1
+            out_dim = int(24 * np.log(X.shape[1]) / div_) + 1
         else:
-            d = self._d
-        self._operator = np.random.randn(d, X.shape[1])
+            out_dim = self._d
+        if self._distribute:
+            if out_dim > X.shape[1]:
+                raise ValueError(
+                    f"Output dimensions ({out_dim}) should be "
+                    f"<= input dimensions ({X.shape[1]})"
+                )
+            quotient, remainder = divmod(X.shape[1], out_dim)
+            self._ndim_per_kernel = np.array(
+                [quotient + 1] * remainder + [quotient] * (out_dim-remainder),
+                dtype=np.int32,
+            )
+            self._dims_per_kernel = np.random.choice(
+                X.shape[1], size=X.shape[1], replace=False,
+            ).astype(np.int32)
+        else:
+            self._ndim_per_kernel = np.array(
+                out_dim*[X.shape[1]],
+                dtype=np.int32,
+            )
+            self._dims_per_kernel = np.array(
+                out_dim*list(range(X.shape[1])),
+                dtype=np.int32,
+            )
+        self._kernel = np.random.standard_normal(
+            X.shape[1] if self._distribute else X.shape[1]*out_dim
+        )
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        return np.matmul(self._operator, X)
+        return JLD._backend(
+            X,
+            self._kernel,
+            self._ndim_per_kernel,
+            self._dims_per_kernel,
+        )
 
     def _copy(self) -> "JLD":
-        return JLD(dim=self._d)
+        return JLD(dim=self._d, distribute=self._distribute)
 
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, JLD):
-            return False
-        if self._d == other._d:
+        if isinstance(other, JLD) and (
+            self._d == other._d and
+            self._distribute == other._distribute
+        ):
             return True
         return False
 
     def __str__(self) -> str:
-        return f"JLD({self._d})"
+        return f"JLD({self._d}, {self._distribute})"
 
 
 class SPE(Preparateur):
