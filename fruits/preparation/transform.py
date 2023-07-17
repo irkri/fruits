@@ -647,11 +647,14 @@ class JLD(Preparateur):
             dimensions. The number of input dimensions is chosen to be
             nearly the same for every output dimension. This requires
             ``input_dim >= output_dim``. Defaults to false.
+        bias (bool, optional): If set to true, also adds a random,
+            gaussian distributed bias to each projected dimension.
+            Defaults to False.
     """
 
     @staticmethod
     @numba.njit(
-        "f8[:,:,:](f8[:,:,:], f8[:], i4[:], i4[:])",
+        "f8[:,:,:](f8[:,:,:], f8[:], f8[:], i4[:], i4[:])",
         fastmath=True,
         cache=True,
         parallel=True,
@@ -659,6 +662,7 @@ class JLD(Preparateur):
     def _backend(
         X: np.ndarray,
         kernel: np.ndarray,
+        bias: np.ndarray,
         ndim: np.ndarray,
         dims: np.ndarray,
     ) -> np.ndarray:
@@ -672,7 +676,7 @@ class JLD(Preparateur):
                     for j in range(start_dim, end_dim):
                         result[i, new_dim, k] += (
                             X[i, dims[j], k] * kernel[j]
-                        )
+                        ) + bias[new_dim]
                     start_dim += ndim[new_dim]
         return result
 
@@ -680,6 +684,7 @@ class JLD(Preparateur):
         self,
         dim: Union[int, float] = 0.99,
         distribute: bool = False,
+        bias: bool = False,
     ) -> None:
         if isinstance(dim, float) and not (0 < dim < 1):
             raise ValueError(
@@ -688,6 +693,7 @@ class JLD(Preparateur):
         self._d = dim
         self._distribute = distribute
         self._kernel: np.ndarray
+        self._bias = bias
 
     def _fit(self, X: np.ndarray) -> None:
         if isinstance(self._d, float):
@@ -721,28 +727,34 @@ class JLD(Preparateur):
         self._kernel = np.random.standard_normal(
             X.shape[1] if self._distribute else X.shape[1]*out_dim
         )
+        if self._bias:
+            self._bias_weights = np.random.standard_normal(out_dim)
+        else:
+            self._bias_weights = np.zeros(out_dim, dtype=np.float64)
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         return JLD._backend(
             X,
             self._kernel,
+            self._bias_weights,
             self._ndim_per_kernel,
             self._dims_per_kernel,
         )
 
     def _copy(self) -> "JLD":
-        return JLD(dim=self._d, distribute=self._distribute)
+        return JLD(dim=self._d, distribute=self._distribute, bias=self._bias)
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, JLD) and (
             self._d == other._d and
-            self._distribute == other._distribute
+            self._distribute == other._distribute and
+            self._bias == other._bias
         ):
             return True
         return False
 
     def __str__(self) -> str:
-        return f"JLD({self._d}, {self._distribute})"
+        return f"JLD({self._d}, {self._distribute}, {self._bias})"
 
 
 class SPE(Preparateur):
