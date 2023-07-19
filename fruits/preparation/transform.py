@@ -351,7 +351,7 @@ class FFN(Preparateur):
         self._biases = np.random.normal(
             loc=0,
             scale=1.0,
-            size=self._d_hidden,
+            size=(d_hidden, ),
         )
         self._weights2 = np.random.normal(
             loc=0,
