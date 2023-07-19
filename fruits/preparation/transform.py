@@ -217,7 +217,9 @@ class MAV(Preparateur):
     Args:
         width (int or float, optional): Window width for the moving
             average. This is either a float that will be multiplied by
-            the length of the time series or an integer. Defaults to
+            the length of the time series or an integer. If set to -1,
+            the average is instead taken over all input dimensions (not
+            time), returning a one dimensional time series. Defaults to
             ``5``.
     """
 
@@ -236,15 +238,12 @@ class MAV(Preparateur):
                     result[i, j, k-1] = np.sum(X[i, j, k-width:k]) / width
         return result
 
-    def __init__(self, width: Union[int, float] = 5) -> None:
-        if isinstance(width, float):
-            if not 0.0 < width < 1.0:
+    def __init__(
+        self,
+        width: Union[int, float] = 5,
+    ) -> None:
+        if isinstance(width, float) and not 0.0 < width < 1.0:
                 raise ValueError("If width is a float, it has to be in (0,1)")
-        elif isinstance(width, int):
-            if width <= 0:
-                raise ValueError("If width is an integer, it has to be > 0")
-        else:
-            raise TypeError("width has to be an integer or a float in (0,1)")
         self._w_given = width
         self._w: int
 
@@ -253,12 +252,14 @@ class MAV(Preparateur):
             self._w = int(self._w_given * X.shape[2])
             if self._w <= 0:
                 self._w = 1
-        else:
+        elif self._w_given > 0:
             self._w = self._w_given
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_w"):
             raise RuntimeError("Missing call of self.fit()")
+        if self._w_given == -1:
+            return np.sum(X, axis=1) / X.shape[1]
         return MAV._backend(X, self._w)
 
     def _copy(self) -> "MAV":
@@ -311,68 +312,52 @@ class LAG(Preparateur):
 class FFN(Preparateur):
     """Preparateur: Feed-Forward Two-Layer Neural Network
 
-    Transforms single values of a time series. A neural network with one
-    hidden layer and a ReLU activation function is used. All weights and
-    biases are gaussian distributed with mean zero.
+    Transforms time steps of a time series individually. A neural
+    network with one hidden layer and a ReLU activation function is
+    used. All weights and biases are gaussian distributed with mean
+    zero.
 
     Args:
+        d_out (int, optional): Number of output dimensions.
+            Defaults to 1.
         d_hidden (int, optional): Number of nodes in the hidden layer.
-            Defaults to 10.
-        center (bool, optional): If set to true, each time series will
-            be explicitly centered before transforming with a bias drawn
-            from a normal distribution with mean 0. If set to false, all
-            time series are transformed without prior centering and the
-            bias will be drawn from a normal distribution with a mean
-            equal to the estimated mean of the training data calculated
-            in ``FFN.fit(X_train)``. Defaults to false.
+            Defaults to ``2*input_dimension``.
+        center (bool, optional): If set to true, each time series
+            dimension will be explicitly centered before transforming.
+            Defaults to true.
         relu_out (bool, optional): Whether to use a ReLU activation on
             the output too. Defaults to false.
     """
 
-    @staticmethod
-    @numba.njit(
-        "f8[:,:,:](f8[:,:,:], f8[:], f8[:], f8[:], b1)",
-        fastmath=True,
-        cache=True,
-        parallel=True,
-    )
-    def _backend(
-        X: np.ndarray,
-        weights1: np.ndarray,
-        biases: np.ndarray,
-        weights2: np.ndarray,
-        relu_out: bool,
-    ) -> np.ndarray:
-        result = np.zeros(X.shape)
-        for i in numba.prange(X.shape[0]):
-            for j in numba.prange(X.shape[1]):
-                for k in numba.prange(X.shape[2]):
-                    layer1 = weights1 * (X[i, j, k] - biases)
-                    layer1 = (layer1 * (layer1 > 0))
-                    layer2 = np.sum(weights2 * layer1)
-                    if relu_out:
-                        layer2 = (layer2 * (layer2 > 0))
-                    result[i, j, k] = layer2
-        return result
-
     def __init__(
         self,
-        d_hidden: int = 10,
-        center: bool = False,
+        d_out: int = 1,
+        d_hidden: Optional[int] = None,
+        center: bool = True,
         relu_out: bool = False,
     ) -> None:
         self._d_hidden = d_hidden
+        self._d_out = d_out
         self._center = center
         self._relu_out = relu_out
 
     def _fit(self, X: np.ndarray) -> None:
-        self._weights1 = np.random.normal(scale=1.0, size=self._d_hidden)
+        d_hidden = 2*X.shape[1] if self._d_hidden is None else self._d_hidden
+        self._weights1 = np.random.normal(
+            loc=0,
+            scale=1.0,
+            size=(d_hidden, X.shape[1]),
+        )
         self._biases = np.random.normal(
-            loc=0 if self._center else np.mean(X),
-            scale=np.std(X),
+            loc=0,
+            scale=1.0,
             size=self._d_hidden,
         )
-        self._weights2 = np.random.normal(scale=1.0, size=self._d_hidden)
+        self._weights2 = np.random.normal(
+            loc=0,
+            scale=1.0,
+            size=(self._d_out, d_hidden),
+        )
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if not hasattr(self, "_weights1"):
@@ -380,23 +365,27 @@ class FFN(Preparateur):
         X_in = X
         if self._center:
             X_in = X - np.mean(X, axis=2)[:, :, np.newaxis]
-        return FFN._backend(
-            X_in,
-            self._weights1,
-            self._biases,
-            self._weights2,
-            self._relu_out,
-        )
+        temp = np.tensordot(
+            self._weights1, X_in, axes=(1, 1)
+        ) + self._biases[:, np.newaxis, np.newaxis]
+        out = np.tensordot(
+            self._weights2, temp * (temp>0), axes=(1, 0)
+        ).swapaxes(0, 1)
+        if self._relu_out:
+            return out * (out > 0)
+        return out
 
     def _copy(self) -> "FFN":
         return FFN(
+            d_out=self._d_out,
             d_hidden=self._d_hidden,
             center=self._center,
             relu_out=self._relu_out,
         )
 
     def __str__(self) -> str:
-        return f"FFN({self._d_hidden}, {self._center}, {self._relu_out})"
+        return (f"FFN({self._d_out}, {self._d_hidden}, {self._center}, "
+                f"{self._relu_out})")
 
 
 class RIN(Preparateur):
