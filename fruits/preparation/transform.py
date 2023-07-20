@@ -1,6 +1,6 @@
 __all__ = [
     "INC", "STD", "NRM", "MAV", "LAG", "FFN", "RIN", "RDW", "JLD", "SPE",
-    "RPE", "FUN",
+    "RPE", "CTS", "QTC", "FUN",
 ]
 
 from typing import Any, Callable, Literal, Optional, Union
@@ -844,9 +844,6 @@ class RPE(Preparateur):
     Args:
         freq (float): Frequency parameter ``f`` of the rotation. This
             should be a value between 0 and 1.
-        step_transform (str, optional): If set to 'L1' or 'L2', the
-            cumulative sum of the normed increments is used in the sine
-            function instead of ``t``.
         max_length (int, optional): The parameter ``T`` in the
             denominator controlling the strength of frequency changes of
             the sine function. Defaults to the time series length.
@@ -908,6 +905,83 @@ class RPE(Preparateur):
 
     def __str__(self) -> str:
         return f"RPE({self._freq}, {self._max_length})"
+
+
+class CTS(Preparateur):
+    """Preparateur: Constant Time Shift
+
+    Shifts the input time series ``x`` a given number of time steps
+    ``s`` to the left. Returns ``y``, where ``y[:, :, :-s]=x[:, :, s:]``
+    and ``y[:, :, -s:]=x[:, :, -1]``.
+
+    Args:
+        s (int or float): The number of time steps the input time
+            series is shifted. If a float is given, it is multiplied by
+            the time series length. Has to be at least 1.
+    """
+
+    def __init__(self, s: Union[float, int]) -> None:
+        self._s = s
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        if 0 < self._s < 1:
+            shift = max(1, int(self._s * X.shape[2]))
+        else:
+            shift = int(self._s)
+        Y = X.copy()
+        Y[:, :, :-shift] = Y[:, :, shift:]
+        Y[:, :, -shift:] = Y[:, :, -1:]
+        return Y
+
+    def _copy(self) -> "CTS":
+        return CTS(s=self._s)
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, CTS) and self._s == other._s:
+            return True
+        return False
+
+    def __str__(self) -> str:
+        return f"CTS({self._s})"
+
+
+class QTC(Preparateur):
+    """Preparateur: Quantile Cut
+
+    Evaluates ``min(q, x_i)`` for all time steps ``i`` of a time
+    series ``x``, where ``q`` is some quantile of the training data,
+    calculated in a call of :meth:`fit`.
+
+    Args:
+        q (float): Which quantile to calculate, as a value in ``(0,1)``.
+        lower (bool, optional): If set to true, instead evaluate
+            ``max(q, x_i)`` for each time step. Defaults to false.
+    """
+
+    def __init__(self, q: float, lower: bool = False) -> None:
+        self._q = q
+        self._lower = lower
+
+    def _fit(self, X: np.ndarray) -> None:
+        self._quantile = np.quantile(X, self._q)
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        if self._lower:
+            return np.where(X < self._quantile, self._quantile, X)
+        return np.where(X > self._quantile, self._quantile, X)
+
+    def _copy(self) -> "QTC":
+        return QTC(q=self._q, lower=self._lower)
+
+    def __eq__(self, other: Any) -> bool:
+        if (isinstance(other, QTC)
+                and self._q == other._q
+                and self._lower == other._lower):
+            return True
+        return False
+
+    def __str__(self) -> str:
+        return f"QTC({self._q}, {self._lower})"
 
 
 class FUN(Preparateur):
