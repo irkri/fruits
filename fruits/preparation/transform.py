@@ -918,10 +918,18 @@ class CTS(Preparateur):
         s (int or float): The number of time steps the input time
             series is shifted. If a float is given, it is multiplied by
             the time series length. Has to be at least 1.
+        pseudo_shift (bool, optional): If set to true, the first ``s``
+            values of the time series get set to zero, instead of
+            shifting it. Defaults to false.
     """
 
-    def __init__(self, s: Union[float, int]) -> None:
+    def __init__(
+        self,
+        s: Union[float, int],
+        pseudo_shift: bool = False,
+    ) -> None:
         self._s = s
+        self._pseudo_shift = pseudo_shift
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if 0 < self._s < 1:
@@ -929,20 +937,25 @@ class CTS(Preparateur):
         else:
             shift = int(self._s)
         Y = X.copy()
-        Y[:, :, :-shift] = Y[:, :, shift:]
-        Y[:, :, -shift:] = Y[:, :, -1:]
+        if self._pseudo_shift:
+            Y[:, :, :shift] = 0
+        else:
+            Y[:, :, :-shift] = Y[:, :, shift:]
+            Y[:, :, -shift:] = Y[:, :, -1:]
         return Y
 
     def _copy(self) -> "CTS":
-        return CTS(s=self._s)
+        return CTS(s=self._s, pseudo_shift=self._pseudo_shift)
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, CTS) and self._s == other._s:
+        if (isinstance(other, CTS)
+                and self._s == other._s
+                and self._pseudo_shift == other._pseudo_shift):
             return True
         return False
 
     def __str__(self) -> str:
-        return f"CTS({self._s})"
+        return f"CTS({self._s}, {self._pseudo_shift})"
 
 
 class QTC(Preparateur):
@@ -956,32 +969,50 @@ class QTC(Preparateur):
         q (float): Which quantile to calculate, as a value in ``(0,1)``.
         lower (bool, optional): If set to true, instead evaluate
             ``max(q, x_i)`` for each time step. Defaults to false.
+        bound (float, optional): If set to a specific float, the
+            cropped parts of the time series get set to this value. So
+            ``x[x>q] = bound``.
     """
 
-    def __init__(self, q: float, lower: bool = False) -> None:
+    def __init__(
+        self,
+        q: float,
+        lower: bool = False,
+        bound: Optional[float] = None,
+    ) -> None:
         self._q = q
         self._lower = lower
+        self._bound = bound
 
     def _fit(self, X: np.ndarray) -> None:
         self._quantile = np.quantile(X, self._q)
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         if self._lower:
-            return np.where(X < self._quantile, self._quantile, X)
-        return np.where(X > self._quantile, self._quantile, X)
+            return np.where(
+                X < self._quantile,
+                self._quantile if self._bound is None else self._bound,
+                X,
+            )
+        return np.where(
+            X > self._quantile,
+            self._quantile if self._bound is None else self._bound,
+            X,
+        )
 
     def _copy(self) -> "QTC":
-        return QTC(q=self._q, lower=self._lower)
+        return QTC(q=self._q, lower=self._lower, bound=self._bound)
 
     def __eq__(self, other: Any) -> bool:
         if (isinstance(other, QTC)
                 and self._q == other._q
-                and self._lower == other._lower):
+                and self._lower == other._lower
+                and self._bound == other._bound):
             return True
         return False
 
     def __str__(self) -> str:
-        return f"QTC({self._q}, {self._lower})"
+        return f"QTC({self._q}, {self._lower}, {self._bound})"
 
 
 class FUN(Preparateur):
