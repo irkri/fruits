@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List
 
 import numba
 import numpy as np
@@ -17,6 +17,7 @@ class Semiring(ABC):
         word: Word,
         extended: int,
         weighting: Optional[Weighting] = None,
+        gap: Optional[int] = 1,
     ) -> np.ndarray:
         if isinstance(word, SimpleWord):
             try:
@@ -33,6 +34,7 @@ class Semiring(ABC):
                     scalars,
                     lookup,
                     extended,
+                    gap
                 )
                 return result
             except NotImplementedError:
@@ -47,6 +49,7 @@ class Semiring(ABC):
         scalar: np.ndarray,
         lookup: np.ndarray,
         extended: int,
+        gap: Optional[int] = 1,
     ) -> np.ndarray:
         raise NotImplementedError("No fast way of calculating iterated sums")
 
@@ -90,7 +93,7 @@ class Semiring(ABC):
 
 
 @numba.njit(
-    "f8[:,:](f8[:,:], i4[:,:], f4[:], f8[:], i8)",
+    "f8[:,:](f8[:,:], i4[:,:], f4[:], f8[:], i8, i8)",
     fastmath=True,
     cache=True,
 )
@@ -100,10 +103,13 @@ def _reals_single_iterated_sum_fast(
     scalar: np.ndarray,
     weights: np.ndarray,
     extended: int,
-) -> np.ndarray:
+    gap: Optional[int] = 1):
+    #print(f"_reals_ single_iterated_sum_fast, Z.shape={Z.shape}, word.shape={word.shape}, scalar.shape={scalar.shape}, weights.shape={weights.shape}, extended={extended}")
+    # print('gap=',gap)
     result = np.zeros((extended, Z.shape[1]), dtype=np.float64)
     tmp = np.ones((Z.shape[1], ), dtype=np.float64)
     for k, extended_letter in enumerate(word):
+        # print("_reals_single_iterated_sum_fast, k, extended_letter:", k, extended_letter)
         if not np.any(extended_letter):
             continue
         C = np.ones((Z.shape[1], ), dtype=np.float64)
@@ -115,18 +121,71 @@ def _reals_single_iterated_sum_fast(
                 for _ in range(-occurence):
                     C = C / Z[letter, :]
         if k > 0:
-            tmp = np.roll(tmp, 1)
-            tmp[0] = 0
-        tmp[k:] = tmp[k:] * C[k:]
+            # print('tmp before roll=',tmp)
+            tmp = np.roll(tmp, gap)
+            tmp[0:gap] = 0
+            # print('tmp after roll=',tmp)
+        tmp[k*gap:] = tmp[k*gap:] * C[k*gap:]
         if k > 0:
             tmp = tmp * np.exp(- weights * scalar[k-1])
         if len(word) - k <= extended:
-            result[extended-(len(word)-k), k:] = np.cumsum(tmp[k:])
+            result[extended-(len(word)-k), k*gap:] = np.cumsum(tmp[k*gap:])
         if k < len(word) - 1:
             tmp = tmp * np.exp(weights * scalar[k])
-            tmp[k:] = np.cumsum(tmp[k:])
+            tmp[k*gap:] = np.cumsum(tmp[k*gap:])
     return result
 
+import math
+def split_array_with_dilation(x: np.ndarray, dilation: int) -> List[np.ndarray]:
+    length = math.ceil(x.shape[-1] / dilation)
+    # print("length=",length)
+    if len(x.shape) == 1:
+        split = [np.pad(x[i::dilation], (0, length - len(x[i::dilation])), mode='constant') for i in range(dilation)]
+    elif len(x.shape) == 2:
+        split = [np.pad(x[..., i::dilation], ((0,0),(0, length - len(x[0, i::dilation]))), mode='constant') for i in range(dilation)]
+    else:
+        fail
+    return split
+
+def stitch_array(parts: list, dilation: int) -> np.ndarray:
+    # Assuming all parts have the same shape, get the shape of one of them
+    shape = parts[0].shape
+    
+    # Initialize a zero array with the intended final shape
+    final_shape = (shape[0], shape[1] * dilation)
+    stitched = np.zeros(final_shape, dtype=parts[0].dtype)
+    
+    # Fill the appropriate indices
+    for i, part in enumerate(parts):
+        stitched[..., i::dilation] = part
+
+    return stitched
+
+_backup_reals_single_iterated_sum_fast = _reals_single_iterated_sum_fast
+
+@numba.njit(
+    "f8[:,:](f8[:,:], i4[:,:], f4[:], f8[:], i8, i8)",
+    fastmath=True,
+    cache=True,
+)
+def _reals_single_iterated_sum_fast_dilated(
+    Z: np.ndarray,
+    word: np.ndarray,
+    scalar: np.ndarray,
+    weights: np.ndarray,
+    extended: int,
+    dilation: Optional[int] = 1):
+    parts = split_array_with_dilation(Z, dilation)
+    weights_parts = split_array_with_dilation(weights, dilation)
+    # print('parts=', parts)
+    # print('xxxxxxx=', parts[0], parts[0].shape)
+    # print('xxxxxxx=', weights_parts[0], weights_parts[0].shape)
+    results = [ _backup_reals_single_iterated_sum_fast(part, word, scalar, weight, extended, 1) for part, weight in zip(parts,weights_parts) ]
+    # print('results=', list(results))
+    stitched = stitch_array(results, dilation)
+    return stitched[..., :Z.shape[-1]]
+
+# _reals_single_iterated_sum_fast = _reals_single_iterated_sum_fast_dilated
 
 class Reals(Semiring):
     """This is the standard semiring used as the default in all
@@ -147,16 +206,28 @@ class Reals(Semiring):
         scalar: np.ndarray,
         lookup: np.ndarray,
         extended: int,
+        gap: Optional[int] = 1,
     ) -> np.ndarray:
         result = np.zeros((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
         for j in numba.prange(Z.shape[0]):
-            result[j] = _reals_single_iterated_sum_fast(
-                Z[j, :, :],
-                word,
-                scalar,
-                lookup[j],
-                extended,
-            )
+            if gap < 0: # XXX HACK Negative gaps are used to indicate dilation.
+                result[j] = _reals_single_iterated_sum_fast_dilated(
+                    Z[j, :, :],
+                    word,
+                    scalar,
+                    lookup[j],
+                    extended,
+                    -gap
+                )
+            else:
+                result[j] = _reals_single_iterated_sum_fast(
+                    Z[j, :, :],
+                    word,
+                    scalar,
+                    lookup[j],
+                    extended,
+                    gap
+                )
         return result
 
     def iterated_sum_fast(
@@ -166,6 +237,7 @@ class Reals(Semiring):
         scalar: np.ndarray,
         lookup: np.ndarray,
         extended: int,
+        gap: Optional[int] = 1,
     ) -> np.ndarray:
         return self._iterated_sum_fast(
             Z,
@@ -173,6 +245,7 @@ class Reals(Semiring):
             scalar,
             lookup,
             extended,
+            gap
         )
 
     @staticmethod
@@ -336,6 +409,7 @@ class Arctic(Semiring):
         scalar: np.ndarray,
         lookup: np.ndarray,
         extended: int,
+        gap: Optional[int] = 1,
     ) -> np.ndarray:
         return self._iterated_sum_fast(
             Z,
@@ -459,6 +533,7 @@ class Bayesian(Semiring):
         scalar: np.ndarray,
         lookup: np.ndarray,
         extended: int,
+        gap: Optional[int] = 1,
     ) -> np.ndarray:
         return self._iterated_sum_fast(
             Z,

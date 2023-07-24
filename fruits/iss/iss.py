@@ -25,9 +25,12 @@ def _calculate_ISS(
     semiring: Semiring,
     weighting: Optional[Weighting] = None,
     cache_plan: Optional[CachePlan] = None,
+    gap: Optional[int] = 1,
 ) -> Generator[np.ndarray, None, None]:
     i = 0
     while i < len(words):
+        # print(f"Calculating iterated sums for words {i} to {i+batch_size}")
+        #print(f"caching plan: {cache_plan}")
         if i + batch_size > len(words):
             batch_size = len(words) - i
 
@@ -58,6 +61,7 @@ def _calculate_ISS(
                     word,
                     1 if cache_plan is None else cache_plan.unique_el_depth(i),
                     weighting,
+                    gap
                 ),
                 0, 1,
             )
@@ -99,6 +103,7 @@ class ISS(Seed):
         mode: ISSMode = ISSMode.SINGLE,
         semiring: Optional[Semiring] = None,
         weighting: Optional[Weighting] = None,
+        gap: Optional[int] = 1,
     ) -> None:
         self.words = words
         self.mode = mode
@@ -107,6 +112,7 @@ class ISS(Seed):
             self.words if mode == ISSMode.EXTENDED else []
         )
         self.weighting = weighting
+        self.gap = gap
 
     @property
     def requires_fitting(self) -> bool:
@@ -129,6 +135,7 @@ class ISS(Seed):
             semiring=self.semiring,
             weighting=self.weighting,
             batch_size=len(self.words),
+            gap=self.gap
         )
         return next(iter(result))
 
@@ -182,6 +189,7 @@ class ISS(Seed):
             semiring=self.semiring,
             weighting=self.weighting,
             batch_size=batch_size,
+            gap=self.gap
         )
 
     def _copy(self) -> "ISS":
