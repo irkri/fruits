@@ -24,12 +24,12 @@ def test_max():
 
     max_cut_group_1 = fruits.sieving.MAX(cut=[-1, 3, 1])
 
-    np.testing.assert_allclose(np.array([[0.8, 5], [2, 0]]),
+    np.testing.assert_allclose(np.array([[-4, 0.8, 5], [2, 1, 0]]),
                                max_cut_group_1.fit_transform(X_1[0]))
 
     max_cut_group_2 = fruits.sieving.MAX(cut=[-1, 0.2, 0.7, 0.5])
 
-    np.testing.assert_allclose(np.array([[5, 5, 5], [0, 0, 0]]),
+    np.testing.assert_allclose(np.array([[-4, 5, 0, -3], [2, 0, 0, -7]]),
                                max_cut_group_2.fit_transform(X_1[0]))
 
     max_cut_group_2_copy = max_cut_group_2.copy()
@@ -54,12 +54,12 @@ def test_min():
 
     min_cut_group_1 = fruits.sieving.MIN(cut=[-1, 3, 1])
 
-    np.testing.assert_allclose(np.array([[2, 0], [-5, -8]]),
+    np.testing.assert_allclose(np.array([[5, 2, 0], [-5, -4, -8]]),
                                min_cut_group_1.fit_transform(X_1[1]))
 
     min_cut_group_2 = fruits.sieving.MIN(cut=[-1, 0.2, 0.7, 0.5])
 
-    np.testing.assert_allclose(np.array([[2, 2, 0], [-4, -0.5, -8]]),
+    np.testing.assert_allclose(np.array([[5, 2, 6, 0], [-5, -4, 0, -8]]),
                                min_cut_group_2.fit_transform(X_1[1]))
 
     min_cut_group_2_copy = min_cut_group_2.copy()
@@ -92,89 +92,79 @@ def test_end():
                                end_cut_group_copy.fit_transform(X_1[0]))
 
 
-def test_pia():
-    pia = fruits.sieving.PIA()
+def test_npi():
+    npi = fruits.sieving.NPI()
 
     np.testing.assert_allclose(
-        np.array([[2/5], [0/5]]), pia.fit_transform(X_1[0]))
+        np.array([[2], [0]]), npi.fit_transform(X_1[0]))
 
-    pia_cut_1 = fruits.sieving.PIA(cut=3)
-    pia_cut_2 = fruits.sieving.PIA(cut=0.5)
+    npi_cut_1 = fruits.sieving.NPI(cut=3)
+    npi_cut_2 = fruits.sieving.NPI(cut=0.5)
 
-    np.testing.assert_allclose(np.array([[1/5], [0/5]]),
-                               pia_cut_1.fit_transform(X_1[0]))
-    np.testing.assert_allclose(np.array([[1/5], [2/5]]),
-                               pia_cut_2.fit_transform(X_1[1]))
+    np.testing.assert_allclose(
+        np.array([[1], [0]]),
+        npi_cut_1.fit_transform(X_1[0]),
+    )
+    np.testing.assert_allclose(
+        np.array([[1], [2]]),
+        npi_cut_2.fit_transform(X_1[1]),
+    )
 
-    pia_cut_group_1 = fruits.sieving.PIA(cut=[-1, 3, 1])
+    npi_cut_group_1 = fruits.sieving.NPI(cut=[-1, 3, 1])
 
-    np.testing.assert_allclose(np.array([[2/5, 1/5, 0/5], [2/5, 1/5, 0/5]]),
-                               pia_cut_group_1.fit_transform(X_1[1]))
+    np.testing.assert_allclose(
+        np.array([[0, 1, 1], [0, 1, 1]]),
+        npi_cut_group_1.fit_transform(X_1[1]),
+    )
 
-    pia_cut_group_2 = fruits.sieving.PIA(cut=[-1, 0.2, 0.7, 0.5])
+    npi_cut_group_2 = fruits.sieving.NPI(cut=[-1, 0.2, 0.7, 0.5])
 
     cache = fruits.cache.SharedSeedCache()
     for key in ["0.2", "0.7", "0.5"]:
         cache.get(
             fruits.cache.CacheType.COQUANTILE,
-            key,
+            key+":L2",
             np.array([[[5, 8, 2, 6, 0]], [[-5, -1, -4, -0.5, -8]]]),
         )
 
     np.testing.assert_allclose(np.array(
-        [[2/5, 1/5, 2/5, 1/5], [2/5, 1/5, 2/5, 2/5]]
-    ), pia_cut_group_2.fit_transform(X_1[1]))
+        [[1, 0, 1, 0], [1, 1, 0, 0]]
+    ), npi_cut_group_2.fit_transform(X_1[1]))
 
-    pia_cut_group_2_copy = pia_cut_group_2.copy()
+    npi_cut_group_2_copy = npi_cut_group_2.copy()
 
-    np.testing.assert_allclose(pia_cut_group_2.fit_transform(X_1[0]),
-                               pia_cut_group_2_copy.fit_transform(X_1[0]))
-
-
-def test_mia():
-    mia = fruits.sieving.MIA()
-
-    np.testing.assert_allclose(
-        np.array([[4.9], [0]]), mia.fit_transform(X_1[0]))
-    np.testing.assert_allclose(
-        np.array([[3.5], [3.75]]), mia.fit_transform(X_1[1]))
+    np.testing.assert_allclose(npi_cut_group_2.fit_transform(X_1[0]),
+                               npi_cut_group_2_copy.fit_transform(X_1[0]))
 
 
-def test_iia():
-    iia = fruits.sieving.IIA()
+def test_mpi():
+    mpi = fruits.sieving.MPI()
 
     np.testing.assert_allclose(
-        np.array([[2], [0]]), iia.fit_transform(X_1[0]))
+        np.array([[4.9], [0]]), mpi.fit_transform(X_1[0]),
+    )
     np.testing.assert_allclose(
-        np.array([[2], [2]]), iia.fit_transform(X_1[1]))
+        np.array([[3.5], [3.75]]), mpi.fit_transform(X_1[1]),
+    )
 
 
-def test_lcs():
-    lcs = fruits.sieving.LCS()
+def test_xpi():
+    xpi = fruits.sieving.XPI()
 
-    np.testing.assert_allclose(np.array([[5], [5]]), lcs.fit_transform(X_1[0]))
+    np.testing.assert_allclose(
+        np.array([[2], [0]]), xpi.fit_transform(X_1[0]),
+    )
+    np.testing.assert_allclose(
+        np.array([[2], [2]]), xpi.fit_transform(X_1[1]),
+    )
 
-    lcs_cut_1 = fruits.sieving.LCS(cut=3)
-    lcs_cut_2 = fruits.sieving.LCS(cut=0.5)
 
-    np.testing.assert_allclose(np.array([[3], [3]]),
-                               lcs_cut_1.fit_transform(X_1[0]))
-    np.testing.assert_allclose(np.array([[3], [4]]),
-                               lcs_cut_2.fit_transform(X_1[1]))
+def test_lpi():
+    lpi = fruits.sieving.LPI()
 
-    lcs_cut_group_1 = fruits.sieving.LCS(cut=[-1, 3, 1],
-                                         segments=False)
-
-    np.testing.assert_allclose(np.array([[5, 3, 1], [5, 3, 1]]),
-                               lcs_cut_group_1.fit_transform(X_1[1]))
-
-    lcs_cut_group_2 = fruits.sieving.LCS(cut=[-1, 0.2, 0.7, 0.5],
-                                         segments=True)
-
-    np.testing.assert_allclose(np.array([[2, 2, 2], [3, 1, 2]]),
-                               lcs_cut_group_2.fit_transform(X_1[1]))
-
-    lcs_cut_group_2_copy = lcs_cut_group_2.copy()
-
-    np.testing.assert_allclose(lcs_cut_group_2.fit_transform(X_1[0]),
-                               lcs_cut_group_2_copy.fit_transform(X_1[0]))
+    np.testing.assert_allclose(
+        np.array([[1], [0]]), lpi.fit_transform(X_1[0]),
+    )
+    np.testing.assert_allclose(
+        np.array([[1], [1]]), lpi.fit_transform(X_1[1]),
+    )

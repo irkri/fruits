@@ -246,6 +246,7 @@ class Fruitalyser:
         classifier: Callable[..., FitScoreClassifier],
         variable: str,
         test_cases: Sequence[Any],
+        indices: Optional[Sequence[int]] = None,
         **kwargs,
     ) -> tuple[Figure, Axes]:
         """Tests a classifier for its accuracy on the calculated
@@ -273,8 +274,15 @@ class Fruitalyser:
             t = {variable: test_case}
             t = dict(kwargs, **t)
             clssfr = classifier(**t)
-            clssfr.fit(self._X_train_feat, self._y_train)
-            accuracies[i] = clssfr.score(self._X_test_feat, self._y_test)
+            if indices is not None:
+                clssfr.fit(self._X_train_feat[:, indices], self._y_train)
+                accuracies[i] = clssfr.score(
+                    self._X_test_feat[:, indices],
+                    self._y_test,
+                )
+            else:
+                clssfr.fit(self._X_train_feat, self._y_train)
+                accuracies[i] = clssfr.score(self._X_test_feat, self._y_test)
         fig, ax = plt.subplots(figsize=(10, 5))
         ax.plot(test_cases, accuracies, marker="x", label="test accuracy")
         ax.vlines(
@@ -498,6 +506,7 @@ class Fruitalyser:
         source: Optional[Literal["train", "test", "all"]] = ...,
         axes: None = ...,
         nbins: int = ...,
+        **kwargs,
     ) -> tuple[Figure, Axes, Axes, Axes]:
         ...
 
@@ -510,6 +519,7 @@ class Fruitalyser:
         source: Optional[Literal["train", "test", "all"]] = ...,
         axes: Axes = ...,
         nbins: int = ...,
+        **kwargs,
     ) -> None:
         ...
 

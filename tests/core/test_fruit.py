@@ -25,11 +25,11 @@ def test_n_features():
     fruit.add(fruits.sieving.MAX(cut=[0.1, 0.5, 0.9]))
     fruit.add(fruits.sieving.MIN(cut=[0.1, 0.5, 0.9]))
 
-    assert fruit.nfeatures() == 574
+    assert fruit.nfeatures() == 738
 
     fruit_copy = fruit.deepcopy()
 
-    assert fruit_copy.nfeatures() == 574
+    assert fruit_copy.nfeatures() == 738
 
     fruit.fit_transform(X_1)
 

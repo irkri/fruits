@@ -9,7 +9,7 @@ X_1 = np.array([
 
 
 def test_increments():
-    X_1_1 = fruits.preparation.INC(True).fit_transform(X_1)
+    X_1_1 = fruits.preparation.INC().fit_transform(X_1)
     increments = fruits.preparation.INC(zero_padding=False)
     X_1_2 = increments.fit_transform(X_1)
 
@@ -28,7 +28,7 @@ def test_increments():
 
 
 def test_standardization():
-    X_1_1 = fruits.preparation.STD().fit_transform(X_1)
+    X_1_1 = fruits.preparation.STD(std_eps=1e-10).fit_transform(X_1)
 
     np.testing.assert_almost_equal(0, np.mean(X_1_1.flatten()))
     np.testing.assert_almost_equal(1, np.std(X_1_1.flatten()))
@@ -84,6 +84,8 @@ def test_rin():
     rin.fit(X)
 
     rin._kernel = np.array([[4., 1.], [4., 1.]])
+    rin._ndim_per_kernel = np.array([1, 1], dtype=np.int32)
+    rin._dims_per_kernel = np.array([0, 1], dtype=np.int32)
 
     np.testing.assert_allclose(
         np.array([
@@ -103,6 +105,8 @@ def test_rin():
 
     assert rin._kernel.shape == (2, 2)
     rin._kernel = np.array([[4., 1.], [2., 3.]])
+    rin._ndim_per_kernel = np.array([2], dtype=np.int32)
+    rin._dims_per_kernel = np.array([0, 1], dtype=np.int32)
 
     np.testing.assert_allclose(
         np.array([
@@ -112,8 +116,26 @@ def test_rin():
         rin.transform(X_1)
     )
 
+
 def test_jld():
     X = np.random.random_sample((46, 100, 189))
     result = fruits.preparation.JLD(25).fit_transform(X)
 
     assert result.shape == (46, 25, 189)
+
+
+def test_ffn():
+    ffn1 = fruits.preparation.FFN(d_hidden=3, center=False, relu_out=False)
+    ffn1.fit(X_1)
+
+    temp = np.stack([
+        ffn1._weights1 @ X_1[0, :, :] + ffn1._biases[:, np.newaxis],
+        ffn1._weights1 @ X_1[1, :, :] + ffn1._biases[:, np.newaxis],
+    ])
+    temp = temp * (temp > 0)
+    temp = np.stack([
+        ffn1._weights2 @ temp[0, :, :],
+        ffn1._weights2 @ temp[1, :, :],
+    ])
+
+    np.testing.assert_allclose(temp, ffn1.transform(X_1))
