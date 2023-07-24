@@ -24,7 +24,7 @@ copyright = '2021, alienkrieg'
 author = 'alienkrieg'
 
 # The full version, including alpha/beta/rc tags
-release = '0.11.2'
+release = '0.13.1'
 
 
 # -- General configuration ---------------------------------------------------

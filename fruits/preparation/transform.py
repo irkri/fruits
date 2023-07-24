@@ -394,12 +394,12 @@ class RIN(Preparateur):
     Calculates random increments over multiple time steps. This is a
     special case of a weighted moving average. For a random kernel
     ```
-        [k_1, ..., k_w]
+    [k_1, ..., k_w]
     ```
     drawn at a :meth:`RIN.fit` call, each dimension of the input time
     series will be transformed according to
     ```
-        y_i = x_i - (k_w*x_{i-1} + ... + k_1*x_{i-w}).
+    y_i = x_i - (k_w*x_{i-1} + ... + k_1*x_{i-w}).
     ```
     Here, `w` is the width of the window or length of the kernel.
 
