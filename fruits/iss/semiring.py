@@ -189,6 +189,118 @@ class Reals(Semiring):
 
 
 @numba.njit(
+    "f8[:,:](f8[:,:], i4[:,:], f4[:], f8[:], i8, f8)",
+    fastmath=True,
+    cache=True,
+)
+def _leaky_reals_single_iterated_sum_fast(
+    Z: np.ndarray,
+    word: np.ndarray,
+    scalar: np.ndarray,
+    weights: np.ndarray,
+    extended: int,
+    dropout: float,
+) -> np.ndarray:
+    result = np.zeros((extended, Z.shape[1]), dtype=np.float64)
+    tmp = np.ones((Z.shape[1], ), dtype=np.float64)
+    for k, extended_letter in enumerate(word):
+        if not np.any(extended_letter):
+            continue
+        C = np.ones((Z.shape[1], ), dtype=np.float64)
+        for letter, occurence in enumerate(extended_letter):
+            if occurence > 0:
+                for _ in range(occurence):
+                    C = C * Z[letter, :]
+            elif occurence < 0:
+                for _ in range(-occurence):
+                    C = C / Z[letter, :]
+        if k > 0:
+            tmp = np.roll(tmp, 1)
+            tmp[0] = 0
+        gate = np.random.random(Z.shape[1])
+        tmp[gate < dropout] = 0
+        tmp[k:] = tmp[k:] * C[k:]
+        if k > 0:
+            tmp = tmp * np.exp(- weights * scalar[k-1])
+        if len(word) - k <= extended:
+            result[extended-(len(word)-k), k:] = np.cumsum(tmp[k:])
+        if k < len(word) - 1:
+            tmp = tmp * np.exp(weights * scalar[k])
+            tmp[k:] = np.cumsum(tmp[k:])
+    return result
+
+
+class LeakyReals(Semiring):
+    """Standard semiring with a certain probability that some points in
+    one cumulative sum get set to zero.
+
+    Args:
+        dropout (float, optional): Probability of a single value being
+            set to zero. Defaults to ``0.1``.
+    """
+
+    def __init__(self, dropout: float = 0.1) -> None:
+        super().__init__()
+        self._dropout = dropout
+
+    @staticmethod
+    @numba.njit(
+        "f8[:,:,:](f8[:,:,:], i4[:,:], f4[:], f8[:,:], i8, f8)",
+        fastmath=True,
+        cache=True,
+        parallel=True,
+    )
+    def _iterated_sum_fast(
+        Z: np.ndarray,
+        word: np.ndarray,
+        scalar: np.ndarray,
+        lookup: np.ndarray,
+        extended: int,
+        dropout: float,
+    ) -> np.ndarray:
+        result = np.zeros((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
+        for j in numba.prange(Z.shape[0]):
+            result[j] = _leaky_reals_single_iterated_sum_fast(
+                Z[j, :, :],
+                word,
+                scalar,
+                lookup[j],
+                extended,
+                dropout,
+            )
+        return result
+
+    def iterated_sum_fast(
+        self,
+        Z: np.ndarray,
+        word: np.ndarray,
+        scalar: np.ndarray,
+        lookup: np.ndarray,
+        extended: int,
+    ) -> np.ndarray:
+        return self._iterated_sum_fast(
+            Z,
+            word,
+            scalar,
+            lookup,
+            extended,
+            self._dropout,
+        )
+
+    @staticmethod
+    def _identity(X: np.ndarray) -> np.ndarray:
+        return np.ones(X.shape[1], dtype=np.float64)
+
+    @staticmethod
+    def _operation(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        return x * y
+
+    @staticmethod
+    def _cumulative_operation(Z: np.ndarray) -> np.ndarray:
+        return np.cumsum(Z)
+
+
+@numba.njit(
     "f8[:,:](f8[:,:], i4[:,:], f4[:], f8[:])",
     fastmath=True,
     cache=True,
