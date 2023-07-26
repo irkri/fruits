@@ -40,6 +40,29 @@ def test_simpleword_iss():
         fruits.ISS([w1_copy]).fit_transform(X_1)[0, :, :],
     )
 
+def test_simpleword_gap_dilation():
+    w1 = fruits.words.SimpleWord("[1]")
+    w2 = fruits.words.SimpleWord("[1][1]")
+    w3 = fruits.words.SimpleWord("[1][1][1]")
+
+    results = list(fruits.ISS([w1,w2,w3], gap=-2).batch_transform( X_1, batch_size=1,))
+    correct = (
+        np.array([-4, 0.8, -4., 5.8, -7.]),
+        np.array([0,0,0,4.,12.]),
+        np.array([0,0,0,0,0])
+    )
+    for i in range(len(results)):
+        np.testing.assert_allclose(correct[i], results[i][0,0])
+
+    results = list(fruits.ISS([w1,w2,w3], gap=2).batch_transform( X_1, batch_size=1,))
+    correct = (
+        np.array([-4., -3.2, -3.2, 1.8, -1.2]), # The outermost is not affected by the gap.
+        np.array([0.,0.,0.,-16.,-6.4]),
+        np.array([0,0,0,0,0])
+    )
+    for i in range(len(results)):
+        np.testing.assert_allclose(correct[i], results[i][0,0])
+
 
 def test_theoretical_cases():
     X = np.random.random_sample((25, 1, 100))

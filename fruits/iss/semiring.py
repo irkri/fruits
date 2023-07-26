@@ -93,7 +93,7 @@ class Semiring(ABC):
 
 
 @numba.njit(
-    "f8[:,:](f8[:,:], i4[:,:], f4[:], f8[:], i8, i8)",
+    # "f8[:,:](f8[:,:], i4[:,:], f4[:], f8[:], i8, i8)",
     fastmath=True,
     cache=True,
 )
@@ -136,17 +136,41 @@ def _reals_single_iterated_sum_fast(
     return result
 
 import math
-def split_array_with_dilation(x: np.ndarray, dilation: int) -> List[np.ndarray]:
+@numba.njit(
+    # "f8[:,:](f8[:,:], i8)",
+    # "f8[:](f8[:,:], i8)",
+    fastmath=True,
+    cache=True,
+)
+def split_array_with_dilation_1d(x: np.ndarray, dilation: int) -> List[np.ndarray]:
     length = math.ceil(x.shape[-1] / dilation)
-    # print("length=",length)
-    if len(x.shape) == 1:
-        split = [np.pad(x[i::dilation], (0, length - len(x[i::dilation])), mode='constant') for i in range(dilation)]
-    elif len(x.shape) == 2:
-        split = [np.pad(x[..., i::dilation], ((0,0),(0, length - len(x[0, i::dilation]))), mode='constant') for i in range(dilation)]
-    else:
-        fail
+    
+    split = []
+    for i in range(dilation):
+        arr = np.zeros(length, dtype=x.dtype)
+        values = x[i::dilation]
+        arr[:len(values)] = values
+        split.append(arr)
+
     return split
 
+@numba.njit
+def split_array_with_dilation_2d(x: np.ndarray, dilation: int) -> List[np.ndarray]:
+    length = math.ceil(x.shape[-1] / dilation)
+    split = []
+    for i in range(dilation):
+        arr = np.zeros((x.shape[0], length), dtype=x.dtype)
+        values = x[..., i::dilation]
+        arr[:,:values.shape[1]] = values
+        split.append(arr)
+    return split
+
+@numba.njit(
+    # "f8[:,:](f8[:,:], i8)",
+    # "f8[:](f8[:,:], i8)",
+    fastmath=True,
+    cache=True,
+)
 def stitch_array(parts: list, dilation: int) -> np.ndarray:
     # Assuming all parts have the same shape, get the shape of one of them
     shape = parts[0].shape
@@ -161,10 +185,10 @@ def stitch_array(parts: list, dilation: int) -> np.ndarray:
 
     return stitched
 
-_backup_reals_single_iterated_sum_fast = _reals_single_iterated_sum_fast
+# _backup_reals_single_iterated_sum_fast = _reals_single_iterated_sum_fast
 
 @numba.njit(
-    "f8[:,:](f8[:,:], i4[:,:], f4[:], f8[:], i8, i8)",
+    # "f8[:,:](f8[:,:], i4[:,:], f4[:], f8[:], i8, i8)",
     fastmath=True,
     cache=True,
 )
@@ -175,17 +199,15 @@ def _reals_single_iterated_sum_fast_dilated(
     weights: np.ndarray,
     extended: int,
     dilation: Optional[int] = 1):
-    parts = split_array_with_dilation(Z, dilation)
-    weights_parts = split_array_with_dilation(weights, dilation)
+    parts = split_array_with_dilation_2d(Z, dilation)
+    weights_parts = split_array_with_dilation_1d(weights, dilation)
     # print('parts=', parts)
     # print('xxxxxxx=', parts[0], parts[0].shape)
     # print('xxxxxxx=', weights_parts[0], weights_parts[0].shape)
-    results = [ _backup_reals_single_iterated_sum_fast(part, word, scalar, weight, extended, 1) for part, weight in zip(parts,weights_parts) ]
+    results = [ _reals_single_iterated_sum_fast(part, word, scalar, weight, extended, 1) for part, weight in zip(parts,weights_parts) ]
     # print('results=', list(results))
     stitched = stitch_array(results, dilation)
     return stitched[..., :Z.shape[-1]]
-
-# _reals_single_iterated_sum_fast = _reals_single_iterated_sum_fast_dilated
 
 class Reals(Semiring):
     """This is the standard semiring used as the default in all
@@ -195,7 +217,7 @@ class Reals(Semiring):
 
     @staticmethod
     @numba.njit(
-        "f8[:,:,:](f8[:,:,:], i4[:,:], f4[:], f8[:,:], i8)",
+        # "f8[:,:,:](f8[:,:,:], i4[:,:], f4[:], f8[:,:], i8, Optional[i8])",
         fastmath=True,
         cache=True,
         parallel=True,
