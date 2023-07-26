@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 from typing import Callable, Generator, Optional, Union
 
@@ -135,6 +136,40 @@ class Fruit:
             slc.fit(X, cache=cache_)
         self._fitted = True
 
+    async def _get_slice_transforms(
+        self,
+        X: np.ndarray,
+        callbacks: Optional[list[AbstractCallback]] = None,
+        cache: Optional[SharedSeedCache] = None,
+    ) -> list[np.ndarray]:
+        tasks = []
+        for slc in self._slices:
+            tasks.append(slc._transform(X, callbacks, cache))
+        return await asyncio.gather(*tasks)
+
+    async def _transform(
+        self,
+        X: np.ndarray,
+        callbacks: Optional[list[AbstractCallback]] = None,
+        cache: Optional[SharedSeedCache] = None,
+    ) -> np.ndarray:
+        if callbacks is None:
+            callbacks = []
+        if not self._fitted:
+            raise RuntimeError("Missing call of self.fit")
+        cache_ = SharedSeedCache(X) if cache is None else cache
+        concat = await self._get_slice_transforms(X, callbacks=callbacks, cache=cache_)
+        result = np.zeros((X.shape[0], self.nfeatures()))
+        index = 0
+        for i, c in enumerate(concat):
+            for callback in callbacks:
+                callback.on_next_slice()
+            k = self.get_slice(i).nfeatures()
+            result[:, index:index+k] = c
+            index += k
+        result = np.nan_to_num(result, copy=False, nan=0.0)
+        return result
+
     def transform(
         self,
         X: np.ndarray,
@@ -156,21 +191,9 @@ class Fruit:
         Raises:
             RuntimeError: If :meth:`fit` wasn't called.
         """
-        if callbacks is None:
-            callbacks = []
-        if not self._fitted:
-            raise RuntimeError("Missing call of self.fit")
-        cache_ = SharedSeedCache(X) if cache is None else cache
-        result = np.zeros((X.shape[0], self.nfeatures()))
-        index = 0
-        for slc in self._slices:
-            for callback in callbacks:
-                callback.on_next_slice()
-            k = slc.nfeatures()
-            result[:, index:index+k] = slc.transform(X, callbacks, cache_)
-            index += k
-        result = np.nan_to_num(result, copy=False, nan=0.0)
-        return result
+        return asyncio.run(
+            self._transform(X, callbacks=callbacks, cache=cache)
+        )
 
     def fit_transform(
         self,
@@ -455,7 +478,7 @@ class FruitSlice:
             self._sieves_extended.append(sieves_copy)
         self._fitted = True
 
-    def transform(
+    async def _transform(
         self,
         X: np.ndarray,
         callbacks: Optional[list[AbstractCallback]] = None,
@@ -511,6 +534,16 @@ class FruitSlice:
         for callback in callbacks:
             callback.on_sieving_end(sieved_data)
         return sieved_data
+
+    def transform(
+        self,
+        X: np.ndarray,
+        callbacks: Optional[list[AbstractCallback]] = None,
+        cache: Optional[SharedSeedCache] = None,
+    ) -> np.ndarray:
+        return asyncio.run(
+            self._transform(X, callbacks=callbacks, cache=cache)
+        )
 
     def fit_transform(self, X: np.ndarray) -> np.ndarray:
         """This function does the same that calling ``self.fit(X)`` and
