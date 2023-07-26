@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Generator, Optional, Sequence
+from typing import Generator, Literal, Optional, Sequence
 
 import numpy as np
 
@@ -190,4 +190,154 @@ class ISS(Seed):
             mode=self.mode,
             semiring=self.semiring,
             weighting=self.weighting,
+        )
+
+
+class CosWISS(ISS):
+
+    def __init__(
+        self,
+        freq: float,
+        length: Literal[2, 3] = 2,
+        squared: bool = False,
+    ) -> None:
+        self._freq = freq
+        self._length: Literal[2, 3] = length
+        self._squared = squared
+
+    def n_iterated_sums(self) -> int:
+        """Returns the number of iterated sums the object would return
+        with a :meth:`~CosWISS.transform`` call.
+        """
+        return 1
+
+    def _transform(self, X: np.ndarray) -> np.ndarray:
+        result = self.batch_transform(X, batch_size=1)
+        return next(iter(result))
+
+    def batch_transform(
+        self,
+        X: np.ndarray,
+        batch_size: int = 1,
+    ) -> Generator[np.ndarray, None, None]:
+        """Yields a number of iterated sums one after another determined
+        by the supplied ``batch_size``.
+
+        Args:
+            X (np.ndarray): Univariate or multivariate time series as a
+                numpy array of shape
+                ``(n_series, n_dimensions, series_length)``.
+            batch_size (int, optional): Option not available. Is only
+                implemented for compatibility with default :class:`ISS`.
+        """
+        if batch_size > 1:
+            raise ValueError("batch_size > 1 not supported for CosWISS")
+        steps = np.arange(X.shape[2]) / (self._freq*(X.shape[2] - 1))
+        sin_w = np.sin(np.pi * steps)[np.newaxis, np.newaxis, :]
+        cos_w = np.cos(np.pi * steps)[np.newaxis, np.newaxis, :]
+        if self._length == 2 and not self._squared:
+            iss = np.cumsum(
+                (X*sin_w)[:, :, 1:] * np.cumsum(X*sin_w, axis=2)[:, :, :-1],
+                axis=2
+            )
+            iss += np.cumsum(
+                (X*cos_w)[:, :, 1:] * np.cumsum(X*cos_w, axis=2)[:, :, :-1],
+                axis=2
+            )
+            yield np.pad(iss, ((0, 0), (0, 0), (1, 0))).swapaxes(0, 1)
+        elif self._length == 3 and not self._squared:
+            iss = np.cumsum((X*cos_w)[:,:,2:] * np.cumsum(
+                (X*cos_w**2)[:,:,1:] * np.cumsum(X*cos_w, axis=2)[:,:,:-1],
+                axis=2)[:,:,:-1], axis=2
+            )
+            iss += np.cumsum((X*sin_w)[:,:,2:] * np.cumsum(
+                (X*sin_w*cos_w)[:,:,1:] * np.cumsum(X*cos_w, axis=2)[:,:,:-1],
+                axis=2)[:,:,:-1], axis=2
+            )
+            iss += np.cumsum((X*cos_w)[:,:,2:] * np.cumsum(
+                (X*sin_w*cos_w)[:,:,1:] * np.cumsum(X*sin_w, axis=2)[:,:,:-1],
+                axis=2)[:,:,:-1], axis=2
+            )
+            iss += np.cumsum((X*sin_w)[:,:,2:] * np.cumsum(
+                (X*sin_w**2)[:,:,1:] * np.cumsum(X*sin_w, axis=2)[:,:,:-1],
+                axis=2)[:,:,:-1], axis=2
+            )
+            yield np.pad(iss, ((0, 0), (0, 0), (2, 0))).swapaxes(0, 1)
+        elif self._length == 2 and self._squared:
+            iss = np.cumsum(
+                (X*sin_w**2)[:,:,1:] * np.cumsum(X*sin_w**2, axis=2)[:,:,:-1],
+                axis=2
+            )
+            iss += 2 * np.cumsum(
+                (X*sin_w*cos_w)[:,:,1:]
+                    * np.cumsum(X*sin_w*cos_w, axis=2)[:,:,:-1],
+                axis=2
+            )
+            iss += np.cumsum(
+                (X*cos_w**2)[:,:,1:] * np.cumsum(X*cos_w**2, axis=2)[:,:,:-1],
+                axis=2
+            )
+            yield np.pad(iss, ((0, 0), (0, 0), (1, 0))).swapaxes(0, 1)
+        elif self._length == 3 and self._squared:
+            iss = np.cumsum(
+                (X*cos_w**2)[:,:,2:] * np.cumsum(
+                    (X*cos_w**4)[:,:,1:] * np.cumsum(
+                        X*cos_w**2, axis=2)[:,:,:-1],
+                axis=2)[:,:,:-1], axis=2
+            ) #
+            iss += 2 * np.cumsum(
+                (X*cos_w**2)[:,:,2:] * np.cumsum(
+                    (X*cos_w**3*sin_w)[:,:,1:] * np.cumsum(
+                        X*cos_w*sin_w, axis=2)[:,:,:-1],
+                axis=2)[:,:,:-1], axis=2
+            )
+            iss += np.cumsum(
+                (X*cos_w**2)[:,:,2:] * np.cumsum(
+                    (X*cos_w**2*sin_w**2)[:,:,1:] * np.cumsum(
+                        X*sin_w**2, axis=2)[:,:,:-1],
+                axis=2)[:,:,:-1], axis=2
+            )
+            iss += 2 * np.cumsum(
+                (X*cos_w*sin_w)[:,:,2:] * np.cumsum(
+                    (X*cos_w**3*sin_w)[:,:,1:] * np.cumsum(
+                        X*cos_w**2, axis=2)[:,:,:-1],
+                axis=2)[:,:,:-1], axis=2
+            )
+            iss += 4 * np.cumsum(
+                (X*cos_w*sin_w)[:,:,2:] * np.cumsum(
+                    (X*cos_w**2*sin_w**2)[:,:,1:] * np.cumsum(
+                        X*cos_w*sin_w, axis=2)[:,:,:-1],
+                axis=2)[:,:,:-1], axis=2
+            )
+            iss += 2 * np.cumsum(
+                (X*sin_w**2)[:,:,2:] * np.cumsum(
+                    (X*cos_w*sin_w**3)[:,:,1:] * np.cumsum(
+                        X*cos_w*sin_w, axis=2)[:,:,:-1],
+                axis=2)[:,:,:-1], axis=2
+            )
+            iss += np.cumsum(
+                (X*sin_w**2)[:,:,2:] * np.cumsum(
+                    (X*cos_w**2*sin_w**2)[:,:,1:] * np.cumsum(
+                        X*cos_w**2, axis=2)[:,:,:-1],
+                axis=2)[:,:,:-1], axis=2
+            )
+            iss += 2 * np.cumsum(
+                (X*sin_w*cos_w)[:,:,2:] * np.cumsum(
+                    (X*cos_w*sin_w**3)[:,:,1:] * np.cumsum(
+                        X*sin_w**2, axis=2)[:,:,:-1],
+                axis=2)[:,:,:-1], axis=2
+            )
+            iss += np.cumsum(
+                (X*sin_w**2)[:,:,2:] * np.cumsum(
+                    (X*sin_w**4)[:,:,1:] * np.cumsum(
+                        X*sin_w**2, axis=2)[:,:,:-1],
+                axis=2)[:,:,:-1], axis=2
+            )
+            yield np.pad(iss, ((0, 0), (0, 0), (2, 0))).swapaxes(0, 1)
+
+    def _copy(self) -> "CosWISS":
+        return CosWISS(
+            freq=self._freq,
+            length=self._length,
+            squared=self._squared,
         )
