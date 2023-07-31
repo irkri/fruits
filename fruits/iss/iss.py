@@ -1,14 +1,15 @@
 from enum import Enum, auto
 from typing import Generator, Literal, Optional, Sequence
 
+import numba
 import numpy as np
 
 from ..cache import SharedSeedCache
 from ..seed import Seed
 from .cache import CachePlan
-from .semiring import Reals, Arctic, Semiring
+from .semiring import Arctic, Reals, Semiring
 from .weighting import Weighting
-from .words.word import Word
+from .words.word import SimpleWord, Word
 
 
 class ISSMode(Enum):
@@ -72,7 +73,7 @@ class ISS(Seed):
     object with a number of words to a fruit.
 
     Args:
-        words (Word or list of Words): Words to calculate the ISS for.
+        words (Sequence of Words): Words to calculate the ISS for.
         mode (ISSMode, optional): Mode of the used calculator. Has to be
             either "single" or "extended".
 
@@ -193,26 +194,100 @@ class ISS(Seed):
         )
 
 
+@numba.njit(
+    "f8[:](f8[:,:], i4[:,:], f4, i4[:,:])",
+    fastmath=True,
+    cache=True,
+)
+def _coswiss_single(
+    X: np.ndarray,
+    word: np.ndarray,
+    freq: float,
+    weightings: np.ndarray,
+) -> np.ndarray:
+    result = np.zeros((X.shape[1], ))
+    sin_w = np.sin(np.pi * np.arange(X.shape[1])/(freq*(X.shape[1]-1)))
+    cos_w = np.cos(np.pi * np.arange(X.shape[1])/(freq*(X.shape[1]-1)))
+    for i in range(weightings.shape[0]):
+        tmp = np.ones((X.shape[1], ), dtype=np.float64)
+        for k, extended_letter in enumerate(word):
+            C = np.ones((X.shape[1], ), dtype=np.float64)
+            for letter, occurence in enumerate(extended_letter):
+                if occurence > 0:
+                    for _ in range(occurence):
+                        C = C * X[letter, :]
+                elif occurence < 0:
+                    for _ in range(-occurence):
+                        C = C / X[letter, :]
+            if k > 0:
+                tmp = np.roll(tmp, 1)
+                tmp[0] = 0
+            tmp[k:] = np.cumsum(tmp[k:] * C[k:] * (
+                sin_w[k:]**weightings[i, 2*k+1]*cos_w[k:]**weightings[i, 2*k+2]
+            ))
+        result += weightings[i, 0] * tmp
+    return result
+
+
+@numba.njit(
+    "f8[:,:](f8[:,:,:], i4[:,:], f4, i4[:,:])",
+    fastmath=True,
+    cache=True,
+    parallel=True,
+)
+def _coswiss(
+    X: np.ndarray,
+    word: np.ndarray,
+    freq: float,
+    weightings: np.ndarray,
+) -> np.ndarray:
+    result = np.zeros((X.shape[0], X.shape[2]))
+    for i in numba.prange(X.shape[0]):
+        result[i, :] = _coswiss_single(X[i, :, :], word, freq, weightings)
+    return result
+
+
 class CosWISS(ISS):
+    """The Cosine Weighted ISS is a regular ISS over the
+    :class:`~fruits.iss.semiring.Reals` semiring with squared
+    cosine weighted summands, e.g.::
+
+        cos(pi * |i-j| / (f*N))**2 * x_i * x_j
+
+    Args:
+        freqs (list of floats): Frequencies ``f`` to calculate the
+            weighted ISS for.
+        words (Sequence of Words): Words to calculate the ISS for.
+            Currently only words of length 2 and 3 are supported.
+        squared (bool, optional): If set to false, the cosine will not
+            be squared. Defaults to true.
+    """
 
     def __init__(
         self,
-        freq: float,
-        length: Literal[2, 3] = 2,
-        squared: bool = False,
+        freqs: Sequence[float],
+        words: Sequence[Word],
+        squared: bool = True,
     ) -> None:
-        self._freq = freq
-        self._length: Literal[2, 3] = length
+        self._freqs = freqs
+        for word in words:
+            if not isinstance(word, SimpleWord):
+                raise ValueError("CosWISS only implemented for simple words")
+            if len(word) not in [2, 3]:
+                raise ValueError(
+                    f"CosWISS not implemented for word of length {len(word)}"
+                )
+        self._words = words
         self._squared = squared
 
     def n_iterated_sums(self) -> int:
-        """Returns the number of iterated sums the object would return
-        with a :meth:`~CosWISS.transform`` call.
+        """Total number of iterated sums the current ISS configuration
+        produces.
         """
-        return 1
+        return len(self._freqs) * len(self._words)
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
-        result = self.batch_transform(X, batch_size=1)
+        result = self.batch_transform(X, batch_size=self.n_iterated_sums())
         return next(iter(result))
 
     def batch_transform(
@@ -227,117 +302,61 @@ class CosWISS(ISS):
             X (np.ndarray): Univariate or multivariate time series as a
                 numpy array of shape
                 ``(n_series, n_dimensions, series_length)``.
-            batch_size (int, optional): Option not available. Is only
-                implemented for compatibility with default :class:`ISS`.
+            batch_size (int, optional): Number of iterated sums returned
+                at once. Default is 1.
         """
-        if batch_size > 1:
-            raise ValueError("batch_size > 1 not supported for CosWISS")
-        steps = np.arange(X.shape[2]) / (self._freq*(X.shape[2] - 1))
-        sin_w = np.sin(np.pi * steps)[np.newaxis, np.newaxis, :]
-        cos_w = np.cos(np.pi * steps)[np.newaxis, np.newaxis, :]
-        if self._length == 2 and not self._squared:
-            iss = np.cumsum(
-                (X*sin_w)[:, :, 1:] * np.cumsum(X*sin_w, axis=2)[:, :, :-1],
-                axis=2
-            )
-            iss += np.cumsum(
-                (X*cos_w)[:, :, 1:] * np.cumsum(X*cos_w, axis=2)[:, :, :-1],
-                axis=2
-            )
-            yield np.pad(iss, ((0, 0), (0, 0), (1, 0))).swapaxes(0, 1)
-        elif self._length == 3 and not self._squared:
-            iss = np.cumsum((X*cos_w)[:,:,2:] * np.cumsum(
-                (X*cos_w**2)[:,:,1:] * np.cumsum(X*cos_w, axis=2)[:,:,:-1],
-                axis=2)[:,:,:-1], axis=2
-            )
-            iss += np.cumsum((X*sin_w)[:,:,2:] * np.cumsum(
-                (X*sin_w*cos_w)[:,:,1:] * np.cumsum(X*cos_w, axis=2)[:,:,:-1],
-                axis=2)[:,:,:-1], axis=2
-            )
-            iss += np.cumsum((X*cos_w)[:,:,2:] * np.cumsum(
-                (X*sin_w*cos_w)[:,:,1:] * np.cumsum(X*sin_w, axis=2)[:,:,:-1],
-                axis=2)[:,:,:-1], axis=2
-            )
-            iss += np.cumsum((X*sin_w)[:,:,2:] * np.cumsum(
-                (X*sin_w**2)[:,:,1:] * np.cumsum(X*sin_w, axis=2)[:,:,:-1],
-                axis=2)[:,:,:-1], axis=2
-            )
-            yield np.pad(iss, ((0, 0), (0, 0), (2, 0))).swapaxes(0, 1)
-        elif self._length == 2 and self._squared:
-            iss = np.cumsum(
-                (X*sin_w**2)[:,:,1:] * np.cumsum(X*sin_w**2, axis=2)[:,:,:-1],
-                axis=2
-            )
-            iss += 2 * np.cumsum(
-                (X*sin_w*cos_w)[:,:,1:]
-                    * np.cumsum(X*sin_w*cos_w, axis=2)[:,:,:-1],
-                axis=2
-            )
-            iss += np.cumsum(
-                (X*cos_w**2)[:,:,1:] * np.cumsum(X*cos_w**2, axis=2)[:,:,:-1],
-                axis=2
-            )
-            yield np.pad(iss, ((0, 0), (0, 0), (1, 0))).swapaxes(0, 1)
-        elif self._length == 3 and self._squared:
-            iss = np.cumsum(
-                (X*cos_w**2)[:,:,2:] * np.cumsum(
-                    (X*cos_w**4)[:,:,1:] * np.cumsum(
-                        X*cos_w**2, axis=2)[:,:,:-1],
-                axis=2)[:,:,:-1], axis=2
-            ) #
-            iss += 2 * np.cumsum(
-                (X*cos_w**2)[:,:,2:] * np.cumsum(
-                    (X*cos_w**3*sin_w)[:,:,1:] * np.cumsum(
-                        X*cos_w*sin_w, axis=2)[:,:,:-1],
-                axis=2)[:,:,:-1], axis=2
-            )
-            iss += np.cumsum(
-                (X*cos_w**2)[:,:,2:] * np.cumsum(
-                    (X*cos_w**2*sin_w**2)[:,:,1:] * np.cumsum(
-                        X*sin_w**2, axis=2)[:,:,:-1],
-                axis=2)[:,:,:-1], axis=2
-            )
-            iss += 2 * np.cumsum(
-                (X*cos_w*sin_w)[:,:,2:] * np.cumsum(
-                    (X*cos_w**3*sin_w)[:,:,1:] * np.cumsum(
-                        X*cos_w**2, axis=2)[:,:,:-1],
-                axis=2)[:,:,:-1], axis=2
-            )
-            iss += 4 * np.cumsum(
-                (X*cos_w*sin_w)[:,:,2:] * np.cumsum(
-                    (X*cos_w**2*sin_w**2)[:,:,1:] * np.cumsum(
-                        X*cos_w*sin_w, axis=2)[:,:,:-1],
-                axis=2)[:,:,:-1], axis=2
-            )
-            iss += 2 * np.cumsum(
-                (X*sin_w**2)[:,:,2:] * np.cumsum(
-                    (X*cos_w*sin_w**3)[:,:,1:] * np.cumsum(
-                        X*cos_w*sin_w, axis=2)[:,:,:-1],
-                axis=2)[:,:,:-1], axis=2
-            )
-            iss += np.cumsum(
-                (X*sin_w**2)[:,:,2:] * np.cumsum(
-                    (X*cos_w**2*sin_w**2)[:,:,1:] * np.cumsum(
-                        X*cos_w**2, axis=2)[:,:,:-1],
-                axis=2)[:,:,:-1], axis=2
-            )
-            iss += 2 * np.cumsum(
-                (X*sin_w*cos_w)[:,:,2:] * np.cumsum(
-                    (X*cos_w*sin_w**3)[:,:,1:] * np.cumsum(
-                        X*sin_w**2, axis=2)[:,:,:-1],
-                axis=2)[:,:,:-1], axis=2
-            )
-            iss += np.cumsum(
-                (X*sin_w**2)[:,:,2:] * np.cumsum(
-                    (X*sin_w**4)[:,:,1:] * np.cumsum(
-                        X*sin_w**2, axis=2)[:,:,:-1],
-                axis=2)[:,:,:-1], axis=2
-            )
-            yield np.pad(iss, ((0, 0), (0, 0), (2, 0))).swapaxes(0, 1)
+        results = []
+        c = 0
+        for freq in self._freqs:
+            for word in self._words:
+                weightings = np.empty((1, 1))
+                if len(word) == 2 and not self._squared:
+                    weightings = np.array([
+                        [1, 1, 0, 1, 0],
+                        [1, 0, 1, 0, 1],
+                    ], dtype=np.int32)
+                elif len(word) == 3 and not self._squared:
+                    weightings = np.array([
+                        [1, 0, 1, 0, 2, 0, 1],
+                        [1, 0, 1, 1, 1, 1, 0],
+                        [1, 1, 0, 1, 1, 0, 1],
+                        [1, 1, 0, 2, 0, 1, 0],
+                    ], dtype=np.int32)
+                elif len(word) == 2 and self._squared:
+                    weightings = np.array([
+                        [1, 2, 0, 2, 0],
+                        [2, 1, 1, 1, 1],
+                        [1, 0, 2, 0, 2],
+                    ], dtype=np.int32)
+                elif len(word) == 3 and self._squared:
+                    weightings = np.array([
+                        [1, 0, 2, 0, 4, 0, 2],
+                        [2, 1, 1, 1, 3, 0, 2],
+                        [1, 2, 0, 2, 2, 0, 2],
+                        [2, 0, 2, 1, 3, 1, 1],
+                        [4, 1, 1, 2, 2, 1, 1],
+                        [2, 1, 1, 3, 1, 2, 0],
+                        [1, 0, 2, 2, 2, 2, 0],
+                        [2, 2, 0, 3, 1, 1, 1],
+                        [1, 2, 0, 4, 0, 2, 0],
+                    ], dtype=np.int32)
+                else:
+                    raise RuntimeError("Unsupported CosWISS configuration")
+                results.append(_coswiss(
+                    X,
+                    np.array(list(word), dtype=np.int32),
+                    freq,
+                    weightings,
+                ))
+                if len(results) == batch_size:
+                    yield np.array(results, dtype=results[0].dtype)
+                    results = []
+        if len(results) != 0:
+            yield np.array(results, dtype=results[0].dtype)
 
     def _copy(self) -> "CosWISS":
         return CosWISS(
-            freq=self._freq,
-            length=self._length,
+            freqs=self._freqs,
+            words=self._words,
             squared=self._squared,
         )
