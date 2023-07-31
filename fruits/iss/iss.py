@@ -222,9 +222,12 @@ def _coswiss_single(
             if k > 0:
                 tmp = np.roll(tmp, 1)
                 tmp[0] = 0
-            tmp[k:] = np.cumsum(tmp[k:] * C[k:] * (
-                sin_w[k:]**weightings[i, 2*k+1]*cos_w[k:]**weightings[i, 2*k+2]
-            ))
+            tmp[k:] = tmp[k:] * C[k:]
+            for _ in range(weightings[i, 2*k+1]):
+                tmp[k:] = tmp[k:] * sin_w[k:]
+            for _ in range(weightings[i, 2*k+2]):
+                tmp[k:] = tmp[k:] * cos_w[k:]
+            tmp[k:] = np.cumsum(tmp[k:])
         result += weightings[i, 0] * tmp
     return result
 
