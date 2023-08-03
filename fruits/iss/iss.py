@@ -302,16 +302,19 @@ class CosWISS(ISS):
             trig_exp[0] -= 1
             trig_exp[1] += 1
             trig_coeff = trig_coeff * (self._exponent - k) // (k + 1)
-        exponents = np.zeros(((self._exponent+1)**(p-1), 2*p+1), dtype=int)
-        exponents[:, 0] = 1
+        weightings = np.zeros(
+            ((self._exponent+1)**(p-1), 2*p+1),
+            dtype=np.int32,
+        )
+        weightings[:, 0] = 1
         for c, comb in enumerate(product(trig_id, repeat=p-1)):
             for i in range(p-1):
-                exponents[c, 0] *= int(comb[i][0])
-                exponents[c, 2*i+1] += int(comb[i][1])
-                exponents[c, 2*i+3] += int(comb[i][1])
-                exponents[c, 2*i+2] += int(comb[i][2])
-                exponents[c, 2*i+4] += int(comb[i][2])
-        return exponents
+                weightings[c, 0] *= int(comb[i][0])
+                weightings[c, 2*i+1] += int(comb[i][1])
+                weightings[c, 2*i+3] += int(comb[i][1])
+                weightings[c, 2*i+2] += int(comb[i][2])
+                weightings[c, 2*i+4] += int(comb[i][2])
+        return weightings
 
     def batch_transform(
         self,
