@@ -439,14 +439,17 @@ class FruitSlice:
             prep.fit(prepared_data)
             prepared_data = prep.transform(prepared_data)
 
+        for iss in self._iss:
+            iss._cache = cache
+            if iss.requires_fitting:
+                iss.fit(X)
+
         if not any(sieve.requires_fitting for sieve in self._sieves):
             self._fitted = True
             return
 
         self._sieves_extended = []
 
-        for iss in self._iss:
-            iss._cache = cache
         for itsum in self._iterate_iss(prepared_data):
             sieves_copy = [sieve.copy() for sieve in self._sieves]
             for sieve in sieves_copy:

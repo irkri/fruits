@@ -271,7 +271,9 @@ class CosWISS(ISS):
         freqs: Sequence[float],
         words: Sequence[Word],
         squared: bool = True,
+        ffn_size: Optional[int] = None,
     ) -> None:
+        super().__init__(words)
         self._freqs = freqs
         for word in words:
             if not isinstance(word, SimpleWord):
@@ -280,14 +282,30 @@ class CosWISS(ISS):
                 raise ValueError(
                     f"CosWISS not implemented for word of length {len(word)}"
                 )
-        self._words = words
         self._squared = squared
+        self._ffn = ffn_size
+
+    @property
+    def requires_fitting(self) -> bool:
+        return self._ffn is not None
+
+    def _fit(self, X: np.ndarray) -> None:
+        if self._ffn is not None:
+            self._weights1 = np.random.normal(
+                size=(self.n_iterated_sums(), self._ffn)
+            )
+            self._biases = np.random.normal(
+                size=(self.n_iterated_sums(), self._ffn)
+            )
+            self._weights2 = np.random.normal(
+                size=(self.n_iterated_sums(), self._ffn)
+            )
 
     def n_iterated_sums(self) -> int:
         """Total number of iterated sums the current ISS configuration
         produces.
         """
-        return len(self._freqs) * len(self._words)
+        return len(self._freqs) * len(self.words)
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         result = self.batch_transform(X, batch_size=self.n_iterated_sums())
@@ -311,7 +329,7 @@ class CosWISS(ISS):
         results = []
         c = 0
         for freq in self._freqs:
-            for word in self._words:
+            for word in self.words:
                 weightings = np.empty((1, 1))
                 if len(word) == 2 and not self._squared:
                     weightings = np.array([
@@ -345,12 +363,22 @@ class CosWISS(ISS):
                     ], dtype=np.int32)
                 else:
                     raise RuntimeError("Unsupported CosWISS configuration")
+                Y = X
+                if self._ffn is not None:
+                    Y = np.expand_dims(X, axis=3) * self._weights1[c].reshape(
+                        1, 1, 1, self._weights1.shape[1]
+                    ) + self._biases[c].reshape(1, 1, 1, self._biases.shape[1])
+                    Y = Y * (Y > 0)
+                    Y = np.sum(Y * self._weights2[c].reshape(
+                        1, 1, 1, self._weights2.shape[1]
+                    ), axis=3)
                 results.append(_coswiss(
-                    X,
+                    Y,
                     np.array(list(word), dtype=np.int32),
                     freq,
                     weightings,
                 ))
+                c += 1
                 if len(results) == batch_size:
                     yield np.array(results, dtype=results[0].dtype)
                     results = []
@@ -360,6 +388,6 @@ class CosWISS(ISS):
     def _copy(self) -> "CosWISS":
         return CosWISS(
             freqs=self._freqs,
-            words=self._words,
+            words=self.words,
             squared=self._squared,
         )
