@@ -247,8 +247,8 @@ def _coswiss(
     weightings: np.ndarray,
 ) -> np.ndarray:
     result = np.zeros((freqs.size, X.shape[0], X.shape[2]))
-    for f in numba.prange(len(freqs)):
-        for i in numba.prange(X.shape[0]):
+    for i in range(X.shape[0]):
+        for f in numba.prange(len(freqs)):
             result[f, i] = _coswiss_single(X[i], word, freqs[f], weightings)
     return result
 
