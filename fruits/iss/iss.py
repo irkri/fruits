@@ -199,7 +199,6 @@ class ISS(Seed):
     "f8[:](f8[:,:], i4[:,:], f4, i4[:,:])",
     fastmath=True,
     cache=True,
-    parallel=True,
 )
 def _coswiss_single(
     X: np.ndarray,
@@ -210,7 +209,7 @@ def _coswiss_single(
     result = np.zeros((X.shape[1], ))
     sin_w = np.sin(np.pi * np.arange(X.shape[1])/(freq*(X.shape[1]-1)))
     cos_w = np.cos(np.pi * np.arange(X.shape[1])/(freq*(X.shape[1]-1)))
-    for i in numba.prange(weightings.shape[0]):
+    for i in range(weightings.shape[0]):
         tmp = np.ones((X.shape[1], ), dtype=np.float64)
         for k, extended_letter in enumerate(word):
             C = np.ones((X.shape[1], ), dtype=np.float64)
@@ -247,8 +246,8 @@ def _coswiss(
     weightings: np.ndarray,
 ) -> np.ndarray:
     result = np.zeros((freqs.size, X.shape[0], X.shape[2]))
-    for i in range(X.shape[0]):
-        for f in numba.prange(len(freqs)):
+    for i in numba.prange(X.shape[0]):
+        for f in range(len(freqs)):
             result[f, i] = _coswiss_single(X[i], word, freqs[f], weightings)
     return result
 
