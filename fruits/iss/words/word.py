@@ -1,5 +1,7 @@
 import re
-from typing import Optional, Union
+from typing import Optional, Sequence, Union
+
+import numpy as np
 
 from .letters import ExtendedLetter
 
@@ -62,8 +64,22 @@ class Word:
     def __init__(self, word_string: Optional[str] = None) -> None:
         self._extended_letters: list[ExtendedLetter] = []
         self._el_iterator_index = -1
+        self._alpha: Optional[np.ndarray] = None
         if word_string is not None:
             self.multiply(word_string)
+
+    @property
+    def alpha(self) -> np.ndarray:
+        """Alpha values used in a weighted iterated sum."""
+        if self._alpha is None:
+            return np.ones((len(self), ), dtype=np.float32)
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, alpha: Sequence[float]) -> None:
+        if len(alpha) != len(self):
+            raise ValueError("Size of alpha array does not match word length")
+        self._alpha = np.array(alpha, dtype=np.float32)
 
     def multiply(self, other: Union["Word", ExtendedLetter, str]) -> None:
         """Appends one or more extended letters to the word. A group of
@@ -171,10 +187,10 @@ class SimpleWord(Word):
     """
 
     def __init__(self, string: str) -> None:
+        super().__init__()
         self._extended_letters: list[list[int]] = []
         self._max_dim = 0
         self._name = ""
-        self._el_iterator_index = -1
         self.multiply(string)
 
     def multiply(self, other: Union[Word, ExtendedLetter, str]) -> None:

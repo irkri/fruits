@@ -1,7 +1,7 @@
 __all__ = ["Weighting", "L1", "L2", "Indices", "Plateaus"]
 
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Sequence
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -18,39 +18,23 @@ class Weighting(ABC):
 
         e^(a*(g(j)-g(i)))
 
-    where ``a`` is a given scalar. This scalar can be specified in a
-    list of floats, each single float being applied to two consecutive
-    indices for consecutive extended letters in words used by the
-    iterated sum. An appropriate number of scalars have to be specified,
-    matching or exceeding the length of the longest word in the
-    :class:`ISS`. The function ``g`` transforming time steps is chosen
+    where ``a`` is a scalar. This scalar is given as a attribute of a
+    single word. The function ``g`` transforming time steps is chosen
     by using on of the subclasses of this class.
 
     Args:
-        scalars (sequence of float, optional): The float values used to
-            scale the time index differences. If None is given, all
-            scalars are assumed to be 1.
+        total (bool, optional): If set to true, also weights the total
+            iterated sum by ``e^(a*(g(N)-g(i_k)))`` for a word of length
+            ``k`` and a time series of length ``N``. Defaults to false.
     """
 
     _cache: SharedSeedCache
 
-    def __init__(
-        self,
-        scalars: Optional[Sequence[float]] = None,
-    ) -> None:
-        if scalars is not None:
-            self._scalars = np.array(scalars, dtype=np.float32)
-        else:
-            self._scalars = None
-
-    def get_fast_args(
-        self,
-        X: np.ndarray
-    ) -> tuple[Optional[np.ndarray], np.ndarray]:
-        return self._scalars, self._get_lookup(X)
+    def __init__(self, total: bool = False) -> None:
+        self.total = total
 
     @abstractmethod
-    def _get_lookup(self, X: np.ndarray) -> np.ndarray:
+    def get_lookup(self, X: np.ndarray) -> np.ndarray:
         ...
 
 
@@ -65,20 +49,20 @@ class Custom(Weighting):
             function on numpy arrays. The result should be a two
             dimensional numpy array of size ``(N, L)`` where ``N`` is
             the number of samples and ``L`` the length of each sample.
-        scalars (sequence of float, optional): The float values used to
-            scale the time index differences. If None is given, all
-            scalars are assumed to be 1.
+        total (bool, optional): If set to true, also weights the total
+            iterated sum by ``e^(a*(g(N)-g(i_k)))`` for a word of length
+            ``k`` and a time series of length ``N``. Defaults to false.
     """
 
     def __init__(
         self,
         transform: Callable[[np.ndarray], np.ndarray],
-        scalars: Optional[Sequence[float]] = None,
+        total: bool = False,
     ) -> None:
-        super().__init__(scalars=scalars)
+        super().__init__(total=total)
         self._transform = transform
 
-    def _get_lookup(self, X: np.ndarray) -> np.ndarray:
+    def get_lookup(self, X: np.ndarray) -> np.ndarray:
         return self._transform(X)
 
 
@@ -96,9 +80,9 @@ class Indices(Weighting):
         scale (float, optional): Maximal time step of the transformed
             output. All time steps will be scaled to ``[0, scale]``.
             Defaults to 50.
-        scalars (sequence of float, optional): The float values used to
-            scale the time index differences. If None is given, all
-            scalars are assumed to be 1.
+        total (bool, optional): If set to true, also weights the total
+            iterated sum by ``e^(a*(g(N)-g(i_k)))`` for a word of length
+            ``k`` and a time series of length ``N``. Defaults to false.
     """
 
     def __init__(
@@ -106,14 +90,14 @@ class Indices(Weighting):
         relative: bool = True,
         transform: Optional[Callable[[float], float]] = None,
         scale: float = 50,
-        scalars: Optional[Sequence[float]] = None,
+        total: bool = False,
     ) -> None:
-        super().__init__(scalars=scalars)
+        super().__init__(total=total)
         self._transform = transform
         self._relative = relative
         self._scale = scale
 
-    def _get_lookup(self, X: np.ndarray) -> np.ndarray:
+    def get_lookup(self, X: np.ndarray) -> np.ndarray:
         n, _, l = X.shape
         range_ = np.arange(1, l+1)
         if self._relative:
@@ -142,9 +126,9 @@ class L1(Weighting):
         scale (float, optional): Maximal time step of the transformed
             output. All time steps will be scaled to ``[0, scale]``.
             Defaults to 50.
-        scalars (sequence of float, optional): The float values used to
-            scale the time index differences. If None is given, all
-            scalars are assumed to be 1.
+        total (bool, optional): If set to true, also weights the total
+            iterated sum by ``e^(a*(g(N)-g(i_k)))`` for a word of length
+            ``k`` and a time series of length ``N``. Defaults to false.
     """
 
     def __init__(
@@ -153,15 +137,15 @@ class L1(Weighting):
         relative: bool = False,
         transform: Optional[Callable[[float], float]] = None,
         scale: float = 50,
-        scalars: Optional[Sequence[float]] = None,
+        total: bool = False,
     ) -> None:
-        super().__init__(scalars=scalars)
+        super().__init__(total=total)
         self._on_prepared = on_prepared
         self._relative = relative
         self._transform = transform
         self._scale = scale
 
-    def _get_lookup(self, X: np.ndarray) -> np.ndarray:
+    def get_lookup(self, X: np.ndarray) -> np.ndarray:
         if not self._on_prepared:
             range_ = self._cache.get(CacheType.ISS, "L1", X)
         else:
@@ -192,9 +176,9 @@ class L2(Weighting):
         scale (float, optional): Maximal time step of the transformed
             output. All time steps will be scaled to ``[0, scale]``.
             Defaults to 50.
-        scalars (sequence of float, optional): The float values used to
-            scale the time index differences. If None is given, all
-            scalars are assumed to be 1.
+        total (bool, optional): If set to true, also weights the total
+            iterated sum by ``e^(a*(g(N)-g(i_k)))`` for a word of length
+            ``k`` and a time series of length ``N``. Defaults to false.
     """
 
     def __init__(
@@ -203,15 +187,15 @@ class L2(Weighting):
         relative: bool = False,
         transform: Optional[Callable[[float], float]] = None,
         scale: float = 50,
-        scalars: Optional[Sequence[float]] = None,
+        total: bool = False,
     ) -> None:
-        super().__init__(scalars=scalars)
+        super().__init__(total=total)
         self._on_prepared = on_prepared
         self._relative = relative
         self._transform = transform
         self._scale = scale
 
-    def _get_lookup(self, X: np.ndarray) -> np.ndarray:
+    def get_lookup(self, X: np.ndarray) -> np.ndarray:
         if not self._on_prepared:
             range_ = self._cache.get(CacheType.ISS, "L2", X)
         else:
@@ -239,9 +223,9 @@ class Plateaus(Weighting):
         scale (float, optional): Maximal time step of the transformed
             output. All time steps will be scaled to ``[0, scale]``.
             Defaults to 50.
-        scalars (sequence of float, optional): The float values used to
-            scale the time index differences. If None is given, all
-            scalars are assumed to be 1.
+        total (bool, optional): If set to true, also weights the total
+            iterated sum by ``e^(a*(g(N)-g(i_k)))`` for a word of length
+            ``k`` and a time series of length ``N``. Defaults to false.
     """
 
     def __init__(
@@ -249,16 +233,16 @@ class Plateaus(Weighting):
         n: int,
         reverse: bool = False,
         scale: float = 50,
-        scalars: Optional[Sequence[float]] = None,
+        total: bool = False,
     ) -> None:
-        super().__init__(scalars=scalars)
+        super().__init__(total=total)
         if n <= 1:
             raise ValueError(f"Number of plateaus ({n}) has to be > 1")
         self._nplateaus = n
         self._reverse = reverse
         self._scale = scale
 
-    def _get_lookup(self, X: np.ndarray) -> np.ndarray:
+    def get_lookup(self, X: np.ndarray) -> np.ndarray:
         n, _, l = X.shape
         range_ = np.ones(l)
         step = int(l/(self._nplateaus))

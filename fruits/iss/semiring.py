@@ -21,18 +21,18 @@ class Semiring(ABC):
         if isinstance(word, SimpleWord):
             try:
                 if weighting is not None:
-                    scalars, lookup = weighting.get_fast_args(Z)
-                    if scalars is None:
-                        scalars = np.ones((len(word)-1, ), dtype=np.float32)
+                    lookup = weighting.get_lookup(Z)
+                    alpha = word.alpha
                 else:
-                    scalars = np.zeros((len(word)-1, ), dtype=np.float32)
+                    alpha = np.zeros((len(word), ), dtype=np.float32)
                     lookup = np.zeros((Z.shape[0], Z.shape[2]))
                 result = self.iterated_sum_fast(
                     Z,
                     np.array(list(word), dtype=np.int32),
-                    scalars,
+                    alpha,
                     lookup,
                     extended,
+                    weighting.total if weighting is not None else True,
                 )
                 return result
             except NotImplementedError:
@@ -44,9 +44,10 @@ class Semiring(ABC):
         self,
         Z: np.ndarray,
         word: np.ndarray,
-        scalar: np.ndarray,
+        alpha: np.ndarray,
         lookup: np.ndarray,
         extended: int,
+        total_weighting: bool,
     ) -> np.ndarray:
         raise NotImplementedError("No fast way of calculating iterated sums")
 
@@ -94,37 +95,66 @@ class Semiring(ABC):
     fastmath=True,
     cache=True,
 )
-def _reals_single_iterated_sum_fast(
+def _reals_single(
     Z: np.ndarray,
     word: np.ndarray,
-    scalar: np.ndarray,
+    alpha: np.ndarray,
     weights: np.ndarray,
     extended: int,
 ) -> np.ndarray:
     result = np.zeros((extended, Z.shape[1]), dtype=np.float64)
     tmp = np.ones((Z.shape[1], ), dtype=np.float64)
     for k, extended_letter in enumerate(word):
-        if not np.any(extended_letter):
-            continue
-        C = np.ones((Z.shape[1], ), dtype=np.float64)
-        for letter, occurence in enumerate(extended_letter):
-            if occurence > 0:
-                for _ in range(occurence):
-                    C = C * Z[letter, :]
-            elif occurence < 0:
-                for _ in range(-occurence):
-                    C = C / Z[letter, :]
         if k > 0:
             tmp = np.roll(tmp, 1)
             tmp[0] = 0
-        tmp[k:] = tmp[k:] * C[k:]
+        for letter, occurence in enumerate(extended_letter):
+            if occurence > 0:
+                for _ in range(occurence):
+                    tmp = tmp * Z[letter, :]
+            elif occurence < 0:
+                for _ in range(-occurence):
+                    tmp = tmp / Z[letter, :]
         if k > 0:
-            tmp = tmp * np.exp(- weights * scalar[k-1])
+            tmp = tmp * np.exp(- weights * alpha[k-1])
         if len(word) - k <= extended:
-            result[extended-(len(word)-k), k:] = np.cumsum(tmp[k:])
+            result[extended-(len(word)-k), :] = np.cumsum(tmp)
         if k < len(word) - 1:
-            tmp = tmp * np.exp(weights * scalar[k])
-            tmp[k:] = np.cumsum(tmp[k:])
+            tmp = tmp * np.exp(weights * alpha[k])
+            tmp = np.cumsum(tmp)
+    return result
+
+
+@numba.njit(
+    "f8[:,:](f8[:,:], i4[:,:], f4[:], f8[:], i8)",
+    fastmath=True,
+    cache=True,
+)
+def _total_weighted_reals_single(
+    Z: np.ndarray,
+    word: np.ndarray,
+    alpha: np.ndarray,
+    weights: np.ndarray,
+    extended: int,
+) -> np.ndarray:
+    result = np.zeros((extended, Z.shape[1]), dtype=np.float64)
+    tmp = np.ones((Z.shape[1], ), dtype=np.float64)
+    for k, extended_letter in enumerate(word):
+        for letter, occurence in enumerate(extended_letter):
+            if occurence > 0:
+                for _ in range(occurence):
+                    tmp = tmp * Z[letter, :]
+            elif occurence < 0:
+                for _ in range(-occurence):
+                    tmp = tmp / Z[letter, :]
+        tmp = tmp * np.exp(weights * alpha[k])
+        tmp = np.cumsum(tmp)
+        if len(word) - k <= extended:
+            result[extended-(len(word)-k), :] = tmp*np.exp(-weights * alpha[k])
+        if k < len(word) - 1:
+            tmp = np.roll(tmp, 1)
+            tmp[0] = 0
+            tmp = tmp * np.exp(-weights * alpha[k])
     return result
 
 
@@ -136,7 +166,7 @@ class Reals(Semiring):
 
     @staticmethod
     @numba.njit(
-        "f8[:,:,:](f8[:,:,:], i4[:,:], f4[:], f8[:,:], i8)",
+        "f8[:,:,:](f8[:,:,:], i4[:,:], f4[:], f8[:,:], i8, b1)",
         fastmath=True,
         cache=True,
         parallel=True,
@@ -144,147 +174,48 @@ class Reals(Semiring):
     def _iterated_sum_fast(
         Z: np.ndarray,
         word: np.ndarray,
-        scalar: np.ndarray,
+        alpha: np.ndarray,
         lookup: np.ndarray,
         extended: int,
+        total_weighting: bool,
     ) -> np.ndarray:
         result = np.zeros((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
-        for j in numba.prange(Z.shape[0]):
-            result[j] = _reals_single_iterated_sum_fast(
-                Z[j, :, :],
-                word,
-                scalar,
-                lookup[j],
-                extended,
-            )
+        if total_weighting:
+            for j in numba.prange(Z.shape[0]):
+                result[j] = _total_weighted_reals_single(
+                    Z[j, :, :],
+                    word,
+                    alpha,
+                    lookup[j],
+                    extended,
+                )
+        else:
+            for j in numba.prange(Z.shape[0]):
+                result[j] = _reals_single(
+                    Z[j, :, :],
+                    word,
+                    alpha,
+                    lookup[j],
+                    extended,
+                )
         return result
 
     def iterated_sum_fast(
         self,
         Z: np.ndarray,
         word: np.ndarray,
-        scalar: np.ndarray,
+        alpha: np.ndarray,
         lookup: np.ndarray,
         extended: int,
+        total_weighting: bool,
     ) -> np.ndarray:
         return self._iterated_sum_fast(
             Z,
             word,
-            scalar,
+            alpha,
             lookup,
             extended,
-        )
-
-    @staticmethod
-    def _identity(X: np.ndarray) -> np.ndarray:
-        return np.ones(X.shape[1], dtype=np.float64)
-
-    @staticmethod
-    def _operation(x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        return x * y
-
-    @staticmethod
-    def _cumulative_operation(Z: np.ndarray) -> np.ndarray:
-        return np.cumsum(Z)
-
-
-@numba.njit(
-    "f8[:,:](f8[:,:], i4[:,:], f4[:], f8[:], i8, f8)",
-    fastmath=True,
-    cache=True,
-)
-def _leaky_reals_single_iterated_sum_fast(
-    Z: np.ndarray,
-    word: np.ndarray,
-    scalar: np.ndarray,
-    weights: np.ndarray,
-    extended: int,
-    dropout: float,
-) -> np.ndarray:
-    result = np.zeros((extended, Z.shape[1]), dtype=np.float64)
-    tmp = np.ones((Z.shape[1], ), dtype=np.float64)
-    for k, extended_letter in enumerate(word):
-        if not np.any(extended_letter):
-            continue
-        C = np.ones((Z.shape[1], ), dtype=np.float64)
-        for letter, occurence in enumerate(extended_letter):
-            if occurence > 0:
-                for _ in range(occurence):
-                    C = C * Z[letter, :]
-            elif occurence < 0:
-                for _ in range(-occurence):
-                    C = C / Z[letter, :]
-        if k > 0:
-            tmp = np.roll(tmp, 1)
-            tmp[0] = 0
-        gate = np.random.random(Z.shape[1])
-        tmp[gate < dropout] = 0
-        tmp[k:] = tmp[k:] * C[k:]
-        if k > 0:
-            tmp = tmp * np.exp(- weights * scalar[k-1])
-        if len(word) - k <= extended:
-            result[extended-(len(word)-k), k:] = np.cumsum(tmp[k:])
-        if k < len(word) - 1:
-            tmp = tmp * np.exp(weights * scalar[k])
-            tmp[k:] = np.cumsum(tmp[k:])
-    return result
-
-
-class LeakyReals(Semiring):
-    """Standard semiring with a certain probability that some points in
-    one cumulative sum get set to zero.
-
-    Args:
-        dropout (float, optional): Probability of a single value being
-            set to zero. Defaults to ``0.1``.
-    """
-
-    def __init__(self, dropout: float = 0.1) -> None:
-        super().__init__()
-        self._dropout = dropout
-
-    @staticmethod
-    @numba.njit(
-        "f8[:,:,:](f8[:,:,:], i4[:,:], f4[:], f8[:,:], i8, f8)",
-        fastmath=True,
-        cache=True,
-        parallel=True,
-    )
-    def _iterated_sum_fast(
-        Z: np.ndarray,
-        word: np.ndarray,
-        scalar: np.ndarray,
-        lookup: np.ndarray,
-        extended: int,
-        dropout: float,
-    ) -> np.ndarray:
-        result = np.zeros((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
-        for j in numba.prange(Z.shape[0]):
-            result[j] = _leaky_reals_single_iterated_sum_fast(
-                Z[j, :, :],
-                word,
-                scalar,
-                lookup[j],
-                extended,
-                dropout,
-            )
-        return result
-
-    def iterated_sum_fast(
-        self,
-        Z: np.ndarray,
-        word: np.ndarray,
-        scalar: np.ndarray,
-        lookup: np.ndarray,
-        extended: int,
-    ) -> np.ndarray:
-        return self._iterated_sum_fast(
-            Z,
-            word,
-            scalar,
-            lookup,
-            extended,
-            self._dropout,
+            total_weighting,
         )
 
     @staticmethod
@@ -305,10 +236,10 @@ class LeakyReals(Semiring):
     fastmath=True,
     cache=True,
 )
-def _arctic_argmax_single_iterated_sum_fast(
+def _arctic_argmax_single(
     Z: np.ndarray,
     word: np.ndarray,
-    scalar: np.ndarray,
+    alpha: np.ndarray,
     weights: np.ndarray,
 ) -> np.ndarray:
     result = np.zeros((2*word.shape[0], Z.shape[1]), dtype=np.float64)
@@ -321,7 +252,7 @@ def _arctic_argmax_single_iterated_sum_fast(
             C = C + el * Z[dim, :]
         tmp = tmp + C
         if k > 0:
-            tmp = tmp - weights * scalar[k-1]
+            tmp = tmp - weights * alpha[k-1]
         result[2*k, 0] = tmp[0]
         for i in range(1, Z.shape[1]):
             if result[2*k, i-1] >= tmp[i]:
@@ -331,7 +262,7 @@ def _arctic_argmax_single_iterated_sum_fast(
                 result[2*k, i] = tmp[i]
                 result[2*k+1, i] = i
         if k < len(word) - 1:
-            tmp = tmp + weights * scalar[k]
+            tmp = tmp + weights * alpha[k]
             for i in range(1, Z.shape[1]):
                 tmp[i] = max(tmp[i-1], tmp[i])
     # translate indices back to their actual position
@@ -353,24 +284,20 @@ def _arctic_argmax_single_iterated_sum_fast(
     fastmath=True,
     cache=True,
 )
-def _arctic_single_iterated_sum_fast(
+def _arctic_single(
     Z: np.ndarray,
     word: np.ndarray,
-    scalar: np.ndarray,
+    alpha: np.ndarray,
     weights: np.ndarray,
     extended: int,
 ) -> np.ndarray:
     result = np.zeros((extended, Z.shape[1]), dtype=np.float64)
     tmp = np.zeros((Z.shape[1], ), dtype=np.float64)
-    for k, ext_letter in enumerate(word):
-        if not np.any(ext_letter):
-            continue
-        C = np.zeros(Z.shape[1], dtype=np.float64)
-        for dim, el in enumerate(ext_letter):
-            C = C + el * Z[dim, :]
-        tmp = tmp + C
+    for k, extended_letter in enumerate(word):
+        for dim, el in enumerate(extended_letter):
+            tmp = tmp + el * Z[dim, :]
         if k > 0:
-            tmp = tmp - weights * scalar[k-1]
+            tmp = tmp - weights * alpha[k-1]
         if len(word) - k <= extended:
             result[extended-(len(word)-k), 0] = tmp[0]
             for i in range(1, Z.shape[1]):
@@ -378,9 +305,36 @@ def _arctic_single_iterated_sum_fast(
                     result[extended-(len(word)-k), i-1], tmp[i]
                 )
         if k < len(word) - 1:
-            tmp = tmp + weights * scalar[k]
+            tmp = tmp + weights * alpha[k]
             for i in range(1, Z.shape[1]):
                 tmp[i] = max(tmp[i-1], tmp[i])
+    return result
+
+
+@numba.njit(
+    "f8[:,:](f8[:,:], i4[:,:], f4[:], f8[:], i8)",
+    fastmath=True,
+    cache=True,
+)
+def _total_weighted_arctic_single(
+    Z: np.ndarray,
+    word: np.ndarray,
+    alpha: np.ndarray,
+    weights: np.ndarray,
+    extended: int,
+) -> np.ndarray:
+    result = np.zeros((extended, Z.shape[1]), dtype=np.float64)
+    tmp = np.zeros((Z.shape[1], ), dtype=np.float64)
+    for k, extended_letter in enumerate(word):
+        for dim, el in enumerate(extended_letter):
+            tmp = tmp + el * Z[dim, :]
+        tmp = tmp + weights * alpha[k]
+        for i in range(1, Z.shape[1]):
+            tmp[i] = max(tmp[i-1], tmp[i])
+        if len(word) - k <= extended:
+            result[extended-(len(word)-k), :] = tmp - weights * alpha[k]
+        if k < len(word) - 1:
+            tmp = tmp - weights * alpha[k]
     return result
 
 
@@ -399,7 +353,7 @@ class Arctic(Semiring):
 
     @staticmethod
     @numba.njit(
-        "f8[:,:,:](f8[:,:,:], i4[:,:], f4[:], f8[:,:], i8, b1)",
+        "f8[:,:,:](f8[:,:,:], i4[:,:], f4[:], f8[:,:], i8, b1, b1)",
         fastmath=True,
         cache=True,
         parallel=True,
@@ -407,10 +361,11 @@ class Arctic(Semiring):
     def _iterated_sum_fast(
         Z: np.ndarray,
         word: np.ndarray,
-        scalar: np.ndarray,
+        alpha: np.ndarray,
         lookup: np.ndarray,
         extended: int,
         argmax: bool,
+        total_weighting: bool,
     ) -> np.ndarray:
         if argmax:
             n = int(word.shape[0] + (word.shape[0] * (word.shape[0]+1) / 2))
@@ -420,19 +375,29 @@ class Arctic(Semiring):
                 (Z.shape[0], extended, Z.shape[2]),
                 dtype=np.float64,
             )
-        for j in numba.prange(Z.shape[0]):
-            if argmax:
-                result[j, :, :] = _arctic_argmax_single_iterated_sum_fast(
+        if argmax:
+            for j in numba.prange(Z.shape[0]):
+                result[j, :, :] = _arctic_argmax_single(
                     Z[j, :, :],
                     word,
-                    scalar,
+                    alpha,
                     lookup[j],
                 )
-            else:
-                result[j, :, :] = _arctic_single_iterated_sum_fast(
+        elif total_weighting:
+            for j in numba.prange(Z.shape[0]):
+                result[j, :, :] = _total_weighted_arctic_single(
                     Z[j, :, :],
                     word,
-                    scalar,
+                    alpha,
+                    lookup[j],
+                    extended,
+                )
+        else:
+            for j in numba.prange(Z.shape[0]):
+                result[j, :, :] = _arctic_single(
+                    Z[j, :, :],
+                    word,
+                    alpha,
                     lookup[j],
                     extended,
                 )
@@ -445,17 +410,19 @@ class Arctic(Semiring):
         self,
         Z: np.ndarray,
         word: np.ndarray,
-        scalar: np.ndarray,
+        alpha: np.ndarray,
         lookup: np.ndarray,
         extended: int,
+        total_weighting: bool,
     ) -> np.ndarray:
         return self._iterated_sum_fast(
             Z,
             word,
-            scalar,
+            alpha,
             lookup,
             extended,
-            self._argmax
+            self._argmax,
+            total_weighting,
         )
 
     def _iterated_sum(
@@ -496,29 +463,25 @@ class Arctic(Semiring):
     fastmath=True,
     cache=True,
 )
-def _bayesian_single_iterated_sum_fast(
+def _bayesian_single(
     Z: np.ndarray,
     word: np.ndarray,
-    scalar: np.ndarray,
+    alpha: np.ndarray,
     weights: np.ndarray,
     extended: int,
 ) -> np.ndarray:
     result = np.ones((extended, Z.shape[1]), dtype=np.float64)
     tmp = np.ones((Z.shape[1], ), dtype=np.float64)
     for k, extended_letter in enumerate(word):
-        if not np.any(extended_letter):
-            continue
-        C = np.ones((Z.shape[1], ), dtype=np.float64)
         for letter, occurence in enumerate(extended_letter):
             if occurence > 0:
                 for _ in range(occurence):
-                    C = C * Z[letter, :]
+                    tmp = tmp * Z[letter, :]
             elif occurence < 0:
                 for _ in range(-occurence):
-                    C = C / Z[letter, :]
-        tmp = tmp * C
+                    tmp = tmp / Z[letter, :]
         if k > 0:
-            tmp = tmp * np.exp(- weights * scalar[k-1])
+            tmp = tmp * np.exp(- weights * alpha[k-1])
         if len(word)-k <= extended:
             result[extended-(len(word)-k), 0] = tmp[0]
             for i in range(1, Z.shape[1]):
@@ -526,9 +489,41 @@ def _bayesian_single_iterated_sum_fast(
                     result[extended-(len(word)-k), i-1], tmp[i]
                 )
         if k < len(word) - 1:
-            tmp = tmp * np.exp(weights * scalar[k])
+            tmp = tmp * np.exp(weights * alpha[k])
             for i in range(1, Z.shape[1]):
                 tmp[i] = max(tmp[i-1], tmp[i])
+    return result
+
+
+@numba.njit(
+    "f8[:,:](f8[:,:], i4[:,:], f4[:], f8[:], i8)",
+    fastmath=True,
+    cache=True,
+)
+def _total_weighted_bayesian_single(
+    Z: np.ndarray,
+    word: np.ndarray,
+    alpha: np.ndarray,
+    weights: np.ndarray,
+    extended: int,
+) -> np.ndarray:
+    result = np.zeros((extended, Z.shape[1]), dtype=np.float64)
+    tmp = np.ones((Z.shape[1], ), dtype=np.float64)
+    for k, extended_letter in enumerate(word):
+        for letter, occurence in enumerate(extended_letter):
+            if occurence > 0:
+                for _ in range(occurence):
+                    tmp = tmp * Z[letter, :]
+            elif occurence < 0:
+                for _ in range(-occurence):
+                    tmp = tmp / Z[letter, :]
+        tmp = tmp * np.exp(weights * alpha[k])
+        for i in range(1, Z.shape[1]):
+            tmp[i] = max(tmp[i-1], tmp[i])
+        if len(word) - k <= extended:
+            result[extended-(len(word)-k), :] = tmp*np.exp(-weights * alpha[k])
+        if k < len(word) - 1:
+            tmp = tmp * np.exp(-weights * alpha[k])
     return result
 
 
@@ -541,7 +536,7 @@ class Bayesian(Semiring):
 
     @staticmethod
     @numba.njit(
-        "f8[:,:,:](f8[:,:,:], i4[:,:], f4[:], f8[:,:], i8)",
+        "f8[:,:,:](f8[:,:,:], i4[:,:], f4[:], f8[:,:], i8, b1)",
         fastmath=True,
         cache=True,
         parallel=True,
@@ -549,35 +544,48 @@ class Bayesian(Semiring):
     def _iterated_sum_fast(
         Z: np.ndarray,
         word: np.ndarray,
-        scalar: np.ndarray,
+        alpha: np.ndarray,
         lookup: np.ndarray,
         extended: int,
+        total_weighting: bool,
     ) -> np.ndarray:
         result = np.zeros((Z.shape[0], extended, Z.shape[2]), dtype=np.float64)
-        for j in numba.prange(Z.shape[0]):
-            result[j] = _bayesian_single_iterated_sum_fast(
-                Z[j, :, :],
-                word,
-                scalar,
-                lookup[j],
-                extended,
-            )
+        if total_weighting:
+            for j in numba.prange(Z.shape[0]):
+                result[j] = _total_weighted_bayesian_single(
+                    Z[j, :, :],
+                    word,
+                    alpha,
+                    lookup[j],
+                    extended,
+                )
+        else:
+            for j in numba.prange(Z.shape[0]):
+                result[j] = _bayesian_single(
+                    Z[j, :, :],
+                    word,
+                    alpha,
+                    lookup[j],
+                    extended,
+                )
         return result
 
     def iterated_sum_fast(
         self,
         Z: np.ndarray,
         word: np.ndarray,
-        scalar: np.ndarray,
+        alpha: np.ndarray,
         lookup: np.ndarray,
         extended: int,
+        total_weighting: bool,
     ) -> np.ndarray:
         return self._iterated_sum_fast(
             Z,
             word,
-            scalar,
+            alpha,
             lookup,
             extended,
+            total_weighting,
         )
 
     @staticmethod
