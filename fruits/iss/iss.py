@@ -212,23 +212,26 @@ def _coswiss_single(
     for i in range(weightings.shape[0]):
         tmp = np.ones((X.shape[1], ), dtype=np.float64)
         for k, extended_letter in enumerate(word):
-            C = np.ones((X.shape[1], ), dtype=np.float64)
-            for letter, occurence in enumerate(extended_letter):
-                if occurence > 0:
-                    for _ in range(occurence):
-                        C = C * X[letter, :]
-                elif occurence < 0:
-                    for _ in range(-occurence):
-                        C = C / X[letter, :]
             if k > 0:
                 tmp = np.roll(tmp, 1)
                 tmp[0] = 0
-            tmp[k:] = tmp[k:] * C[k:]
+            for letter, occurence in enumerate(extended_letter):
+                if occurence > 0:
+                    for _ in range(occurence):
+                        tmp = tmp * X[letter, :]
+                elif occurence < 0:
+                    for _ in range(-occurence):
+                        tmp = tmp / X[letter, :]
             for _ in range(weightings[i, 2*k+1]):
-                tmp[k:] = tmp[k:] * sin_w[k:]
+                tmp = tmp * sin_w
             for _ in range(weightings[i, 2*k+2]):
-                tmp[k:] = tmp[k:] * cos_w[k:]
-            tmp[k:] = np.cumsum(tmp[k:])
+                tmp = tmp * cos_w
+            tmp = np.cumsum(tmp)
+        if weightings.shape[1] == 2*len(word) + 3:
+            for _ in range(weightings[i, 2*len(word)+1]):
+                tmp = tmp * sin_w
+            for _ in range(weightings[i, 2*len(word)+2]):
+                tmp = tmp * cos_w
         result += weightings[i, 0] * tmp
     return result
 
@@ -266,6 +269,9 @@ class CosWISS(ISS):
             Currently only words of length 2 and 3 are supported.
         exponent (int, optional): Exponent ``s`` of the cosine.
             Defaults to 2.
+        total_weighting (bool, optional): If set to true, the outer sum
+            also weighted by ``cos(pi*|i_k-N|/(f*N))``, where ``k`` is
+            the length of the word. Defaults to false.
     """
 
     def __init__(
@@ -273,8 +279,10 @@ class CosWISS(ISS):
         words: Sequence[Word],
         freqs: Sequence[float],
         exponent: int = 2,
+        total_weighting: bool = False,
     ) -> None:
         super().__init__(words)
+        self._total_weighting = total_weighting
         self._freqs = freqs
         for word in words:
             if not isinstance(word, SimpleWord):
@@ -292,7 +300,7 @@ class CosWISS(ISS):
         return next(iter(result))
 
     def _get_weightings(self, word: Word) -> np.ndarray:
-        p = len(word)
+        p = len(word) + 1 if self._total_weighting else len(word)
         trig_id = []
         trig_exp = [self._exponent, 0]
         trig_coeff = 1
