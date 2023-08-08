@@ -87,6 +87,10 @@ class IncrementSieve(SegmentSieve):
         return (f"{self.__class__.__name__}"
                 f"({self._cut}, {self._q}, {self._inc})")
 
+    def _label(self, index: int) -> str:
+        label = super()._label(index)
+        return label[:3]+f"[inc={self._inc}]"+label[3:]
+
     def _summary(self) -> str:
         string = f"{self.__class__.__name__} -> {self.nfeatures()}:"
         for x in self._cut:

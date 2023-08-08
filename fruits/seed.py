@@ -65,5 +65,18 @@ class Seed(ABC):
         """Returns a copy of this seed."""
         return self._copy()
 
+    def _label(self, index: int = 0) -> str:
+        return str(self)
+
+    def label(self, index: int = 0) -> str:
+        """Returns the label of a single transform produced by this
+        seed.
+
+        Args:
+            index (int, optional): The index of one transform if
+                multiple are produced. Defaults to the first transform.
+        """
+        return self._label(index)
+
     def __str__(self) -> str:
         return self.__class__.__name__

@@ -194,6 +194,17 @@ class ISS(Seed):
             weighting=self.weighting,
         )
 
+    def _label(self, index: int) -> str:
+        if self.mode == ISSMode.EXTENDED:
+            string = self._cache_plan.get_word_string(index)
+        else:
+            string = str(self.words[index])
+        if not isinstance(self.semiring, Reals):
+            string += " : " + self.semiring.__class__.__name__
+        if self.weighting is not None:
+            string += " : " + self.weighting.__class__.__name__
+        return string
+
 
 @numba.njit(
     "f8[:](f8[:,:], i4[:,:], f4, i4[:,:])",
@@ -360,3 +371,11 @@ class CosWISS(ISS):
             words=self.words,
             exponent=self._exponent,
         )
+
+    def _label(self, index: int) -> str:
+        d, r = divmod(index, len(self._freqs))
+        string = str(self.words[d])
+        string += f"!{self._freqs[r]} : ^{self._exponent}"
+        if self._total_weighting:
+            string += " : total"
+        return string

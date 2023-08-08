@@ -93,11 +93,15 @@ class SegmentSieve(FeatureSieve, ABC):
     def __str__(self) -> str:
         return f"{self.__class__.__name__}({self._cut}, {self._q})"
 
+    def _label(self, index: int) -> str:
+        r, m = divmod(index, len(self._q)-1)
+        return (
+            f"{self.__class__.__name__}"
+            f"!{self._cut[r]}![{self._q[m]}, {self._q[m+1]}]"
+        )
+
     def _summary(self) -> str:
-        string = f"{self.__class__.__name__} -> {self.nfeatures()}:"
-        for x in self._cut:
-            string += f"\n   > {x}"
-        return string
+        return f"{self.__class__.__name__} -> {self.nfeatures()}:"
 
 
 class MAX(SegmentSieve):
