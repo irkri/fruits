@@ -6,11 +6,20 @@ import numpy as np
 from scipy.io import arff
 
 
+# def _multisine(x, coeff) -> float:
+#     return sum([
+#         coeff[i, 0] * np.sin(coeff[i, 1]*x + coeff[i, 2])
+#         for i in range(len(coeff))
+#     ])
 def _multisine(x, coeff) -> float:
-    return sum([
-        coeff[i, 0] * np.sin(coeff[i, 1]*x + coeff[i, 2])
-        for i in range(len(coeff))
-    ])
+    ret = 0.
+    for i in range(len(coeff)):
+        if callable(coeff[i, 1]):
+            f = coeff[i,1](x)
+        else:
+            f = coeff[i, 1]
+        ret += coeff[i, 0] * np.sin(f*x + coeff[i, 2])
+    return ret
 
 
 def multisine(
