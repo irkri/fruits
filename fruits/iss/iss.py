@@ -248,6 +248,49 @@ def _coswiss_single(
 
 
 @numba.njit(
+    "f8[:](f8[:,:], i4[:,:], f4, i4[:,:], i4[:,:])",
+    fastmath=True,
+    cache=True,
+)
+def _leaky_coswiss_single(
+    X: np.ndarray,
+    word: np.ndarray,
+    freq: float,
+    weightings: np.ndarray,
+    dropout: np.ndarray,
+) -> np.ndarray:
+    result = np.zeros((X.shape[1], ), dtype=np.float64)
+    sin_w = np.sin(np.pi * np.arange(X.shape[1])/(freq*(X.shape[1]-1)))
+    cos_w = np.cos(np.pi * np.arange(X.shape[1])/(freq*(X.shape[1]-1)))
+    for i in range(weightings.shape[0]):
+        tmp = np.ones((X.shape[1], ), dtype=np.float64)
+        for k, extended_letter in enumerate(word):
+            if k > 0:
+                tmp = np.roll(tmp, 1)
+                tmp[0] = 0
+            for letter, occurence in enumerate(extended_letter):
+                if occurence > 0:
+                    for _ in range(occurence):
+                        tmp = tmp * X[letter, :]
+                elif occurence < 0:
+                    for _ in range(-occurence):
+                        tmp = tmp / X[letter, :]
+            for _ in range(weightings[i, 2*k+1]):
+                tmp = tmp * sin_w
+            for _ in range(weightings[i, 2*k+2]):
+                tmp = tmp * cos_w
+            tmp[dropout[k]] = 0
+            tmp = np.cumsum(tmp)
+        if weightings.shape[1] == 2*len(word) + 3:
+            for _ in range(weightings[i, 2*len(word)+1]):
+                tmp = tmp * sin_w
+            for _ in range(weightings[i, 2*len(word)+2]):
+                tmp = tmp * cos_w
+        result += weightings[i, 0] * tmp
+    return result
+
+
+@numba.njit(
     "f8[:,:](f8[:,:], f8[:,:], f8[:], f8[:,:])",
     fastmath=True,
     cache=True,
@@ -289,7 +332,31 @@ def _ffn_coswiss(
     result = np.zeros((freqs.size, X.shape[0], X.shape[2]), dtype=np.float64)
     for i in numba.prange(X.shape[0]):
         for f in range(len(freqs)):
-            result[f, i] = _coswiss_single(_ffn(X[i], A[f], b[f], C[f]), word, freqs[f], weightings)
+            result[f, i] = _coswiss_single(
+                _ffn(X[i], A[f], b[f], C[f]), word, freqs[f], weightings
+            )
+    return result
+
+
+@numba.njit(
+    "f8[:,:,:](f8[:,:,:], i4[:,:], f4[:], i4[:,:], i4[:,:,:])",
+    fastmath=True,
+    cache=True,
+    parallel=True,
+)
+def _leaky_coswiss(
+    X: np.ndarray,
+    word: np.ndarray,
+    freqs: np.ndarray,
+    weightings: np.ndarray,
+    dropout: np.ndarray,
+) -> np.ndarray:
+    result = np.zeros((freqs.size, X.shape[0], X.shape[2]), dtype=np.float64)
+    for i in numba.prange(X.shape[0]):
+        for f in range(len(freqs)):
+            result[f, i] = _leaky_coswiss_single(
+                X[i], word, freqs[f], weightings, dropout[f]
+            )
     return result
 
 
@@ -329,6 +396,17 @@ class CosWISS(ISS):
         total_weighting (bool, optional): If set to true, the outer sum
             also weighted by ``cos(pi*|i_k-N|/(f*N))``, where ``k`` is
             the length of the word. Defaults to false.
+        ffn_size (int, optional): If set to an integer, a prior
+            two-layer neural network with randomized weights is used to
+            transform the input time series at each time step. The
+            weights are drawn for each word and frequency independently.
+            The given integer is the size of the hidden dimension. Input
+            and output dimension are equal.
+        dropout (float, optional): If a float between 0 and 1 is given,
+            some part of the time series gets set to zero before a
+            calculation of a cumulative sum. The given float is the
+            probability of one index being set to zero for each extended
+            letter in a word.
     """
 
     def __init__(
@@ -338,6 +416,7 @@ class CosWISS(ISS):
         exponent: int = 2,
         total_weighting: bool = False,
         ffn_size: Optional[int] = None,
+        dropout: Optional[float] = None,
     ) -> None:
         super().__init__(words)
         self._total_weighting = total_weighting
@@ -347,6 +426,7 @@ class CosWISS(ISS):
                 raise ValueError("CosWISS only implemented for simple words")
         self._exponent = exponent
         self._ffn_size = ffn_size
+        self._dropout = dropout
 
     def n_iterated_sums(self) -> int:
         """Total number of iterated sums the current ISS configuration
@@ -354,8 +434,9 @@ class CosWISS(ISS):
         """
         return len(self._freqs) * len(self.words)
 
+    @property
     def requires_fitting(self) -> bool:
-        return self._ffn_size is not None
+        return self._ffn_size is not None or self._dropout is not None
 
     def _fit(self, X: np.ndarray) -> None:
         if (d := self._ffn_size) is not None:
@@ -366,6 +447,14 @@ class CosWISS(ISS):
             self._C = np.random.random(
                 (len(self.words), len(self._freqs), X.shape[1], d)
             )
+        if (d := self._dropout) is not None:
+            rate = int(d * X.shape[2])
+            self._dropout_indices = np.array([
+                [[np.random.choice(X.shape[2], size=(rate, ), replace=False)
+                  for _ in range(max(map(len, self.words)))]
+                 for _ in range(len(self._freqs))]
+                for _ in range(len(self.words))
+            ])
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         result = self.batch_transform(X, batch_size=self.n_iterated_sums())
@@ -420,6 +509,14 @@ class CosWISS(ISS):
                     self._get_weightings(word),
                     self._A[w], self._b[w], self._C[w]
                 ))
+            elif self._dropout is not None:
+                results.append(_leaky_coswiss(
+                    X,
+                    np.array(list(word), dtype=np.int32),
+                    np.array(self._freqs, dtype=np.float32),
+                    self._get_weightings(word),
+                    self._dropout_indices[w],
+                ))
             else:
                 results.append(_coswiss(
                     X,
@@ -440,6 +537,7 @@ class CosWISS(ISS):
             exponent=self._exponent,
             total_weighting=self._total_weighting,
             ffn_size=self._ffn_size,
+            dropout=self._dropout,
         )
 
     def _label(self, index: int) -> str:
