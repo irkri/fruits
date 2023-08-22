@@ -479,7 +479,7 @@ class FruitSlice:
         for iss in self._iss:
             iss._cache = cache
             if iss.requires_fitting:
-                iss.fit(X)
+                iss.fit(prepared_data)
 
         if not any(sieve.requires_fitting for sieve in self._sieves):
             self._fitted = True

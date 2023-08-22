@@ -217,7 +217,7 @@ def _coswiss_single(
     freq: float,
     weightings: np.ndarray,
 ) -> np.ndarray:
-    result = np.zeros((X.shape[1], ))
+    result = np.zeros((X.shape[1], ), dtype=np.float64)
     sin_w = np.sin(np.pi * np.arange(X.shape[1])/(freq*(X.shape[1]-1)))
     cos_w = np.cos(np.pi * np.arange(X.shape[1])/(freq*(X.shape[1]-1)))
     for i in range(weightings.shape[0]):
@@ -248,6 +248,52 @@ def _coswiss_single(
 
 
 @numba.njit(
+    "f8[:,:](f8[:,:], f8[:,:], f8[:], f8[:,:])",
+    fastmath=True,
+    cache=True,
+)
+def _ffn(
+    X: np.ndarray,
+    A: np.ndarray,
+    b: np.ndarray,
+    C: np.ndarray,
+) -> np.ndarray:
+    Y = np.zeros((A.shape[0], X.shape[1]))
+    for j in range(X.shape[1]):
+        for d in range(A.shape[0]):
+            Y[d, j] = np.sum(A[d, :] * X[:, j]) + b[d]
+    Y = Y * (Y > 0)
+    Z = np.zeros((C.shape[0], X.shape[1]))
+    for j in range(X.shape[1]):
+        for d in range(C.shape[0]):
+            Z[d, j] = np.sum(C[d, :] * Y[:, j])
+    return Z
+
+
+@numba.njit(
+    "f8[:,:,:](f8[:,:,:], i4[:,:], f4[:], i4[:,:], "
+              "f8[:,:,:], f8[:,:], f8[:,:,:])",
+    fastmath=True,
+    cache=True,
+    parallel=True,
+)
+def _ffn_coswiss(
+    X: np.ndarray,
+    word: np.ndarray,
+    freqs: np.ndarray,
+    weightings: np.ndarray,
+    A: np.ndarray,
+    b: np.ndarray,
+    C: np.ndarray,
+) -> np.ndarray:
+    result = np.zeros((freqs.size, X.shape[0], X.shape[2]), dtype=np.float64)
+    for i in numba.prange(X.shape[0]):
+        for f in range(len(freqs)):
+            result[f, i] = _coswiss_single(_ffn(X[i], A[f], b[f], C[f]), word, freqs[f], weightings)
+    return result
+
+
+@numba.njit(
     "f8[:,:,:](f8[:,:,:], i4[:,:], f4[:], i4[:,:])",
     fastmath=True,
     cache=True,
@@ -259,7 +305,7 @@ def _coswiss(
     freqs: np.ndarray,
     weightings: np.ndarray,
 ) -> np.ndarray:
-    result = np.zeros((freqs.size, X.shape[0], X.shape[2]))
+    result = np.zeros((freqs.size, X.shape[0], X.shape[2]), dtype=np.float64)
     for i in numba.prange(X.shape[0]):
         for f in range(len(freqs)):
             result[f, i] = _coswiss_single(X[i], word, freqs[f], weightings)
@@ -291,6 +337,7 @@ class CosWISS(ISS):
         freqs: Sequence[float],
         exponent: int = 2,
         total_weighting: bool = False,
+        ffn_size: Optional[int] = None,
     ) -> None:
         super().__init__(words)
         self._total_weighting = total_weighting
@@ -299,12 +346,26 @@ class CosWISS(ISS):
             if not isinstance(word, SimpleWord):
                 raise ValueError("CosWISS only implemented for simple words")
         self._exponent = exponent
+        self._ffn_size = ffn_size
 
     def n_iterated_sums(self) -> int:
         """Total number of iterated sums the current ISS configuration
         produces.
         """
         return len(self._freqs) * len(self.words)
+
+    def requires_fitting(self) -> bool:
+        return self._ffn_size is not None
+
+    def _fit(self, X: np.ndarray) -> None:
+        if (d := self._ffn_size) is not None:
+            self._A = np.random.random(
+                (len(self.words), len(self._freqs), d, X.shape[1])
+            )
+            self._b = np.random.random((len(self.words), len(self._freqs), d))
+            self._C = np.random.random(
+                (len(self.words), len(self._freqs), X.shape[1], d)
+            )
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         result = self.batch_transform(X, batch_size=self.n_iterated_sums())
@@ -350,15 +411,22 @@ class CosWISS(ISS):
                 iterated sums are returned at once. Default is 1.
         """
         results = []
-        c = 0
-        for word in self.words:
-            results.append(_coswiss(
-                X,
-                np.array(list(word), dtype=np.int32),
-                np.array(self._freqs, dtype=np.float32),
-                self._get_weightings(word),
-            ))
-            c += 1
+        for w, word in enumerate(self.words):
+            if self._ffn_size is not None:
+                results.append(_ffn_coswiss(
+                    X,
+                    np.array(list(word), dtype=np.int32),
+                    np.array(self._freqs, dtype=np.float32),
+                    self._get_weightings(word),
+                    self._A[w], self._b[w], self._C[w]
+                ))
+            else:
+                results.append(_coswiss(
+                    X,
+                    np.array(list(word), dtype=np.int32),
+                    np.array(self._freqs, dtype=np.float32),
+                    self._get_weightings(word),
+                ))
             if len(results) == batch_size:
                 yield np.concatenate(results, dtype=results[0].dtype)
                 results = []
@@ -370,6 +438,8 @@ class CosWISS(ISS):
             freqs=self._freqs,
             words=self.words,
             exponent=self._exponent,
+            total_weighting=self._total_weighting,
+            ffn_size=self._ffn_size,
         )
 
     def _label(self, index: int) -> str:
