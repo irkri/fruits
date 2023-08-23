@@ -454,7 +454,7 @@ class CosWISS(ISS):
                   for _ in range(max(map(len, self.words)))]
                  for _ in range(len(self._freqs))]
                 for _ in range(len(self.words))
-            ])
+            ], dtype=np.int32)
 
     def _transform(self, X: np.ndarray) -> np.ndarray:
         result = self.batch_transform(X, batch_size=self.n_iterated_sums())
