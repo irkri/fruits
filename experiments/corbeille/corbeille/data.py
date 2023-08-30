@@ -382,7 +382,33 @@ def lengthen(X: np.ndarray, length: float = 0.1) -> np.ndarray:
                       X.shape[1],
                       X.shape[2] + additional_length))
     X_new[:, :, :X.shape[2]] = X
-    for i in range(X.shape[0]):
-        for j in range(X.shape[1]):
-            X_new[i, j, X.shape[2]:] = X[i, j, -1]
+    X_new[:, :, X.shape[2]:] = X[:, :, -1]
     return X_new
+
+
+def downsample(X: np.ndarray, resolution: float = 0.1) -> np.ndarray:
+    """Returns a coarse version of the input time series by deleting
+    values each ``n`` steps.
+
+    Args:
+        X (np.ndarray): Three dimensional array containing multivariate
+            time series.
+        resolution (float, optional): A float between 0 and 1 that
+            determines ``n``. The float is the percentage of values
+            being removed. Defaults to ``0.1``.
+    """
+    remove = int(1)
+
+
+def upsample(X: np.ndarray, resolution: float = 0.1) -> np.ndarray:
+    """Returns a coarse version of the input time series by deleting
+    values each ``n`` steps.
+
+    Args:
+        X (np.ndarray): Three dimensional array containing multivariate
+            time series.
+        resolution (float, optional): A float between 0 and 1 that
+            determines ``n``. The float is the percentage of values
+            being removed. Defaults to ``0.1``.
+    """
+    remove = int(1)
