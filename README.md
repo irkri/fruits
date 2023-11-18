@@ -3,11 +3,15 @@
 ... is a collection of transformations that extract features from univariate or multivariate time series.
 
 ## Installation
-Install __FRUITS__ by cloning the repository to your local machine and executing
+Install __FRUITS__ either by executing
+
+    >>> pip install git+https://github.com/alienkrieg/fruits
+
+or by cloning the repository to your local machine and executing
 
     >>> python -m pip install .
 
-in the main directory of this repository. If an error occures, please try commenting out the line
+in the main directory of this repository. If an error occurs, please try commenting out the line
 ```
     # corbeille = {path = "experiments/corbeille/", optional = true, develop = true}
 ```
