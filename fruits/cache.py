@@ -94,7 +94,7 @@ class SharedSeedCache:
         """
         if (key not in self._cache[cache_id].keys()
                 or self._cache[cache_id][key] is None):
-            if X is None and self._input is not None:
+            if self._input is not None:
                 if cache_id == CacheType.COQUANTILE:
                     c, norm = key.split(":")
                     if norm == "L1":
