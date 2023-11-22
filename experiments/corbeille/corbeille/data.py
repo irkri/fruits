@@ -382,7 +382,7 @@ def lengthen(X: np.ndarray, length: float = 0.1) -> np.ndarray:
                       X.shape[1],
                       X.shape[2] + additional_length))
     X_new[:, :, :X.shape[2]] = X
-    X_new[:, :, X.shape[2]:] = X[:, :, -1]
+    X_new[:, :, X.shape[2]:] = X[:, :, -1:]
     return X_new
 
 
