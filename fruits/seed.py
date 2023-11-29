@@ -10,7 +10,7 @@ TCopy = TypeVar("TCopy", bound="Seed")
 
 class Seed(ABC):
     """Abstract class for all additional objects that can be added to a
-    fruit including preparateurs, words and sieves.
+    fruit including preparateurs, iss and sieves.
     """
 
     _cache: SharedSeedCache

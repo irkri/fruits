@@ -11,8 +11,8 @@ You'll find an up-to-date installation guide at
 What is FRUITS?
 ---------------
 
-**FRUITS** (**F**\ eature Ext\ **R**\ action **U**\ sing **IT**\ erated **S**\ ums) is a
-python package and a tool for machine learning. It is designed for feature extraction from
+**FRUITS** (**F**\ eature Ext\ **R**\ action **U**\ sing **IT**\ erated **S**\ ums) is a Python
+package implementing time series features extraction tools for machine learning. It is designed for
 univariate and multivariate time series data.
 
 Structure
@@ -30,7 +30,7 @@ A single slice can have:
     are used to calculate iterated sums.
     For example::
 
-        fruits.ISS(X, [fruits.words.SimpleWord("[11]")])
+        fruits.ISS([fruits.words.SimpleWord("[11]")]).fit_transform(X)
 
     calculates::
 
@@ -52,7 +52,9 @@ The following code block shows a simple example on how to use **FRUITS**.
 
 .. code-block:: python
 
-    # 3 dimensional time series dataset of 200 time series of length 100
+    import numpy
+    import fruits
+    # time series dataset: 200 time series of length 100 in 3 dimensions
     X_train = numpy.random.sample((200, 3, 100))
 
     # create a fruit
@@ -61,19 +63,22 @@ The following code block shows a simple example on how to use **FRUITS**.
     # add preparateurs (optional)
     fruit.add(fruits.preparation.INC)
 
-    # add all words of weight 2 in 3 dimensions
-    words = fruits.words.of_weight(2, dim=3)
-    fruit.add(*words)
+    # configure the type of Iterated Sums Signature being used
+    iss = fruits.ISS(
+        fruits.words.of_weight(2, dim=3),
+        mode=fruits.ISSMode.EXTENDED,
+    )
+    fruit.add(iss)
 
     # choose from a variety of sieves for feature extraction
-    fruit.add(fruits.sieving.PPV(quantile=0.5, constant=False))
-    fruit.add(fruits.sieving.MAX)
+    fruit.add(fruits.sieving.NPI(q=(0.5, 1.0)))
+    fruit.add(fruits.sieving.END)
 
     # cut a new fruit slice without the INC preparateur
     fruit.cut()
-    fruit.add(*words)
-    fruit.add(fruits.sieving.PPV(quantile=0, constant=True))
-    fruit.add(fruits.sieving.MIN)
+    fruit.add(iss.copy())
+    fruit.add(fruits.sieving.NPI)
+    fruit.add(fruits.sieving.END)
 
     # fit the fruit to the data and extract all features
     fruit.fit(X_train)

@@ -25,15 +25,15 @@ class Fruit:
         # optional: add preparateurs for preprocessing
         fruit.add(fruits.preparation.INC)
         # add words for iterated sums calculation
-        fruit.add(*fruits.words.of_weight(4))
+        fruit.add(fruits.ISS(fruits.words.of_weight(4)))
         # choose sieves
-        fruit.add(fruits.sieving.PPV(0.5))
+        fruit.add(fruits.sieving.NPI)
         fruit.add(fruits.sieving.END)
 
         # add a new slice without INC
         fruit.cut()
-        fruit.add(*fruits.words.of_weight(4))
-        fruit.add(fruits.sieving.PPV(0.5))
+        fruit.add(fruits.ISS(fruits.words.of_weight(4)))
+        fruit.add(fruits.sieving.NPI)
         fruit.add(fruits.sieving.END)
 
         # fit the fruit on a time series dataset
@@ -105,8 +105,8 @@ class Fruit:
             objects: One or more objects of the
                 following types:
 
-                - :class:`~fruits.preparation.abstract.DataPreparateur`
-                - :class:`~fruits.words.word.Word`
+                - :class:`~fruits.preparation.abstract.Preparateur`
+                - :class:`~fruits.iss.iss.ISS`
                 - :class:`~fruits.sieving.abstract.FeatureSieve`
         """
         if len(self._slices) == 0:

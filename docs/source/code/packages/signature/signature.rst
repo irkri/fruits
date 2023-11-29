@@ -6,6 +6,11 @@ The Iterated-Sums Signature
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: fruits.iss.cos
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Semirings
 """""""""
 
