@@ -26,15 +26,15 @@ install FRUITS inside an existing environment (*).
     $ cd fruits
     $ poetry install          (or: $ python -m pip install -e .)
 
-Without cloning the repository, use instead:
-
-    $ pip install git+https://github.com/alienkrieg/fruits
-
 If an error occures, please try commenting out the line
 ```
     # corbeille = {path = "experiments/corbeille/", optional = true, develop = true}
 ```
 in the file [pyproject.toml](/pyproject.toml).
+
+Without cloning the repository, use instead:
+
+    $ pip install git+https://github.com/alienkrieg/fruits
 
 ## Documentation
 The documentation of __FRUITS__ can be created by calling `make html` in the [docs](docs) folder.
