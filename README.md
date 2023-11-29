@@ -37,11 +37,11 @@ Without cloning the repository, use instead:
     $ pip install git+https://github.com/alienkrieg/fruits
 
 ## Documentation
-The documentation of __FRUITS__ can be created by calling `make html` in the [docs](docs) folder.
-This should create a local directory `docs/build`. Open the file `docs/build/index.html` in a
-browser to access the documentation.
+An html documentation is available as a zipped folder in the [latest release](https://github.com/irkri/fruits/releases/latest) of FRUITS.
 
-The Python dependencies (`sphinx`, `sphinx-rtd-theme`) needed to execute the command are listed in
+The documentation can be built by calling `make html` in the [docs](docs) folder.
+This should create a local directory `docs/build`. Open the file `docs/build/index.html` in a
+browser to access the documentation. The Python dependencies (`sphinx`, `sphinx-rtd-theme`) needed are listed in
 the [toml file](/pyproject.toml) as development dependencies.
 
 ## Pipeline
