@@ -6,7 +6,7 @@ import numpy as np
 from ..cache import SharedSeedCache
 from ..seed import Seed
 from .cache import CachePlan
-from .semiring import Reals, Arctic, Semiring
+from .semiring import Arctic, Reals, Semiring
 from .weighting import Weighting
 from .words.word import Word
 
@@ -72,7 +72,7 @@ class ISS(Seed):
     object with a number of words to a fruit.
 
     Args:
-        words (Word or list of Words): Words to calculate the ISS for.
+        words (Sequence of Words): Words to calculate the ISS for.
         mode (ISSMode, optional): Mode of the used calculator. Has to be
             either "single" or "extended".
 
@@ -165,7 +165,7 @@ class ISS(Seed):
                 iterated sums are calculated and returned at once. This
                 doesn't have to be the same number as the number of
                 words given. Default is that the iterated sums for each
-                single word are returned one after another.
+                single word (may be > 1) are returned one after another.
         """
         if batch_size > len(self.words):
             raise ValueError("batch_size too large, has to be < len(words)")
@@ -191,3 +191,14 @@ class ISS(Seed):
             semiring=self.semiring,
             weighting=self.weighting,
         )
+
+    def _label(self, index: int) -> str:
+        if self.mode == ISSMode.EXTENDED:
+            string = self._cache_plan.get_word_string(index)
+        else:
+            string = str(self.words[index])
+        if not isinstance(self.semiring, Reals):
+            string += " : " + self.semiring.__class__.__name__
+        if self.weighting is not None:
+            string += " : " + self.weighting.__class__.__name__
+        return string

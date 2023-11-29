@@ -1,5 +1,5 @@
 import inspect
-from typing import Callable, Generator, Optional, Union
+from typing import Callable, Generator, Literal, Optional, Union
 
 import numpy as np
 
@@ -25,15 +25,15 @@ class Fruit:
         # optional: add preparateurs for preprocessing
         fruit.add(fruits.preparation.INC)
         # add words for iterated sums calculation
-        fruit.add(*fruits.words.of_weight(4))
+        fruit.add(fruits.ISS(fruits.words.of_weight(4)))
         # choose sieves
-        fruit.add(fruits.sieving.PPV(0.5))
+        fruit.add(fruits.sieving.NPI)
         fruit.add(fruits.sieving.END)
 
         # add a new slice without INC
         fruit.cut()
-        fruit.add(*fruits.words.of_weight(4))
-        fruit.add(fruits.sieving.PPV(0.5))
+        fruit.add(fruits.ISS(fruits.words.of_weight(4)))
+        fruit.add(fruits.sieving.NPI)
         fruit.add(fruits.sieving.END)
 
         # fit the fruit on a time series dataset
@@ -105,8 +105,8 @@ class Fruit:
             objects: One or more objects of the
                 following types:
 
-                - :class:`~fruits.preparation.abstract.DataPreparateur`
-                - :class:`~fruits.words.word.Word`
+                - :class:`~fruits.preparation.abstract.Preparateur`
+                - :class:`~fruits.iss.iss.ISS`
                 - :class:`~fruits.sieving.abstract.FeatureSieve`
         """
         if len(self._slices) == 0:
@@ -225,6 +225,40 @@ class Fruit:
         for slc in self._slices:
             copy_.cut(slc.deepcopy())
         return copy_
+
+    def label(
+        self,
+        index: int,
+        level: Literal["prepared", "iterated sums", "features"] = "features",
+        verbose: Literal[1, 2] = 1,
+    ) -> str:
+        """Returns the label of a single feature produced by this fruit.
+
+        Args:
+            index (int, optional): The index of the feature.
+            level (str, optional): Either 'prepared', 'iterated sums' or
+                'features'. The corresponding feature path label will be
+                only returned up to the given level. The given index is
+                interpreted as an index for the corresponding level. For
+                example, with 'prepared', the index corresponds to a
+                slice index in this fruit. The label of the preparateurs
+                in this slice are returned. Defaults to 'features'.
+            verbose (int, optional): Verbosity level, either 1 or 2.
+                Defaults to 1, less information printed.
+        """
+        i = 0
+        while index >= 0:
+            if level == "prepared":
+                total = len(self.get_slice(i).get_preparateurs())
+            elif level == "iterated sums":
+                total = self.get_slice(i).niteratedsums()
+            elif level == "features":
+                total = self.get_slice(i).nfeatures()
+            if index < total:
+                return self.get_slice(i).label(index, level, verbose)
+            index -= total
+            i += 1
+        raise RuntimeError("Label index out of range")
 
     def __len__(self) -> int:
         return len(self._slices)
@@ -377,10 +411,13 @@ class FruitSlice:
         """Returns the total number of features the current
         configuration produces.
         """
-        return int(
-            sum(s.nfeatures() for s in self._sieves)
-            * np.prod([iss.n_iterated_sums() for iss in self._iss])
-        )
+        return sum(s.nfeatures() for s in self._sieves) * self.niteratedsums()
+
+    def niteratedsums(self) -> int:
+        """Returns the total number of iterated sums this slice
+        produces.
+        """
+        return int(np.prod([iss.n_iterated_sums() for iss in self._iss]))
 
     def _compile(self) -> None:
         # checks if the FruitSlice is configured correctly and ready
@@ -439,14 +476,17 @@ class FruitSlice:
             prep.fit(prepared_data)
             prepared_data = prep.transform(prepared_data)
 
+        for iss in self._iss:
+            iss._cache = cache
+            if iss.requires_fitting:
+                iss.fit(prepared_data)
+
         if not any(sieve.requires_fitting for sieve in self._sieves):
             self._fitted = True
             return
 
         self._sieves_extended = []
 
-        for iss in self._iss:
-            iss._cache = cache
         for itsum in self._iterate_iss(prepared_data):
             sieves_copy = [sieve.copy() for sieve in self._sieves]
             for sieve in sieves_copy:
@@ -581,3 +621,66 @@ class FruitSlice:
             copy_.add(sieve.copy())
         copy_.fit_sample_size = self.fit_sample_size
         return copy_
+
+    def label(
+        self,
+        index: int,
+        level: Literal["prepared", "iterated sums", "features"] = "features",
+        verbose: Literal[1, 2] = 1,
+    ) -> str:
+        """Returns the label of a single feature produced by this slice.
+
+        Args:
+            index (int, optional): The index of the feature.
+            level (str, optional): Either 'prepared', 'iterated sums' or
+                'features'. The corresponding feature path label will be
+                only returned up to the given level. The given index is
+                interpreted as an index for the corresponding level. For
+                example, with 'prepared', the index corresponds to a
+                slice index in this fruit. The label of the preparateurs
+                in this slice are returned. Defaults to 'features'.
+            verbose (int, optional): Verbosity level, either 1 or 2.
+                Defaults to 1, less information printed.
+        """
+        string = ""
+        if level == "prepared":
+            for i in range(index+1):
+                label = self._preparateurs[i].label()
+                if verbose == 1:
+                    label = label.split("(")[0]
+                string += f"{label} -> "
+            return "input" if string == "" else string[:-4]
+        else:
+            for prep in self._preparateurs:
+                label = prep.label()
+                if verbose == 1:
+                    label = label.split("(")[0]
+                string += f"{label} -> "
+        if string != "":
+            string = string[:-4] + " | "
+        findex = 0
+        if level == "features":
+            index, findex = map(int, divmod(
+                index,
+                int(np.sum([s.nfeatures() for s in self._sieves]))
+            ))
+        n_i = self.niteratedsums()
+        for i in range(len(self.get_iss())):
+            word_index = int((index % n_i) // (
+                n_i / self.get_iss()[i].n_iterated_sums()
+            ))
+            label = self.get_iss()[i].label(word_index)
+            if verbose == 1:
+                label = label.split(" : ")[0]
+            string += label + " -> "
+            n_i /= self.get_iss()[i].n_iterated_sums()
+        if level == "iterated sums":
+            return "input" if string == "" else string[:-4]
+        if string != "":
+            string = string[:-4] + " | "
+        for i in range(len(self._sieves)):
+            if findex < self._sieves[i].nfeatures():
+                string += self._sieves[i].label(findex)
+                return string
+            findex -= self._sieves[i].nfeatures()
+        raise RuntimeError("Feature index out of range")

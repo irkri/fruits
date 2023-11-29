@@ -6,11 +6,20 @@ import numpy as np
 from scipy.io import arff
 
 
+# def _multisine(x, coeff) -> float:
+#     return sum([
+#         coeff[i, 0] * np.sin(coeff[i, 1]*x + coeff[i, 2])
+#         for i in range(len(coeff))
+#     ])
 def _multisine(x, coeff) -> float:
-    return sum([
-        coeff[i, 0] * np.sin(coeff[i, 1]*x + coeff[i, 2])
-        for i in range(len(coeff))
-    ])
+    ret = 0.
+    for i in range(len(coeff)):
+        if callable(coeff[i, 1]):
+            f = coeff[i,1](x)
+        else:
+            f = coeff[i, 1]
+        ret += coeff[i, 0] * np.sin(f*x + coeff[i, 2])
+    return ret
 
 
 def multisine(
@@ -373,7 +382,36 @@ def lengthen(X: np.ndarray, length: float = 0.1) -> np.ndarray:
                       X.shape[1],
                       X.shape[2] + additional_length))
     X_new[:, :, :X.shape[2]] = X
-    for i in range(X.shape[0]):
-        for j in range(X.shape[1]):
-            X_new[i, j, X.shape[2]:] = X[i, j, -1]
+    X_new[:, :, X.shape[2]:] = X[:, :, -1:]
     return X_new
+
+
+def downsample(X: np.ndarray, resolution: float = 0.5) -> np.ndarray:
+    """Returns a coarse version of the input time series by deleting
+    values each ``n`` steps.
+
+    Args:
+        X (np.ndarray): Three dimensional array containing multivariate
+            time series.
+        resolution (float, optional): A float between 0 and 1 that
+            determines ``n``. The float is the percentage of values
+            being removed. Defaults to ``0.5``.
+    """
+    each_n = int(1 / resolution)
+    X = X[:, :, ::each_n]
+    return X
+
+
+def upsample(X: np.ndarray) -> np.ndarray:
+    """Interpolates between each two points linearly to generate a
+    higher resolution of the input time series dataset. The resulting
+    length will be ``2*l-1``, where ``l`` is the original length.
+
+    Args:
+        X (np.ndarray): Three dimensional array containing multivariate
+            time series.
+    """
+    shape = (X.shape[0], X.shape[1], 2*X.shape[2])
+    interpolated = np.roll((X + np.roll(X, 1, axis=2)) / 2, -1, axis=2)
+    Z = np.concatenate((X, interpolated)).reshape(shape, order="F")[:, :, :-1]
+    return Z

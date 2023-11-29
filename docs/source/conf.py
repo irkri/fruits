@@ -20,11 +20,11 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'FRUITS'
-copyright = '2021, alienkrieg'
-author = 'alienkrieg'
+copyright = '2021, Richard Krieg'
+author = 'Richard Krieg'
 
 # The full version, including alpha/beta/rc tags
-release = '0.13.1'
+release = '1.0.0'
 
 
 # -- General configuration ---------------------------------------------------

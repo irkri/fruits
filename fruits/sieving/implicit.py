@@ -15,6 +15,9 @@ class PPV(FeatureSieve):
     calculates the proportion of values in a time series that are
     greater than the calculated quantile(s).
 
+    **DEPRECATED**: Please use :class:`~fruits.sieving.increment.NPI`
+    instead.
+
     Args:
         quantile (float(s), optional): Quantile or list of quantiles
             ``[q_1, ..., q_n]`` as actual value(s) or probability for

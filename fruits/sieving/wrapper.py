@@ -57,6 +57,9 @@ class INC(FeatureSieve):
     def _summary(self) -> str:
         return f"INC>{self._sieve.summary()}"
 
+    def _label(self, index: int) -> str:
+        return f"INC of {self._sieve._label(index)}"
+
     def __str__(self) -> str:
         return f"INC({str(self._sieve)}, {self._depth}, {self._shift})"
 
@@ -93,6 +96,9 @@ class INT(FeatureSieve):
 
     def _summary(self) -> str:
         return f"INT>{self._sieve.summary()}"
+
+    def _label(self, index: int) -> str:
+        return f"INT of {self._sieve._label(index)}"
 
     def __str__(self) -> str:
         return f"INT({str(self._sieve)})"

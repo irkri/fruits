@@ -11,7 +11,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from sklearn.linear_model import RidgeClassifierCV
 
-from .tools import split_index, feature_path
+from .tools import split_index
 
 _COLORS: list[tuple[int, int, int]] = [
     (0, 100, 173),
@@ -456,8 +456,7 @@ class Fruitalyser:
         if level == "input":
             ax.set_title("Input Data")
         else:
-            ax.set_title(feature_path(
-                self.fruit,
+            ax.set_title(self.fruit.label(
                 index if index is not None else 0,
                 level=level,
             ))
@@ -493,7 +492,7 @@ class Fruitalyser:
         column_names = []
         for i, index in enumerate(indices):
             feat_table[i] = features[:, index]
-            column_names.append(feature_path(self.fruit, index))
+            column_names.append(self.fruit.label(index, level="features"))
         feats = pd.DataFrame(feat_table.T, columns=column_names)
         return feats
 
