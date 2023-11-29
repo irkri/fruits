@@ -2,6 +2,8 @@
 
 [Paper on Arxiv](https://arxiv.org/abs/2311.14549)
 
+![FRUITS Pipeline](docs/resources/pipeline.png)
+
 This repository contains the code for FRUITS, a Python package implementing a collection of
 transformations that extract features from univariate or multivariate time series. Additionally, we
 provide the following:
