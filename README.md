@@ -1,6 +1,6 @@
 # FRUITS - **F**eature Ext**R**action **U**sing **IT**erated **S**ums
 
-[Paper on Arxiv](https://arxiv.org/abs/2311.14549)
+[Published Paper](https://link.springer.com/article/10.1007/s10618-024-01068-1) in *Data Mining and Knowledge Discovery*
 
 ![FRUITS Pipeline](docs/resources/pipeline.png)
 
